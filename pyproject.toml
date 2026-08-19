@@ -5,7 +5,7 @@ requires-python = ">=3.13"
 dependencies = ["beautifulsoup4>=4.12", "lxml>=5.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "PyYAML>=6.0"]
 
 [tool.setuptools]
 packages = ["pipeline"]

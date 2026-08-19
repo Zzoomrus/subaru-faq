@@ -37,11 +37,19 @@ zip, старый OLE2 — doc/xls, RAR, 7z, gzip). Если сигнатура 
 на диске.
 """
 import hashlib
+import logging
 import re
 import urllib.parse
 from pathlib import Path
 
 from pipeline import assets_state, attachments, fetcher
+
+_LOG = logging.getLogger(__name__)
+# Индексация идёт ~40 минут, скачивание — часы, оба без вложений/файлов на
+# каждом шаге, кроме самого последнего. Без периодической метки прогресса
+# лог под nohup за это время не наполнился бы вовсе, и наблюдающий не сможет
+# отличить «работает» от «висит» до самого конца прогона.
+_PROGRESS_EVERY = 50
 
 # Ровно те виды вложений, у которых `attachments.is_content(kind)` истинно и
 # файла в архиве нет (см. `attachments.py`): чужие картинки и свои вложения
@@ -138,7 +146,9 @@ def index_pending(conn, manifest: Path, limit: int | None = None) -> dict[str, i
     """Шаг 1: у скольких URL в CDX вообще есть снимок. Тела не тянет."""
     stats = {"pending": 0, "no_snapshot": 0}
     pacer = fetcher.TokenBucketPacer()
-    for url, _kind in _targets(conn, manifest, "index", limit):
+    targets = _targets(conn, manifest, "index", limit)
+    total = len(targets)
+    for i, (url, _kind) in enumerate(targets, 1):
         snaps = fetcher.cdx_snapshots(url)
         if snaps:
             assets_state.record(manifest, url, None, "pending", note=snaps[0][0])
@@ -148,6 +158,9 @@ def index_pending(conn, manifest: Path, limit: int | None = None) -> dict[str, i
             assets_state.record(manifest, url, None, "no_snapshot")
             stats["no_snapshot"] += 1
             pacer.note(False)
+        if i % _PROGRESS_EVERY == 0 or i == total:
+            _LOG.info("индексация: %d/%d — pending=%d no_snapshot=%d",
+                       i, total, stats["pending"], stats["no_snapshot"])
         pacer.wait()
     return stats
 
@@ -161,7 +174,9 @@ def download(conn, manifest: Path, assets_root: Path, limit: int | None = None) 
     """
     stats = {"ok": 0, "empty": 0, "failed": 0}
     pacer = fetcher.TokenBucketPacer()
-    for url, kind in _targets(conn, manifest, "download", limit):
+    targets = _targets(conn, manifest, "download", limit)
+    total = len(targets)
+    for i, (url, kind) in enumerate(targets, 1):
         probe = _content_probe(kind)
         snaps = fetcher.cdx_snapshots(url)          # единственный вызов CDX на этот URL
         data = None
@@ -191,5 +206,8 @@ def download(conn, manifest: Path, assets_root: Path, limit: int | None = None) 
             assets_state.record(manifest, url, rel, "ok")
             stats["ok"] += 1
             pacer.note(True)
+        if i % _PROGRESS_EVERY == 0 or i == total:
+            _LOG.info("скачивание: %d/%d — ok=%d empty=%d failed=%d",
+                       i, total, stats["ok"], stats["empty"], stats["failed"])
         pacer.wait()
     return stats

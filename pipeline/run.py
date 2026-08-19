@@ -100,8 +100,12 @@ def _drop_db(path: Path) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     # Прогон добора идёт часами на сервере под nohup, лог — единственный
-    # свидетель; предупреждения о повреждённом манифесте (warnings.warn в
-    # assets_state) без этого улетают мимо лога, а не просто мимо глаз.
+    # свидетель. basicConfig поднимает уровень до INFO, чтобы в лог попадали
+    # периодические отметки прогресса fetch_assets (без него процесс часами
+    # молчит, и "жив или висит" не отличить до самого конца). captureWarnings
+    # — чтобы предупреждения о повреждённом манифесте (warnings.warn в
+    # assets_state) шли туда же, а не улетали мимо лога.
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.captureWarnings(True)
     args = _parser().parse_args(argv)
     cmd = args.command
