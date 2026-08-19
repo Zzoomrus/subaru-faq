@@ -136,7 +136,73 @@ def test_content_image_is_rendered_once_by_the_attachment_mechanism(tmp_path):
     md = mirror.render_thread(conn, 10045)
     assert md.count("foto.jpg") == 1
     assert "![](http://dead.host/foto.jpg)" not in md
-    assert "> [!missing] изображение не сохранилось" in md
+    assert "изображение не сохранилось: http://dead.host/foto.jpg" in md
+
+
+def test_image_with_file_renders_in_place():
+    # Задача 4: картинка встаёт на своё место в тексте, а не в конец поста.
+    md = mirror.render_post_body(
+        "До ![](http://h/x.jpg) после",
+        {"http://h/x.jpg": {"local_path": "h/abc.jpg", "status": "ok"}})
+    assert md.index("До") < md.index("![[h/abc.jpg]]") < md.index("после")
+
+
+def test_image_without_file_becomes_inline_note():
+    # Имя из брифа задачи было "inline_callout" — по факту это НЕ callout
+    # (двухстрочный `> [!missing]` не встаёт посреди предложения), а
+    # компактная однострочная пометка на месте картинки.
+    md = mirror.render_post_body(
+        "До ![](http://h/x.jpg) после",
+        {"http://h/x.jpg": {"local_path": None, "status": "no_snapshot"}})
+    assert "![[" not in md
+    assert "изображение не сохранилось" in md
+    assert md.index("До") < md.index("изображение не сохранилось") < md.index("после")
+
+
+def test_chrome_image_disappears_without_trace():
+    md = mirror.render_post_body(
+        "Смешно ![](/bitrix/images/forum/smile/icon_smile.gif) очень", {})
+    assert md == "Смешно очень" or md == "Смешно  очень"
+
+
+def test_same_url_twice_in_one_post_renders_at_both_positions():
+    # Позиционный рендеринг — это рендеринг ПО ВХОЖДЕНИЮ в тексте, а не по
+    # строке в attachments. На корпусе 8 постов реально вставляют одну и ту
+    # же картинку дважды (не баг парсера — сам автор поста продублировал);
+    # раньше это схлопывалось в одну вставку в конце, теперь — как в тексте.
+    md = mirror.render_post_body(
+        "раз ![](http://h/x.jpg) и два ![](http://h/x.jpg) готово",
+        {"http://h/x.jpg": {"local_path": "h/abc.jpg", "status": "ok"}})
+    assert md.count("![[h/abc.jpg]]") == 2
+    assert md.index("раз") < md.index("и два")
+
+
+def test_orphan_attachment_without_inline_tag_still_not_lost():
+    # `attachments` знает про URL, которого в тексте поста нет вовсе (13 из
+    # 8960 на корпусе — картинка обёрнута в ссылку с непустым текстом,
+    # `to_markdown` рендерит её как обычную ссылку, а `images()` всё равно
+    # находит src). Молча терять её нельзя (глобальное ограничение «ни
+    # одной битой картинки») — она идёт в конец тела как явная пометка.
+    md = mirror.render_post_body(
+        "текст без картинок вовсе",
+        {"http://h/orphan.jpg": {"local_path": None, "status": "no_snapshot"}})
+    assert "изображение не сохранилось: http://h/orphan.jpg" in md
+
+
+def test_render_thread_places_image_inline_when_file_exists(tmp_path):
+    # Интеграционная проверка через полный render_thread, а не только
+    # юнит-функцию: реальный ![](url) в теле поста, найденный файл.
+    conn = _seed(tmp_path)
+    conn.execute("INSERT INTO posts(mid, tid, page_no, author, posted_at, number, markdown, text) "
+                 "VALUES (53470, 10045, 1, 'Petr', '2007-04-10 10:00:00', '#7', "
+                 "'Смотри схему ![](http://h/scheme.jpg) вот тут', 'x')")
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (53470, 'external_image', 'http://h/scheme.jpg', 'h/scheme123.jpg', 'ok')")
+    conn.commit()
+    md = mirror.render_thread(conn, 10045)
+    section = _section(md, 53470)
+    joined = "\n".join(section)
+    assert joined.index("Смотри схему") < joined.index("![[h/scheme123.jpg]]") < joined.index("вот тут")
 
 
 def test_heading_like_lines_inside_post_are_escaped(tmp_path):
@@ -165,10 +231,12 @@ def test_frontmatter_has_alias_and_section(tmp_path):
     assert fm["раздел"] == "Типовые вопросы о Субару"
 
 
-def test_lost_image_becomes_callout_not_broken_link(tmp_path):
+def test_lost_image_becomes_compact_note_not_broken_link(tmp_path):
     md = mirror.render_thread(_seed(tmp_path), 10045)
-    assert "> [!missing] изображение не сохранилось" in md
+    assert "изображение не сохранилось: http://dead.host/x.jpg" in md
     assert "![](http://dead.host/x.jpg)" not in md
+    # Компактно — однострочная пометка, а не двухстрочный коллаут.
+    assert "[!missing]" not in md
 
 
 def test_write_all_uses_stable_filename(tmp_path):
@@ -193,7 +261,7 @@ def test_write_all_removes_notes_of_vanished_threads(tmp_path):
     assert foreign.exists(), "чужие заметки трогать нельзя — только `Тема <TID>.md`"
 
 
-def test_callouts_stay_inside_the_post_section(tmp_path):
+def test_lost_image_notes_stay_inside_the_post_section(tmp_path):
     # Смена семантики относительно прежнего «Решения 1»: якорь адресует
     # весь пост, значит пометки об утраченных картинках теперь ВНУТРИ
     # секции поста — это осознанно, они относятся именно к этому посту.
@@ -212,7 +280,7 @@ def test_interface_chrome_attachment_not_rendered_and_not_flagged_missing(tmp_pa
     conn.commit()
     md = mirror.render_thread(conn, 10045)
     assert "icon_smile" not in md
-    assert md.count("[!missing]") == 1  # только внешняя картинка второго поста
+    assert md.count("изображение не сохранилось") == 1  # только внешняя картинка второго поста
 
 
 def test_empty_local_path_never_renders_embed_regardless_of_status(tmp_path):
@@ -222,7 +290,7 @@ def test_empty_local_path_never_renders_embed_regardless_of_status(tmp_path):
     conn.commit()
     md = mirror.render_thread(conn, 10045)
     assert "![[" not in md
-    assert "> [!missing] изображение не сохранилось" in md
+    assert "изображение не сохранилось: <a href=" in md
     assert "<a href=" in md
 
 
@@ -248,7 +316,7 @@ def test_bitrix_components_getfile_is_content_not_chrome(tmp_path):
     conn.commit()
     md = mirror.render_thread(conn, 10045)
     assert "show_file.php?fid=123" in md
-    assert "> [!missing] изображение не сохранилось" in md
+    assert "изображение не сохранилось: " in md
     assert "icon_smile" not in md
 
 
