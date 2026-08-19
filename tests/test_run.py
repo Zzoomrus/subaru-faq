@@ -152,6 +152,55 @@ def test_assets_index_runs_and_syncs_db_once(tmp_path, monkeypatch):
     assert row == ("no_snapshot",)  # sync_to_db реально применил манифест к базе
 
 
+def test_site_without_action_or_section_reports_error(tmp_path, capsys):
+    assert run.main(["site"]) == 2
+    assert "site build" in capsys.readouterr().out
+    assert run.main(["site", "build"]) == 2  # раздел не указан
+
+
+def test_site_build_writes_a_plan_file(tmp_path, monkeypatch):
+    from pipeline import fetch_site
+
+    monkeypatch.setattr(fetch_site.fetcher, "cdx_snapshots",
+                         lambda url, **kw: [("20100101000000", "http://subaru-faq.ru/faq/index.php?ELEMENT_ID=1")])
+    rc = run.main(["site", "build", "faq", "--site-root", str(tmp_path / "site")])
+    assert rc == 0
+    assert (tmp_path / "site" / "plan-faq.json").exists()
+
+
+def test_site_fetch_without_a_saved_plan_reports_error(tmp_path, capsys):
+    rc = run.main(["site", "fetch", "faq", "--site-root", str(tmp_path / "site")])
+    assert rc == 2
+    assert "site build" in capsys.readouterr().out
+
+
+def test_site_build_then_fetch_end_to_end(tmp_path, monkeypatch):
+    # Сквозная проверка через точку входа: build сохраняет план на диск,
+    # fetch читает ИМЕННО его — CDX для построения плана вызывается ровно
+    # один раз за весь прогон (перезапуск fetch не должен спрашивать снова).
+    from pipeline import fetch_site
+
+    cdx_calls = []
+
+    def fake_cdx(url, **kw):
+        cdx_calls.append((url, kw))
+        return [("20100101000000", "http://subaru-faq.ru/blogs/index.php?page=post&blog=x&post_id=1")]
+
+    monkeypatch.setattr(fetch_site.fetcher, "cdx_snapshots", fake_cdx)
+    site_root = tmp_path / "site"
+    rc = run.main(["site", "build", "blogs", "--site-root", str(site_root)])
+    assert rc == 0
+    assert len(cdx_calls) == 1  # build — один запрос CDX на раздел
+
+    monkeypatch.setattr(fetch_site.fetcher, "fetch_snapshot",
+                         lambda ts, url, **kw: b'<div class="blog-post">post ' + b"x" * 2000 + b"</div>")
+    manifest = tmp_path / "manifest-site.jsonl"
+    rc = run.main(["site", "fetch", "blogs", "--site-root", str(site_root), "--site-manifest", str(manifest)])
+    assert rc == 0
+    assert len(cdx_calls) == 1  # fetch читает сохранённый план, CDX по новой не спрашивает
+    assert list((site_root / "blogs").glob("*.html"))
+
+
 def test_assets_download_uses_assets_root_and_manifest(tmp_path, monkeypatch):
     from pipeline import assets_state, db as _db, fetch_assets
 

@@ -271,6 +271,67 @@ def test_cdx_find_snapshot_gives_up_after_max_pages_without_a_real_signal(caplog
     assert mock_open.call_count == 2
     assert any("host.ru/a.jpg" in r.getMessage() for r in caplog.records)
 
+# --- cdx_snapshots(match_type="prefix"): перечисление раздела сайта (задача 5, ---
+# --- добор FAQ/блогов) — режим "какие вообще URL есть под этим префиксом",   ---
+# --- а не "история снимков одного URL" (умалчиваемый режим выше).            ---
+
+def test_cdx_snapshots_default_query_unchanged_without_match_type():
+    # Явная проверка обратной совместимости: без match_type строка запроса не
+    # меняется НИ НА БАЙТ по сравнению с прежним поведением — существующие
+    # вызовы (fetch_assets.download и его тесты) не должны почувствовать
+    # переделку этой функции.
+    captured = {}
+
+    def fake_urlopen(req, timeout=90):
+        captured["url"] = req.full_url
+        return _cdx_response([])
+
+    with patch("pipeline.fetcher.urllib.request.urlopen", side_effect=fake_urlopen):
+        fetcher.cdx_snapshots("http://x/")
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(captured["url"]).query)
+    assert query == {"url": ["http://x/"], "output": ["json"], "fl": ["timestamp,original"],
+                      "filter": ["statuscode:200"], "limit": ["-50"]}
+
+def test_cdx_snapshots_prefix_mode_requests_matchtype_prefix_and_collapse():
+    captured = {}
+
+    def fake_urlopen(req, timeout=90):
+        captured["url"] = req.full_url
+        return _resume_response([])
+
+    with patch("pipeline.fetcher.urllib.request.urlopen", side_effect=fake_urlopen):
+        fetcher.cdx_snapshots("subaru-faq.ru/faq/", match_type="prefix")
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(captured["url"]).query)
+    assert query["matchType"] == ["prefix"]
+    assert query["collapse"] == ["urlkey"]
+    assert query["showResumeKey"] == ["true"]
+
+def test_cdx_snapshots_prefix_mode_returns_all_rows_from_one_page():
+    rows = [["20100101000000", "http://subaru-faq.ru/faq/index.php?ELEMENT_ID=1"],
+            ["20100101000000", "http://subaru-faq.ru/faq/index.php?ELEMENT_ID=2"]]
+    with patch("pipeline.fetcher.urllib.request.urlopen", return_value=_resume_response(rows)):
+        result = fetcher.cdx_snapshots("subaru-faq.ru/faq/", match_type="prefix")
+    assert result == [(ts, orig) for ts, orig in rows]
+
+def test_cdx_snapshots_prefix_mode_follows_resume_key_across_pages():
+    page1 = _resume_response([["20100101000000", "http://x/a"]], resume_key="RESUME1")
+    page2 = _resume_response([["20100101000000", "http://x/b"]])
+    with patch("pipeline.fetcher.urllib.request.urlopen", side_effect=[page1, page2]) as mock_open:
+        result = fetcher.cdx_snapshots("x", match_type="prefix")
+    assert result == [("20100101000000", "http://x/a"), ("20100101000000", "http://x/b")]
+    assert mock_open.call_count == 2
+    assert "resumeKey=RESUME1" in mock_open.call_args_list[1].args[0].full_url
+
+def test_cdx_snapshots_prefix_mode_stops_after_page_cap_and_logs(caplog):
+    def always_truncated(req, timeout=90):
+        return _resume_response([["20100101000000", "http://x/a"]], resume_key="R")
+    with patch("pipeline.fetcher.urllib.request.urlopen", side_effect=always_truncated) as mock_open:
+        with caplog.at_level("WARNING", logger="pipeline.fetcher"):
+            result = fetcher.cdx_snapshots("x", match_type="prefix")
+    assert mock_open.call_count == 200
+    assert len(result) == 200
+    assert any("x" in r.getMessage() for r in caplog.records)
+
 def test_fetch_snapshot_retries_then_succeeds():
     resp = MagicMock()
     resp.__enter__.return_value = resp

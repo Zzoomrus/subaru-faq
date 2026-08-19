@@ -48,7 +48,7 @@ def _get(url: str, timeout: int = 90) -> bytes | None:
         return r.read() if r.status == 200 else None
 
 
-def cdx_snapshots(url: str, retries: int = 6) -> list[tuple[str, str]]:
+def cdx_snapshots(url: str, retries: int = 6, match_type: str | None = None) -> list[tuple[str, str]]:
     """Свежие снимки URL со статусом 200, свежие первыми.
 
     `limit` отрицательный (`-50`), НЕ `50`. CDX по умолчанию отдаёт снимки
@@ -59,7 +59,37 @@ def cdx_snapshots(url: str, retries: int = 6) -> list[tuple[str, str]]:
     часто архивируемых адресов (корень сайта, популярные оглавления/FAQ) с
     сотнями снимков реально свежие снимки не попадали в выборку никогда.
     Отрицательный limit в CDX означает "последние N" — их и берём.
+
+    `match_type="prefix"` — другой режим работы, нужный `fetch_site.build_list`
+    (задача 5, добор FAQ и блогов): не история снимков ОДНОГО URL, а
+    перечисление РАЗНЫХ URL с общим префиксом (все страницы раздела сайта).
+    В этом режиме включается `matchType=prefix`, `collapse=urlkey` (один
+    снимок на URL — план и так берёт по одной пометке на страницу, дедуп
+    истории тут не нужен) и пагинация по resume-ключу (страниц раздела может
+    быть тысячи — блоги дают 2780 адресов, `limit=10000` одной страницы
+    почти всегда достаточно, но потолок страниц — защита от растущего
+    раздела в будущем). При отсутствии `match_type` поведение и сама
+    построенная строка запроса не меняются ни на байт — существующие
+    вызовы (история одного URL) не затронуты.
     """
+    if match_type == "prefix":
+        base_params = {
+            "url": url, "output": "json", "fl": "timestamp,original",
+            "filter": "statuscode:200", "matchType": "prefix",
+            "collapse": "urlkey", "limit": "10000", "showResumeKey": "true"}
+        base = "https://web.archive.org/cdx/search/cdx?" + urllib.parse.urlencode(base_params)
+        out: list[tuple[str, str]] = []
+        query_url = base
+        for _page in range(200):
+            rows, resume = _cdx_page(query_url, retries)
+            out.extend(rows)
+            if resume is None:
+                return out
+            query_url = base + "&resumeKey=" + urllib.parse.quote(resume)
+        _LOG.warning("cdx_snapshots(prefix): не дошли до конца пагинации для %s "
+                     "за 200 страниц — раздел непредвиденно велик, часть адресов "
+                     "могла не попасть в план", url)
+        return out
     q = urllib.parse.urlencode({
         "url": url, "output": "json", "fl": "timestamp,original",
         "filter": "statuscode:200", "limit": "-50"})
