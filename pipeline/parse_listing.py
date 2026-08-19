@@ -6,6 +6,26 @@
 текстовый узел внутри ``span.forum-item-author`` после подписи «автор:» —
 там нет отдельного span с именем автора, поэтому имя вырезается регуляркой
 из полного текста контейнера, а не селектором на дочерний элемент.
+
+На части страниц (замечено на `list_12_1.html`) исходная разметка таблицы
+битая: не хватает закрывающего `</tr>`, из-за чего и `lxml`, и встроенный
+`html.parser` кладут десятки последующих строк ВНУТРЬ одного `<tr>` вместо
+того, чтобы сделать их соседями. Из-за этого `BeautifulSoup(html).select("tr")`
+возвращает не только настоящие строки-темы, но и один такой
+контейнер-обёртку, `select_one` внутри которого находит ПЕРВОЕ подходящее
+вложенное совпадение — т.е. чужие ячейки `replies`/`views` (не своей темы, а
+самой первой в этом слипшемся куске). Наблюдался кейс: TID=15537 (реально
+replies=8397/views=2838025) получал из такой строки-контейнера чужие
+replies=2669/views=1155788, принадлежащие TID=27731. Число страниц из
+`span.forum-item-pages`, как ни странно, там же извлекалось верно — эта
+поломка непредсказуема по полям, поэтому такие строки-контейнеры не
+чинятся точечно, а целиком отбрасываются: настоящие данные для каждой
+темы всё равно присутствуют отдельным, корректно вложенным `<tr>` без
+дочерних `<tr>` (см. `_is_leaf_row`).
+
+Число страниц темы вырезается из ``span.forum-item-pages`` конкретной
+строки, а не из ``str(row)`` целиком (расхождение с брифом) — так надёжнее
+даже для нормальных строк, если рядом окажется другая аномалия разметки.
 """
 
 import re
@@ -54,10 +74,20 @@ def _author(row) -> str:
     return _AUTHOR_PREFIX_RE.sub("", text).strip()
 
 
+def _is_leaf_row(row) -> bool:
+    """True, если строка не содержит вложенных <tr> — т.е. не является
+
+    контейнером, в который битая разметка таблицы слепила соседние строки.
+    """
+    return row.find("tr") is None
+
+
 def parse(html: str) -> list[ThreadMeta]:
     soup = BeautifulSoup(html, "lxml")
     out: list[ThreadMeta] = []
     for row in soup.select("tr"):
+        if not _is_leaf_row(row):
+            continue
         link = row.select_one('span.forum-item-title a[href*="TID="]')
         if link is None:
             continue
@@ -66,7 +96,9 @@ def parse(html: str) -> list[ThreadMeta]:
         if tid_m is None:
             continue
         fid_m = _FID_RE.search(href)
-        pages = {int(m) for m in _PAGEN_RE.findall(str(row))} or {1}
+        pages_span = row.select_one("span.forum-item-pages")
+        pages = {int(m) for m in _PAGEN_RE.findall(str(pages_span))} if pages_span else set()
+        pages = pages or {1}
         last = row.select_one("span.forum-lastpost-date a")
         last_mid = None
         if last is not None:
