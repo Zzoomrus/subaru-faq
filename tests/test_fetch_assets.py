@@ -25,11 +25,28 @@ def test_index_marks_no_snapshot(tmp_path, monkeypatch):
     conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
     conn.execute("INSERT INTO attachments(mid, kind, url, status) VALUES (1,'external_image','http://dead/x.jpg','pending')")
     conn.commit()
-    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots", lambda url, **kw: [])
+    # index_pending ищет через cdx_find_snapshot (matchType=prefix по URL),
+    # не через cdx_snapshots (matchType=exact) — см. правку после ревью лида
+    # (task-3-report.md, "Живая правка после ревью лида").
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_find_snapshot", lambda url, **kw: None)
     m = tmp_path / "m.jsonl"
     stats = fetch_assets.index_pending(conn, m)
     assert stats["no_snapshot"] == 1
     assert assets_state.load(m)["http://dead/x.jpg"]["status"] == "no_snapshot"
+
+
+def test_index_marks_pending_and_saves_the_timestamp(tmp_path, monkeypatch):
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    conn.execute("INSERT INTO attachments(mid, kind, url, status) VALUES (1,'external_image','http://h/x.jpg','pending')")
+    conn.commit()
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_find_snapshot",
+                         lambda url, **kw: ("20200101000000", url))
+    m = tmp_path / "m.jsonl"
+    stats = fetch_assets.index_pending(conn, m)
+    assert stats["pending"] == 1
+    rec = assets_state.load(m)["http://h/x.jpg"]
+    assert rec["status"] == "pending"
+    assert rec["note"] == "20200101000000"
 
 
 def test_download_skips_empty_snapshot(tmp_path, monkeypatch):
@@ -152,9 +169,9 @@ def test_index_does_not_slow_the_pacer_down_on_a_low_hit_rate(tmp_path, monkeypa
             pass
 
     monkeypatch.setattr(fetch_assets.fetcher, "TokenBucketPacer", FakePacer)
-    # 4 из 5 URL без снимка — низкий hit rate, как в реальности (~15%).
-    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots",
-                         lambda url, **kw: [] if "0" not in url else [("20150101", url)])
+    # 4 из 5 URL без снимка — низкий hit rate, как в реальности (~15-25%).
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_find_snapshot",
+                         lambda url, **kw: ("20150101", url) if "0" in url else None)
     m = tmp_path / "m.jsonl"
     fetch_assets.index_pending(conn, m)
     assert notes == [True] * 5

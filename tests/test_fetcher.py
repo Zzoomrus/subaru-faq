@@ -195,6 +195,78 @@ def test_fetch_snapshot_returns_none_after_retries_exhausted():
     assert data is None
     assert sleep_mock.call_count == 2
 
+# --- cdx_find_snapshot / _canonical_key: matchType=prefix вместо exact ---
+# --- (задача 3, живая правка после ревью лида — см. task-3-report.md).    ---
+# --- Живой замер: exact ~10-50с/URL, prefix ~2-5с/URL, а domain по хосту  ---
+# --- целиком не годится — у нескольких крупных хостов корпуса домен не    ---
+# --- укладывается даже в 100 тыс. строк.                                  ---
+
+def _resume_response(rows, resume_key=None):
+    body = [["timestamp", "original"]] + rows
+    if resume_key is not None:
+        body += [[], [resume_key]]
+    resp = MagicMock()
+    resp.__enter__.return_value = resp
+    resp.__exit__.return_value = False
+    resp.status = 200
+    resp.read.return_value = json.dumps(body).encode("utf-8")
+    return resp
+
+def test_canonical_key_ignores_scheme_www_host_case_and_percent_encoding():
+    a = fetcher._canonical_key("http://www.Host.RU/path%20name.jpg")
+    b = fetcher._canonical_key("https://host.ru/path%20name.jpg")
+    assert a == b == "host.ru/path name.jpg"
+
+def test_canonical_key_differs_for_a_different_path():
+    assert fetcher._canonical_key("http://h/a.jpg") != fetcher._canonical_key("http://h/b.jpg")
+
+def test_cdx_find_snapshot_matches_despite_scheme_and_www_difference():
+    row = [["20200101000000", "https://www.host.ru/a.jpg"]]
+    with patch("pipeline.fetcher.urllib.request.urlopen", return_value=_resume_response(row)):
+        result = fetcher.cdx_find_snapshot("http://host.ru/a.jpg")
+    assert result == ("20200101000000", "https://www.host.ru/a.jpg")
+
+def test_cdx_find_snapshot_rejects_a_longer_prefix_collision():
+    # matchType=prefix буквально ищет по префиксу — сосед "a.jpg2" не должен
+    # быть принят за наш "a.jpg", даже если он попал в тот же ответ.
+    rows = [["20200101000000", "http://host.ru/a.jpg2"]]
+    with patch("pipeline.fetcher.urllib.request.urlopen", return_value=_resume_response(rows)):
+        result = fetcher.cdx_find_snapshot("http://host.ru/a.jpg")
+    assert result is None
+
+def test_cdx_find_snapshot_picks_the_matching_row_among_several():
+    rows = [["20190101000000", "http://host.ru/a.jpg2"],
+            ["20200101000000", "http://host.ru/a.jpg"]]
+    with patch("pipeline.fetcher.urllib.request.urlopen", return_value=_resume_response(rows)):
+        result = fetcher.cdx_find_snapshot("http://host.ru/a.jpg")
+    assert result == ("20200101000000", "http://host.ru/a.jpg")
+
+def test_cdx_find_snapshot_returns_none_when_no_row_matches():
+    with patch("pipeline.fetcher.urllib.request.urlopen", return_value=_resume_response([])):
+        assert fetcher.cdx_find_snapshot("http://host.ru/a.jpg") is None
+
+def test_cdx_find_snapshot_follows_resume_key_across_pages():
+    # Первая страница усечена (есть resume-ключ) и не содержит наш адрес;
+    # настоящее совпадение — только на второй странице.
+    page1 = _resume_response([["20180101000000", "http://host.ru/a.jpg2"]], resume_key="RESUME1")
+    page2 = _resume_response([["20200101000000", "http://host.ru/a.jpg"]])
+    with patch("pipeline.fetcher.urllib.request.urlopen", side_effect=[page1, page2]) as mock_open:
+        result = fetcher.cdx_find_snapshot("http://host.ru/a.jpg")
+    assert result == ("20200101000000", "http://host.ru/a.jpg")
+    assert mock_open.call_count == 2
+    second_call_url = mock_open.call_args_list[1].args[0].full_url
+    assert "resumeKey=RESUME1" in second_call_url
+
+def test_cdx_find_snapshot_gives_up_after_max_pages_without_a_real_signal():
+    # Каждая страница усечена и не содержит совпадения — не должно уйти в
+    # бесконечный цикл, останавливается на max_pages.
+    def always_truncated(req, timeout=90):
+        return _resume_response([["20180101000000", "http://host.ru/a.jpg2"]], resume_key="R")
+    with patch("pipeline.fetcher.urllib.request.urlopen", side_effect=always_truncated) as mock_open:
+        result = fetcher.cdx_find_snapshot("http://host.ru/a.jpg", max_pages=2)
+    assert result is None
+    assert mock_open.call_count == 2
+
 def test_fetch_snapshot_retries_then_succeeds():
     resp = MagicMock()
     resp.__enter__.return_value = resp

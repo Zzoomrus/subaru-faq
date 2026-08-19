@@ -71,6 +71,97 @@ def cdx_snapshots(url: str, retries: int = 6) -> list[tuple[str, str]]:
     return []
 
 
+def _canonical_key(url: str) -> str:
+    """Ключ "это тот же ресурс?" — без схемы, без порта, без `www.`, хост в
+    нижнем регистре, путь/запрос раскодированы (percent-decoding).
+
+    Нужен ТОЛЬКО как проверочный фильтр над уже найденными CDX кандидатами
+    (`cdx_find_snapshot`), не как основной механизм поиска: сам CDX уже
+    канонизирует схему/www/регистр хоста при сопоставлении по `matchType=
+    prefix` (проверено живым запросом на боевых адресах — см. отчёт задачи
+    3, "Живая проверка сопоставления"). Этот фильтр отсекает противоположный
+    риск префиксного поиска: он ищет по СТРОКОВОМУ префиксу канонического
+    ключа, поэтому теоретически может задеть ДРУГОЙ более длинный ресурс,
+    чей ключ начинается с нашей строки (например, наш `.../02.jpg` — префикс
+    гипотетического `.../02.jpg2`) — сравнение на РАВЕНСТВО (не `startswith`)
+    отбрасывает такие ложные совпадения.
+    """
+    parts = urllib.parse.urlsplit(url)
+    host = (parts.hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    path = urllib.parse.unquote(parts.path or "")
+    query = urllib.parse.unquote(parts.query or "")
+    key = host + path
+    if query:
+        key += "?" + query
+    return key
+
+
+def _cdx_page(query_url: str, retries: int) -> tuple[list[tuple[str, str]], str | None]:
+    """Один запрос к CDX с `showResumeKey=true`: строки + resume-ключ (или
+    `None`, если ответ не усечён). Формат усечения (проверено живым запросом,
+    `output=json`): после обычных строк идёт пустой массив-разделитель `[]`,
+    а следом — одноэлементный массив с самим ключом продолжения; если этой
+    пары нет, ответ пришёл целиком.
+    """
+    for attempt in range(retries):
+        try:
+            raw = _get(query_url)
+            data = json.loads(raw) if raw else []
+            if not data:
+                return [], None
+            truncated = len(data) >= 2 and data[-2] == [] and len(data[-1]) == 1
+            body = data[1:-2] if truncated else data[1:]
+            resume = data[-1][0] if truncated else None
+            return [(ts, orig) for ts, orig in body], resume
+        except NETWORK_ERRORS:
+            time.sleep(3 * (attempt + 1))
+    return [], None
+
+
+def cdx_find_snapshot(url: str, retries: int = 6, max_pages: int = 3) -> tuple[str, str] | None:
+    """Быстрый поиск ОДНОГО снимка для КОНКРЕТНОГО URL через `matchType=
+    prefix` вместо поточечного `matchType=exact` (умалчиваемый режим
+    `cdx_snapshots`).
+
+    Замер на живых данных (задача 3, живая правка): точечный `exact`-запрос
+    по одному адресу занимает 10-50 с, тот же адрес через `prefix` —
+    2-5 с. Это НЕ то же самое, что запрос всего хоста (`matchType=domain`):
+    у нескольких крупных хостов в этом корпусе (s019.radikal.ru,
+    img-fotki.yandex.ru) домен целиком не укладывается даже в 100 тыс. строк
+    (5 страниц по 20000, все усечены) — гонять его целиком ради одного-двух
+    адресов из тысяч чужих было бы намного дороже, а не дешевле. `prefix` по
+    самому нашему URL остаётся узким (это конкретный файл, а не вся история
+    хоста) и при этом быстрым, как показал замер.
+
+    `matchType=prefix` — буквальный префиксный поиск по каноническому urlkey,
+    поэтому сам по себе может (в теории) задеть чужой более длинный ресурс с
+    тем же началом ключа — из вернувшихся строк берётся первая, чей
+    `_canonical_key` РАВЕН (не начинается с) нашему. Пагинация (`max_pages`)
+    — подстраховка на случай, если совпадений в начале ответа не нашлось, а
+    ответ усечён: для одиночного URL это на практике не встречалось (замер:
+    0 случаев усечения на выборке живых адресов), но останавливаться на
+    первой странице молча — тот же класс ошибки, что и для широких
+    хостовых запросов.
+    """
+    base = ("https://web.archive.org/cdx/search/cdx?" + urllib.parse.urlencode({
+        "url": url, "matchType": "prefix", "output": "json",
+        "fl": "timestamp,original", "filter": "statuscode:200",
+        "collapse": "urlkey", "limit": "50", "showResumeKey": "true"}))
+    target = _canonical_key(url)
+    query_url = base
+    for _page in range(max_pages):
+        rows, resume = _cdx_page(query_url, retries)
+        for ts, original in rows:
+            if _canonical_key(original) == target:
+                return (ts, original)
+        if resume is None:
+            return None
+        query_url = base + "&resumeKey=" + urllib.parse.quote(resume)
+    return None
+
+
 def fetch_snapshot(ts: str, url: str, retries: int = 4) -> bytes | None:
     for attempt in range(retries):
         try:
