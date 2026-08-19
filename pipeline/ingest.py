@@ -38,9 +38,10 @@
 import json
 import re
 from pathlib import Path
-from urllib.parse import urlparse
 
-from pipeline import parse_listing, parse_thread
+from bs4 import BeautifulSoup
+
+from pipeline import attachments, parse_listing, parse_thread
 
 _PAGE_RE = re.compile(r"^(read|message)_(\d+)_(\d+)_(\d+)\.html$")
 
@@ -105,8 +106,6 @@ def ingest_sections(pages_dir: Path, conn) -> int:
     причине не оказалось на корневой странице конкретного снимка архива —
     например, исторически FID 5 не всегда отображался на index_1.html).
     """
-    import re
-    from bs4 import BeautifulSoup
     names: dict[int, str] = {}
     index = Path(pages_dir) / "index_1.html"
     if index.exists():
@@ -132,27 +131,6 @@ def ingest_sections(pages_dir: Path, conn) -> int:
                      "ON CONFLICT(fid) DO UPDATE SET title=excluded.title", (fid, title))
     conn.commit()
     return len(names)
-
-
-def _classify_attachment(url: str) -> str:
-    """`local`, если адрес не указывает на чужой хост, иначе `external_image`.
-
-    Прежняя эвристика (`"subaru-faq" in url or url.startswith("/")`) не
-    распознавала относительный путь без ведущего слэша
-    (`images/smiley_icons/icon_smile.gif`) — тот же смайл форума, что при
-    пути `/bitrix/images/...` считался бы `local`. На корпусе это 2110
-    вложений, ушедших в `external_image`. Смысл правила: локальный — это
-    любой адрес, у которого нет собственного хоста (`urlparse(...).netloc`
-    пуст — относительный путь, с ведущим слэшем или без) плюс адреса самого
-    форума; внешний — `http(s)://` или протокол-относительный (`//host/...`)
-    адрес любого другого хоста. `urlparse("//host/x").netloc` возвращает
-    хост и без явной схемы, так что оба края (`http://`/`https://` и
-    `//host/...`) проверяются одинаково через `netloc`.
-    """
-    netloc = urlparse(url).netloc
-    if not netloc or "subaru-faq" in netloc:
-        return "local"
-    return "external_image"
 
 
 def _read(path: Path) -> str:
@@ -238,10 +216,16 @@ def ingest_all(pages_dir: Path, manifest: Path, conn) -> dict[str, int]:
                 # строки остаются как есть.
                 continue
             for url in p.images:
-                kind_a = _classify_attachment(url)
+                # Единое правило проекта (pipeline.attachments): вид вложения
+                # и стартовый статус считаются в одном месте, и генератор
+                # заметок, и фаза добора читают ровно этот результат.
+                # Файла нет ни у одного вложения на момент загрузки, поэтому
+                # статус — `pending` для всего содержательного (его ждёт
+                # добор) и `skip` для хрома (качать нечего).
+                kind_a = attachments.classify(url)
                 conn.execute(
                     "INSERT INTO attachments(mid, kind, url, local_path, status) VALUES (?,?,?,?,?)",
-                    (p.mid, kind_a, url, None, "ok" if kind_a == "local" else "pending"))
+                    (p.mid, kind_a, url, None, attachments.initial_status(kind_a)))
                 stats["attachments"] += 1
     conn.commit()
     return stats

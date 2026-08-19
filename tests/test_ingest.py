@@ -67,15 +67,33 @@ def test_listing_data_wins_over_page_fallback_regardless_of_order(tmp_path):
         (19, "Настоящее название", "Настоящий автор", "2007-04-02", 50, 90730)
 
 
-def test_classify_attachment_relative_path_without_leading_slash_is_local():
-    # Смайлы форума (`images/smiley_icons/icon_smile.gif`) — относительный
-    # путь без ведущего слэша, но это точно тот же хост, что и `/bitrix/...`.
-    assert ingest._classify_attachment("images/smiley_icons/icon_smile.gif") == "local"
-    assert ingest._classify_attachment("/bitrix/images/smiley_icons/icon_smile.gif") == "local"
-    # Настоящий внешний хост остаётся external_image.
-    assert ingest._classify_attachment("http://s017.radikal.ru/i430/x.jpg") == "external_image"
-    # Протокол-относительный адрес — это тоже другой хост, не локальный путь.
-    assert ingest._classify_attachment("//i57.fastpic.ru/big/x.jpg") == "external_image"
+def test_ingest_writes_kind_and_status_from_the_shared_rule(tmp_path):
+    # I4/I5: правило «контент против хрома» одно на весь проект
+    # (pipeline.attachments), и загрузчик обязан класть его результат в
+    # базу — иначе фаза добора либо качает 20 тысяч смайлов, либо молча
+    # пропускает 348 своих вложений.
+    pages, manifest = _prepare(tmp_path, ["read_19_10045_1.html", "read_20_31559_2.html"])
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    ingest.ingest_all(pages, manifest, conn)
+    rows = dict(conn.execute("SELECT kind, COUNT(*) FROM attachments GROUP BY kind"))
+    assert rows.get("chrome", 0) > 0, "смайлы форума должны стать kind='chrome'"
+    assert rows.get("external_image", 0) > 0
+    assert rows.get("local", 0) == 0, "в этих фикстурах контентных вложений нет"
+    statuses = dict(conn.execute(
+        "SELECT kind, status FROM attachments GROUP BY kind"))
+    assert statuses["chrome"] == "skip"
+    assert statuses["external_image"] == "pending"
+
+
+def test_content_local_attachment_is_pending_not_ok(tmp_path):
+    # Дефект I4 буквально: getfile/show_file/thumbnails (348 строк на
+    # корпусе) стояли со status='ok' при пустом local_path, и естественный
+    # запрос фазы добора `WHERE status='pending'` их не видел.
+    from pipeline import attachments
+    for url in ("/index.php?t=getfile&id=1", "/upload/WEB-002/thumbnails/x.jpg"):
+        kind = attachments.classify(url)
+        assert kind == "local"
+        assert attachments.initial_status(kind) == "pending"
 
 
 def test_longer_text_wins_on_conflict(tmp_path):
