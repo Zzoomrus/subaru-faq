@@ -19,6 +19,21 @@
 `page_no` для всех её постов фиксирован в 1. Настоящий `mid` каждого поста
 всегда берётся из атрибута `id="messageNNN"` разобранной таблицы
 (`Post.mid`), а не из имени файла.
+
+Идемпотентность повторного `ingest_all` на тех же файлах (задача 8):
+`threads`/`posts`/`pages` апсертятся (`ON CONFLICT`/`INSERT OR IGNORE`/
+`INSERT OR REPLACE`) и безопасны к повторному запуску сами по себе.
+`attachments` — простой `INSERT` без ключа на смысловые поля (намеренно:
+одна и та же (mid, url) может реально повториться в разметке ОДНОГО
+прогона, схлопывание — забота `pipeline.mirror`, не загрузчика). Поэтому
+`ingest_all` пропускает вставку вложений для страницы, чей `key` уже есть
+в `pages` — считает её уже отданной в прошлый раз. Это и защищает от
+удвоения при повторном прогоне на неизменном `pages_dir`, и не трогает
+статусы/`local_path`, которые успеет проставить фаза добора картинок:
+уже виденная страница просто не заходит в цикл вставки вовсе. Новые
+страницы, добавленные в `pages_dir` между прогонами (например, добор
+архива), обрабатываются как обычно — есть только у ключей, которых в
+`pages` ещё не было.
 """
 import json
 import re
@@ -184,6 +199,18 @@ def ingest_all(pages_dir: Path, manifest: Path, conn) -> dict[str, int]:
             continue
         kind, fid, tid, tail = m.group(1), int(m.group(2)), int(m.group(3)), int(m.group(4))
         page_no = tail if kind == "read" else 1
+        rec = prov.get(path.name, {})
+        page_key = rec.get("key", path.stem)
+        # `pages` уже идемпотентна (`INSERT OR REPLACE` по `key`) — используем
+        # её как признак "эта страница уже отдавала вложения в attachments в
+        # прошлом прогоне ingest_all". `attachments` — простой INSERT без
+        # ON CONFLICT (дубликаты внутри ОДНОГО прогона там намеренные, см.
+        # docstring модуля и pipeline/mirror.py: одна и та же (mid, url) может
+        # реально встретиться в разметке больше одного раза), поэтому без
+        # этой проверки повторный ingest_all на тех же файлах удваивал
+        # attachments (найдено на реальном корпусе — задача 8, 29376 -> 58752).
+        already_ingested = conn.execute(
+            "SELECT 1 FROM pages WHERE key = ?", (page_key,)).fetchone() is not None
         page = parse_thread.parse(_read(path))
         if page.posts:
             # Фолбэк создаём только когда страница реально дала хотя бы один
@@ -193,16 +220,23 @@ def ingest_all(pages_dir: Path, manifest: Path, conn) -> dict[str, int]:
             # контента, и заводить для них строку threads означало бы
             # протащить спам-заголовок в базу знаний зеркала (задача 7).
             ensure_thread_from_page(conn, tid=tid, fid=fid, title=page.title)
-        rec = prov.get(path.name, {})
         conn.execute(
             "INSERT OR REPLACE INTO pages(key, file, url, snapshot_ts, tid, page_no) VALUES (?,?,?,?,?,?)",
-            (rec.get("key", path.stem), path.name, rec.get("url", ""), rec.get("ts", ""), tid, page_no))
+            (page_key, path.name, rec.get("url", ""), rec.get("ts", ""), tid, page_no))
         stats["pages"] += 1
         for p in page.posts:
             upsert_post(conn, mid=p.mid, tid=tid, page_no=page_no, author=p.author,
                         author_uid=p.author_uid, posted_at=p.posted_at, number=p.number,
                         html=p.html, text=p.text, edited_by=p.edited_by, edited_at=p.edited_at)
             stats["posts"] += 1
+            if already_ingested:
+                # Вложения этой страницы уже осели в attachments в прошлом
+                # прогоне — не плодим дубли. Статусы/local_path, которые к
+                # этому моменту успела проставить фаза добора картинок,
+                # этой веткой не трогаются вовсе (мы просто не заходим в
+                # цикл ниже) — не только счётчики, но и уже размеченные
+                # строки остаются как есть.
+                continue
             for url in p.images:
                 kind_a = _classify_attachment(url)
                 conn.execute(

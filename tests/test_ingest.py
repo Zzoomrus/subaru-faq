@@ -90,6 +90,75 @@ def test_longer_text_wins_on_conflict(tmp_path):
     assert text == "намного длиннее исходного"
 
 
+def test_ingest_all_is_idempotent_on_rerun(tmp_path):
+    # Найдено на реальном корпусе (задача 8): attachments — простой INSERT
+    # без ON CONFLICT, повторный ingest_all на тех же файлах удваивал
+    # строки (29376 -> 58752). threads/posts/pages уже были идемпотентны
+    # через ON CONFLICT/INSERT OR IGNORE/INSERT OR REPLACE — здесь это
+    # зафиксировано явно тестом, а не подразумевается.
+    pages, manifest = _prepare(tmp_path, ["read_19_10045_1.html", "read_20_31559_2.html"])
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+
+    def counts():
+        return {t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+                for t in ("threads", "posts", "pages", "attachments")}
+
+    ingest.ingest_all(pages, manifest, conn)
+    after_first = counts()
+    assert after_first["attachments"] > 0, "фикстуры должны содержать хоть одно вложение"
+
+    ingest.ingest_all(pages, manifest, conn)
+    after_second = counts()
+
+    assert after_second == after_first
+
+
+def test_ingest_all_still_ingests_newly_added_pages_after_rerun(tmp_path):
+    # Повторный ingest_all не должен просто игнорировать вообще всё —
+    # страницы, добавленные в pages_dir после первого прогона (например,
+    # добор архива в следующей фазе), должны нормально влиться.
+    pages, manifest = _prepare(tmp_path, ["read_19_10045_1.html"])
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    ingest.ingest_all(pages, manifest, conn)
+    first_attachments = conn.execute("SELECT COUNT(*) FROM attachments").fetchone()[0]
+
+    # добавляем вторую страницу прямо в тот же каталог + переписываем manifest
+    (pages / "read_20_31559_2.html").write_bytes((FIX / "read_20_31559_2.html").read_bytes())
+    names = ["read_19_10045_1.html", "read_20_31559_2.html"]
+    manifest.write_text("\n".join(
+        json.dumps({"key": n.replace(".html", "").replace("_", "|"), "file": n,
+                    "url": "http://subaru-faq.ru/" + n, "ts": "20150419142404"},
+                   ensure_ascii=False) for n in names), encoding="utf-8")
+
+    ingest.ingest_all(pages, manifest, conn)
+    second_attachments = conn.execute("SELECT COUNT(*) FROM attachments").fetchone()[0]
+
+    assert second_attachments > first_attachments
+
+
+def test_ingest_all_rerun_does_not_erase_phase2_attachment_statuses(tmp_path):
+    # Требование тимлида: повторный ingest_all не должен терять
+    # local_path/status, которые к тому времени успеет проставить фаза
+    # добора картинок (следующая фаза). Раз уже виденная страница вообще
+    # не заходит в цикл вставки вложений — трогать нечего, строки остаются
+    # как есть, включая те, что фаза 2 уже разметила.
+    pages, manifest = _prepare(tmp_path, ["read_19_10045_1.html"])
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    ingest.ingest_all(pages, manifest, conn)
+
+    row = conn.execute("SELECT id, mid, url FROM attachments LIMIT 1").fetchone()
+    assert row is not None, "фикстура должна содержать хоть одно вложение"
+    att_id, mid, url = row
+    conn.execute("UPDATE attachments SET local_path = ?, status = 'downloaded' WHERE id = ?",
+                 ("wiki/assets/x.jpg", att_id))
+    conn.commit()
+
+    ingest.ingest_all(pages, manifest, conn)
+
+    after = conn.execute("SELECT local_path, status FROM attachments WHERE id = ?", (att_id,)).fetchone()
+    assert after == ("wiki/assets/x.jpg", "downloaded")
+
+
 def test_ingest_sections_reads_names(tmp_path):
     pages = tmp_path / "pages"; pages.mkdir()
     (pages / "index_1.html").write_bytes((FIX / "index_1.html").read_bytes())
