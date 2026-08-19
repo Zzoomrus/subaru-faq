@@ -107,3 +107,19 @@ def test_to_csv_includes_group_column(tmp_path):
     coverage.to_csv(rows, out)
     header = out.read_text(encoding="utf-8").splitlines()[0]
     assert "group" in header.split(",")
+
+
+def test_to_csv_has_bom_and_writes_rows(tmp_path):
+    # CSV этого отчёта смотрят в Excel — без BOM русская Windows покажет
+    # кракозябры. Заодно проверяем сами строки, а не только заголовок.
+    from pipeline import coverage
+    rows = [coverage.Row(tid=1, fid=19, title="Тормоза", expected=3, got=3, diff=0, group="ok"),
+            coverage.Row(tid=2, fid=19, title="Мосты", expected=None, got=1, diff=None,
+                         group="unverifiable")]
+    path = tmp_path / "coverage.csv"
+    coverage.to_csv(rows, path)
+    raw = path.read_bytes()
+    assert raw.startswith(b"\xef\xbb\xbf"), "BOM нужен Excel'ю"
+    lines = raw.decode("utf-8-sig").splitlines()
+    assert lines[1] == "1,19,Тормоза,3,3,0,ok"
+    assert lines[2] == "2,19,Мосты,,1,,unverifiable"

@@ -80,7 +80,11 @@ def summary(rows: list[Row]) -> dict[str, int]:
 
 
 def to_csv(rows: list[Row], path: Path) -> None:
-    with open(path, "w", newline="", encoding="utf-8") as f:
+    """Пишет отчёт в CSV с BOM: самый вероятный способ его посмотреть —
+    открыть в Excel, а Excel на русской Windows без BOM читает UTF-8 как
+    кракозябры.
+    """
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(["tid", "fid", "title", "expected", "got", "diff", "group"])
         for r in rows:
