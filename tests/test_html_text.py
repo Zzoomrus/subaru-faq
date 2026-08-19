@@ -90,3 +90,41 @@ def test_plain_text_is_derived_from_markdown_not_from_html_again():
     assert html_text.plain_text_from_markdown(md) == html_text.plain_text(html)
     assert "> Вася пишет:" in md
     assert "> " not in html_text.plain_text_from_markdown(md)
+
+
+def test_legacy_quote_without_forum_quote_class_becomes_blockquote():
+    # Старый (пре-Bitrix) формат цитаты: таблица без класса `forum-quote`,
+    # где атрибуция лежит в `td.SmallText`, а тело цитаты — в `td.quote`.
+    # Отложенная находка №3 ревью: пока тело заметки было плоским текстом,
+    # эти посты были неотличимы от остальных; с переходом на markdown они
+    # остались бы единственными, где цитата не отделена от слов автора.
+    # На корпусе таких постов 877 в 131 теме.
+    html = ('<table align="center" width="90%"><tr><td class="SmallText">'
+            '<b>Nikon писал(а) Птн, 09 Января 2004 07:38</b></td></tr>'
+            '<tr><td class="quote"><br/>1. Ломучесть<br/>2. Шумность<br/></td></tr></table>'
+            '<br/>Ник у тебя хороший')
+    md = html_text.to_markdown(html)
+    assert "> Nikon писал(а) Птн, 09 Января 2004 07:38" in md
+    assert "> 1. Ломучесть" in md
+    assert "> 2. Шумность" in md
+    # ответ автора поста цитатой НЕ становится
+    assert "\nНик у тебя хороший" in md
+
+
+def test_nested_legacy_quote_gets_second_level_of_markers():
+    # Цитата внутри цитаты (204 случая на корпусе) — вложенность видна
+    # уровнями `> >`, как и у формата Bitrix.
+    html = ('<table><tr><td class="SmallText"><b>Внешний писал(а)</b></td></tr>'
+            '<tr><td class="quote">'
+            '<table><tr><td class="SmallText"><b>Внутренний писал(а)</b></td></tr>'
+            '<tr><td class="quote">исходный вопрос</td></tr></table>'
+            '<br/>мой ответ на вопрос</td></tr></table>')
+    md = html_text.to_markdown(html)
+    assert "> > исходный вопрос" in md
+    assert "> мой ответ на вопрос" in md
+
+
+def test_layout_table_without_quote_cell_is_not_quoted():
+    # Обычная табличка в посте (не цитата) остаётся обычным текстом.
+    html = '<table><tr><td>слева</td><td>справа</td></tr></table>'
+    assert "> " not in html_text.to_markdown(html)

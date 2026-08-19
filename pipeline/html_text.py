@@ -41,16 +41,44 @@ def _render(node, parts: list[str]) -> None:
     if node.name == "br":
         parts.append("\n")
         return
-    if node.name == "table" and "forum-quote" in (node.get("class") or []):
-        cell = node.find("td")
-        inner: list[str] = []
-        if cell:
-            for child in cell.children:
-                _render(child, inner)
-        body = "".join(inner).strip()
-        quoted = "\n".join("> " + line.strip() for line in body.split("\n") if line.strip())
-        parts.append("\n" + quoted + "\n")
-        return
+    if node.name == "table":
+        # Форум пережил смену движка, и цитаты в нём двух видов:
+        #   - Bitrix: <table class="forum-quote">, вся цитата в первой ячейке;
+        #   - легаси (пре-Bitrix, 877 постов в 131 теме): таблица без класса,
+        #     атрибуция в <td class="SmallText">, тело цитаты в <td class="quote">.
+        # Второй вид раньше не распознавался вовсе — цитата приезжала плоским
+        # текстом. Пока тело заметки было plain_text, это было не видно (маркеры
+        # снимались у всех); с переходом на markdown такие посты остались бы
+        # единственными, где чужие слова неотличимы от слов автора.
+        classes = node.get("class") or []
+        legacy_cell = None if "forum-quote" in classes else node.find("td", class_="quote")
+        if "forum-quote" in classes or legacy_cell is not None:
+            inner: list[str] = []
+            if "forum-quote" in classes:
+                cell = node.find("td")
+                if cell:
+                    for child in cell.children:
+                        _render(child, inner)
+            else:
+                # Строки легаси-таблицы дают отдельные строки цитаты (иначе
+                # атрибуция слипается с первой строкой тела). Берём только СВОИ
+                # строки и ячейки: вложенная цитата — отдельная таблица, её
+                # обработает та же ветка рекурсивно и добавит второй уровень `>`.
+                for tr in node.find_all("tr"):
+                    if tr.find_parent("table") is not node:
+                        continue
+                    row: list[str] = []
+                    for td in tr.find_all("td"):
+                        if td.find_parent("tr") is not tr:
+                            continue
+                        for child in td.children:
+                            _render(child, row)
+                    inner.append("".join(row))
+                    inner.append("\n")
+            body = "".join(inner).strip()
+            quoted = "\n".join("> " + line.strip() for line in body.split("\n") if line.strip())
+            parts.append("\n" + quoted + "\n")
+            return
     if node.name == "a" and node.get("href"):
         text = node.get_text(" ", strip=True)
         if not text and node.find("img"):
