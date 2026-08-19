@@ -47,10 +47,20 @@ def _get(url: str, timeout: int = 90) -> bytes | None:
 
 
 def cdx_snapshots(url: str, retries: int = 6) -> list[tuple[str, str]]:
-    """Все снимки URL со статусом 200, свежие первыми."""
+    """Свежие снимки URL со статусом 200, свежие первыми.
+
+    `limit` отрицательный (`-50`), НЕ `50`. CDX по умолчанию отдаёт снимки
+    от старых к новым, а положительный limit берёт первые N записей — то
+    есть N САМЫХ СТАРЫХ. Локальная sorted(reverse=True) ниже сортирует
+    только уже полученные записи, поэтому positive limit давал "самые
+    свежие среди самых старых 50", а не самые свежие снимки вообще: для
+    часто архивируемых адресов (корень сайта, популярные оглавления/FAQ) с
+    сотнями снимков реально свежие снимки не попадали в выборку никогда.
+    Отрицательный limit в CDX означает "последние N" — их и берём.
+    """
     q = urllib.parse.urlencode({
         "url": url, "output": "json", "fl": "timestamp,original",
-        "filter": "statuscode:200", "limit": "50"})
+        "filter": "statuscode:200", "limit": "-50"})
     for attempt in range(retries):
         try:
             raw = _get("https://web.archive.org/cdx/search/cdx?" + q)

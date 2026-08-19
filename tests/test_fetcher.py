@@ -1,5 +1,6 @@
 import json
 import urllib.error
+import urllib.parse
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
@@ -101,6 +102,16 @@ def test_pacer_reaches_max_delay_after_sustained_failures():
         p.note(False)
     assert p.delay() >= 15 * 0.7
 
+def test_pacer_does_not_collapse_to_zero_on_full_success():
+    # Закрепляет текущее (уже верное) поведение: при сплошном успехе пауза
+    # не уходит в ноль, а держится на базовом полу (2.5 c с учётом джиттера
+    # 0.7-1.3, то есть не ниже ~1.75 с). Без этого пола будущая правка могла
+    # бы тихо занулить паузы между запросами — а без пауз архив забанит IP.
+    p = fetcher.TokenBucketPacer()
+    for _ in range(30):
+        p.note(True)
+    assert p.delay() >= 2.5 * 0.7
+
 # --- looks_empty_binary: вариант для двоичных ответов (картинки и т.п.) ---
 # --- Порог "мало байт" здесь бессмыслен — валидный маленький PNG/JPEG   ---
 # --- весит меньше 1024 байт. Признаком служит валидность самого формата, ---
@@ -134,6 +145,25 @@ def test_cdx_snapshots_skips_header_and_sorts_fresh_first():
     with patch("pipeline.fetcher.urllib.request.urlopen", return_value=_cdx_response(rows)):
         result = fetcher.cdx_snapshots("http://x/")
     assert result == [("20200601000000", "http://x/"), ("20150101000000", "http://x/")]
+
+def test_cdx_snapshots_requests_freshest_snapshots_not_oldest():
+    # Баг найден на ревью: CDX по умолчанию отдаёт снимки от старых к новым,
+    # а положительный limit берёт первые N — то есть N САМЫХ СТАРЫХ. Наша
+    # локальная sorted(rows, reverse=True) сортирует только то, что уже
+    # пришло, поэтому positive limit давал "самые свежие среди самых старых
+    # 50", а не самые свежие вообще (проверено живым запросом на ревью —
+    # для корня сайта приходили снимки 2001-2002 года). Отрицательный limit
+    # у CDX означает "последние N" — этого и добиваемся здесь.
+    captured = {}
+
+    def fake_urlopen(req, timeout=90):
+        captured["url"] = req.full_url
+        return _cdx_response([])
+
+    with patch("pipeline.fetcher.urllib.request.urlopen", side_effect=fake_urlopen):
+        fetcher.cdx_snapshots("http://x/")
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(captured["url"]).query)
+    assert query["limit"] == ["-50"]
 
 def test_cdx_snapshots_empty_when_no_rows():
     with patch("pipeline.fetcher.urllib.request.urlopen", return_value=_cdx_response([])):
