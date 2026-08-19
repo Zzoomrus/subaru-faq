@@ -338,3 +338,51 @@ def test_all_generated_frontmatter_parses_as_yaml(tmp_path):
     assert fm["автор"] == "'RUS' SUBaruZERO"
     assert fm["раздел"] == 'Раздел: с "кавычкой"'
     assert fm["aliases"] == ["215\\60 R16 'RUS' SUBaruZERO"]
+
+
+def test_write_all_refuses_to_wipe_a_mirror_it_cannot_explain(tmp_path):
+    # Дефект, пришедший вместе с точкой входа: `run mirror` с пустой (или не
+    # той) базой создавал базу на лету, write_all писал 0 заметок и подчищал
+    # ВСЕ существующие как осиротевшие — 6338 заметок исчезали, а конвейер
+    # рапортовал об успехе. Предохранитель: удалений не может быть больше,
+    # чем записей.
+    import pytest
+    out = tmp_path / "Источники"
+    conn = _seed(tmp_path)
+    mirror.write_all(conn, out)
+    before = sorted(p.name for p in out.glob("*.md"))
+
+    empty = db.connect(tmp_path / "empty.sqlite"); db.init_schema(empty)
+    with pytest.raises(RuntimeError) as e:
+        mirror.write_all(empty, out)
+    assert "0" in str(e.value)
+    assert sorted(p.name for p in out.glob("*.md")) == before, "заметки должны остаться на месте"
+
+
+def test_write_all_refuses_when_deletions_outnumber_writes(tmp_path):
+    # Тот же класс ошибки без пустой базы: опечатка в `--db` привела на
+    # маленькую/чужую базу. Пишем 1 заметку, удалили бы 5 — это не уборка
+    # мусора, это «база не описывает это зеркало».
+    import pytest
+    out = tmp_path / "Источники"
+    out.mkdir(parents=True)
+    for tid in (101, 102, 103, 104, 105):
+        (out / ("Тема %d.md" % tid)).write_text("старое зеркало", encoding="utf-8")
+    conn = _seed(tmp_path)
+    with pytest.raises(RuntimeError):
+        mirror.write_all(conn, out)
+    # чужие заметки на месте (запись новых при этом не отменяется — она
+    # не разрушительна, отменяется только уборка)
+    assert all((out / ("Тема %d.md" % tid)).exists() for tid in (101, 102, 103, 104, 105))
+
+
+def test_safeguard_does_not_block_normal_orphan_cleanup(tmp_path):
+    # Предохранитель не должен убить полезное поведение: одна осиротевшая
+    # заметка при 1 записанной — удаляется.
+    out = tmp_path / "Источники"
+    conn = _seed(tmp_path)
+    mirror.write_all(conn, out)
+    (out / "Тема 777.md").write_text("осталось от прошлого прогона", encoding="utf-8")
+    mirror.write_all(conn, out)
+    assert not (out / "Тема 777.md").exists()
+    assert (out / "Тема 10045.md").exists()

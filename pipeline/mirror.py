@@ -249,6 +249,14 @@ def write_all(conn, out_dir: Path) -> int:
     встречается: имя заметки детерминировано генератором, поэтому лишний
     файл виден точно. Чужие файлы (статьи следующей фазы, заметки Сергея)
     в каталоге не трогаются.
+
+    ПРЕДОХРАНИТЕЛЬ: удалений не может быть больше, чем записей. Уборка
+    мусора — это единицы файлов на фоне тысяч записанных; «удалить больше,
+    чем записали» означает не мусор, а то, что БАЗА НЕ ОПИСЫВАЕТ ЭТО
+    ЗЕРКАЛО: пустая база (забыли загрузку), чужая или маленькая база
+    (опечатка в `--db`). Раньше такой прогон молча сносил все 6338 заметок
+    и рапортовал об успехе («заметок: 0», код возврата 0). Теперь заметки
+    остаются нетронутыми, а вызывающий получает `RuntimeError` с цифрами.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -258,8 +266,14 @@ def write_all(conn, out_dir: Path) -> int:
         (out_dir / ("Тема %d.md" % tid)).write_text(render_thread(conn, tid), encoding="utf-8")
         tids.add(tid)
         n += 1
-    for path in out_dir.glob("Тема *.md"):
-        m = _NOTE_NAME.match(path.name)
-        if m and int(m.group(1)) not in tids:
-            path.unlink()
+    stale = [p for p in sorted(out_dir.glob("Тема *.md"))
+             if _NOTE_NAME.match(p.name) and int(_NOTE_NAME.match(p.name).group(1)) not in tids]
+    if len(stale) > n:
+        raise RuntimeError(
+            "отказ убирать заметки: записано %d, под удаление попало %d. "
+            "Похоже, база не описывает это зеркало (пустая база, не тот --db "
+            "или пропущенный шаг загрузки). Зеркало не тронуто: %s"
+            % (n, len(stale), out_dir))
+    for path in stale:
+        path.unlink()
     return n

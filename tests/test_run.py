@@ -73,3 +73,38 @@ def test_check_walks_the_whole_wiki_not_only_the_mirror(tmp_path):
     (wiki / "Статьи" / "Тормоза" / "Суппорт.md").write_text(
         "[[Тема 1#Пост 100]] и [[Тема 1#Пост 999]]\n", encoding="utf-8")
     assert run.main(["check", "--wiki", str(wiki)]) == 1
+
+
+def test_mirror_and_coverage_refuse_a_missing_database(tmp_path, capsys):
+    # Подкоманда генерации не должна создавать базу на лету: пустая база —
+    # это не «нечего генерировать», это пропущенный шаг загрузки или
+    # опечатка в --db. Раньше такой прогон писал 0 заметок и сносил зеркало.
+    missing = tmp_path / "нет-такой.sqlite"
+    for cmd in ("mirror", "coverage"):
+        rc = run.main([cmd, "--db", str(missing), "--wiki", str(tmp_path / "wiki"),
+                       "--csv", str(tmp_path / "c.csv")])
+        assert rc == 2
+        assert not missing.exists(), "база не должна создаваться подкомандой " + cmd
+    assert "не найдена" in capsys.readouterr().out
+
+
+def test_mirror_on_empty_database_does_not_wipe_the_mirror(tmp_path, capsys):
+    # Сквозная проверка предохранителя через точку входа: код возврата
+    # ненулевой, заметки на месте.
+    wiki = tmp_path / "wiki" / "Источники"
+    wiki.mkdir(parents=True)
+    (wiki / "Тема 10045.md").write_text("настоящая заметка\n", encoding="utf-8")
+    empty = tmp_path / "empty.sqlite"
+    from pipeline import db as _db
+    _db.init_schema(_db.connect(empty))
+
+    rc = run.main(["mirror", "--db", str(empty), "--wiki", str(tmp_path / "wiki")])
+    assert rc == 2
+    assert (wiki / "Тема 10045.md").exists()
+    assert "не тронуто" in capsys.readouterr().out
+
+
+def test_ingest_still_creates_the_database(tmp_path):
+    # Загрузчику базу создавать — прямая обязанность.
+    assert run.main(_args(tmp_path, "ingest")) == 0
+    assert (tmp_path / "forum.sqlite").exists()

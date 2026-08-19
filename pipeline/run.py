@@ -16,12 +16,18 @@
 Порядок в `all` не случаен: `ingest_sections` обязан отработать до
 генерации заметок, иначе в каждой заметке пустое поле «раздел».
 
+Базу создаёт только загрузчик (`ingest`/`all`). Для `coverage`/`mirror`
+отсутствующая база — ошибка (код 2), а не пустой результат: молча созданная
+пустая база означала «0 заметок» и снос всего зеркала как осиротевшего при
+нулевом коде возврата. Второй рубеж — предохранитель в `mirror.write_all`
+(удалений не может быть больше, чем записей).
+
 ВАЖНО про `--rebuild`. Загрузчик идемпотентен — повторный прогон не портит
 базу, — но это НЕ значит, что он подхватит правку парсеров: `upsert_post`
 обновляет пост, только если новый `text` длиннее сохранённого (а снятие
 мусора делает текст короче), а вложения уже виденной страницы не
 переразбираются вовсе. После любой правки `parse_*`/`html_text` базу надо
-пересоздать: `python -m pipeline.run all --rebuild` (~95 с на полном
+пересоздать: `python -m pipeline.run all --rebuild` (~85 с на полном
 архиве).
 """
 import argparse
@@ -79,6 +85,15 @@ def main(argv: list[str] | None = None) -> int:
         if args.rebuild and cmd in ("ingest", "all"):
             _drop_db(args.db)
             print("база пересоздана с нуля: %s" % args.db)
+        if cmd in ("coverage", "mirror") and not args.db.exists():
+            # Создавать базу на лету — обязанность загрузчика, а не
+            # подкоманд чтения: для них отсутствующая база значит
+            # пропущенный шаг загрузки или опечатку в `--db`, а не «нечего
+            # генерировать». Молча созданная пустая база давала «заметок: 0»
+            # и код возврата 0 — при том, что зеркало при этом сносилось.
+            print("база не найдена: %s (загрузите архив: "
+                  "python -m pipeline.run ingest)" % args.db)
+            return 2
         conn = db.connect(args.db)
         db.init_schema(conn)
 
@@ -92,7 +107,13 @@ def main(argv: list[str] | None = None) -> int:
         print("покрытие:", coverage.summary(rows), "->", args.csv)
 
     if cmd in ("mirror", "all"):
-        print("заметок:", mirror.write_all(conn, mirror_path), "->", mirror_path)
+        try:
+            print("заметок:", mirror.write_all(conn, mirror_path), "->", mirror_path)
+        except RuntimeError as e:
+            # Предохранитель генератора: база не описывает это зеркало.
+            # Печатаем причину без трейсбека и уходим с ненулевым кодом.
+            print("ОШИБКА:", e)
+            return 2
 
     if cmd in ("check", "all"):
         found = check_mirror.check(args.wiki)
