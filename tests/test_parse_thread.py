@@ -46,3 +46,29 @@ def test_author_without_profile_link_still_captured():
     post = [p for p in page.posts if p.mid == 342659][0]
     assert post.author == "mallorymercy vigorda"
     assert post.author_uid is None
+
+
+def test_message_page_yields_target_post_and_title():
+    # message_<FID>_<TID>_<MID>.html — та же разметка треда, что и у read_*,
+    # но фокус на одном сообщении. Парсер не знает про имя файла (это забота
+    # вызывающего кода/Задачи 5) — здесь просто проверяем, что структура
+    # такой страницы разбирается так же корректно: пост с целевым mid из
+    # имени файла присутствует среди распарсенных, а заголовок темы верный.
+    page = parse_thread.parse(_html("message_1_78938_414802.html"))
+    assert page.title == "Looking for best bang for buck processor. *Newbie*"
+    mids = [p.mid for p in page.posts]
+    assert 414802 in mids
+    post = [p for p in page.posts if p.mid == 414802][0]
+    assert post.author == "Joe Clark"
+    assert post.author_uid == 86070
+    assert post.number == "#1"
+
+
+def test_message_page_behind_bot_challenge_yields_no_posts():
+    # Часть message_*.html — не форумный контент, а сохранённая антибот-
+    # проверка (JS-челлендж вида ctSetCookie/ctMouseData вместо реальной
+    # страницы): краулер получил челлендж вместо тела форума. Полный прогон
+    # нашёл 10 таких страниц среди message_* — они должны давать 0 постов,
+    # а не падать и не выдавать мусорные "посты" из разметки челленджа.
+    page = parse_thread.parse(_html("message_bot_challenge.html"))
+    assert page.posts == []

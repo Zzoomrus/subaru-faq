@@ -1,0 +1,631 @@
+<html>
+<head>
+<script type="text/javascript">
+			function ctSetCookie(c_name, value){
+				document.cookie = c_name + "=" + escape(value) + "; path=/";
+			}
+			
+			var d = new Date(), 
+				ctTimeMs = new Date().getTime(),
+				ctMouseEventTimerFlag = true, //Reading interval flag
+				ctMouseData = "[",
+				ctMouseDataCounter = 0;
+				
+			setTimeout(function(){
+				ctSetCookie("ct_checkjs", "1d989de7ddc58b220b4dbca1034706fa");
+				ctSetCookie("ct_timezone", d.getTimezoneOffset()/60);
+			},1000);
+
+			//Stop observing function
+			function ctMouseStopData(){
+				window.removeEventListener("mousemove", func);
+				clearInterval(ctMouseReadInterval);
+				clearInterval(ctMouseWriteDataInterval);				
+			}
+				
+			//Reading interval
+			var ctMouseReadInterval = setInterval(function(){
+					ctMouseEventTimerFlag = true;
+				}, 300);
+				
+			//Writting interval
+			var ctMouseWriteDataInterval = setInterval(function(){ 
+					var ctMouseDataToSend = ctMouseData.slice(0,-1).concat("]");
+					ctSetCookie("ct_pointer_data", ctMouseDataToSend);
+				}, 3000);
+
+			//Logging mouse position each 300 ms
+			var func = function output(event){
+				if(ctMouseEventTimerFlag == true){
+					var mouseDate = new Date();
+					ctMouseData += "[" + event.pageY + "," + event.pageX + "," + (mouseDate.getTime() - ctTimeMs) + "],";
+					ctMouseDataCounter++;
+					ctMouseEventTimerFlag = false;
+					if(ctMouseDataCounter >= 100)
+						ctMouseStopData();
+				}
+			}
+
+			if(typeof window.addEventListener == "function")
+				window.addEventListener("mousemove", func);
+			else
+				window.attachEvent("onmousemove", func);
+		</script>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1251" />
+<meta name="robots" content="index, follow" />
+<meta name="keywords" content="Subaru, Субару" />
+<meta name="description" content="Subaru" />
+<link href="/bitrix/cache/css/s1/BlogAndForum/kernel_main/kernel_main.css?148252109848075" type="text/css"  rel="stylesheet" />
+<link href="/bitrix/cache/css/s1/BlogAndForum/page_8b499f346b7b39d6d2c8f3d3d7f6fe78/page_8b499f346b7b39d6d2c8f3d3d7f6fe78.css?148252109433357" type="text/css"  rel="stylesheet" />
+<link href="/bitrix/cache/css/s1/BlogAndForum/template_1ebe3a0782946030c17760bd9dc391a2/template_1ebe3a0782946030c17760bd9dc391a2.css?152226849214031" type="text/css"  data-template-style="true"  rel="stylesheet" />
+<script type="text/javascript">if(!window.BX)window.BX={message:function(mess){if(typeof mess=='object') for(var i in mess) BX.message[i]=mess[i]; return true;}};</script>
+<script type="text/javascript">(window.BX||top.BX).message({'JS_CORE_LOADING':'Загрузка...','JS_CORE_NO_DATA':'- Нет данных -','JS_CORE_WINDOW_CLOSE':'Закрыть','JS_CORE_WINDOW_EXPAND':'Развернуть','JS_CORE_WINDOW_NARROW':'Свернуть в окно','JS_CORE_WINDOW_SAVE':'Сохранить','JS_CORE_WINDOW_CANCEL':'Отменить','JS_CORE_WINDOW_CONTINUE':'Продолжить','JS_CORE_H':'ч','JS_CORE_M':'м','JS_CORE_S':'с','JSADM_AI_HIDE_EXTRA':'Скрыть лишние','JSADM_AI_ALL_NOTIF':'Показать все','JSADM_AUTH_REQ':'Требуется авторизация!','JS_CORE_WINDOW_AUTH':'Войти','JS_CORE_IMAGE_FULL':'Полный размер'});</script>
+<script type="text/javascript">(window.BX||top.BX).message({'LANGUAGE_ID':'ru','FORMAT_DATE':'DD.MM.YYYY','FORMAT_DATETIME':'DD.MM.YYYY HH:MI:SS','COOKIE_PREFIX':'Subaru_FAQ','SERVER_TZ_OFFSET':'10800','SITE_ID':'s1','SITE_DIR':'/','USER_ID':'','SERVER_TIME':'1527943103','USER_TZ_OFFSET':'0','USER_TZ_AUTO':'Y','bitrix_sessid':'fe59d24a0e1ce28a9b9f39cec8965bba'});</script>
+
+
+<script type="text/javascript" src="/bitrix/cache/js/s1/BlogAndForum/kernel_main/kernel_main.js?1483468298267300"></script>
+<script type="text/javascript">BX.setJSList(['/bitrix/js/main/core/core.js?145908947370214','/bitrix/js/main/core/core_popup.js?145908945431170','/bitrix/js/main/core/core_ajax.js?145908946920978','/bitrix/js/main/json/json2.min.js?14590884323467','/bitrix/js/main/core/core_ls.js?14590893567365','/bitrix/js/main/session.js?14590893492511','/bitrix/js/main/utils.js?145908934919858','/bitrix/js/main/core/core_date.js?145908947334276','/bitrix/js/main/core/core_window.js?145908945474917','/bitrix/templates/BlogAndForum/components/bitrix/forum/template3/script.js?12661502671065','/bitrix/templates/BlogAndForum/components/bitrix/forum/template3/bitrix/system.auth.form/.default/script.js?1266150267556','/bitrix/templates/BlogAndForum/components/bitrix/forum/template3/bitrix/forum.topic.read/.default/script.js?12661502671196','/bitrix/templates/BlogAndForum/components/bitrix/menu/horizontal_multilevel/script.js?1250601965436','/bitrix/components/bitrix/main.share/templates/.default/script.js?1459089349468']); </script>
+<script type="text/javascript">BX.setCSSList(['/bitrix/js/main/core/css/core.css?14590893502854','/bitrix/js/main/core/css/core_popup.css?145908945733075','/bitrix/js/main/core/css/core_date.css?14590893629689','/bitrix/templates/BlogAndForum/components/bitrix/forum/template3/style.css?126615026717402','/bitrix/templates/BlogAndForum/components/bitrix/forum/template3/themes/blue/style.css?12661502665118','/bitrix/templates/BlogAndForum/components/bitrix/forum/template3/styles/additional.css?12661502677774','/bitrix/components/bitrix/breadcrumb/templates/.default/style.css?1459089356448','/bitrix/templates/BlogAndForum/components/bitrix/catalog.element/template1/style.css?125570685232','/bitrix/templates/BlogAndForum/components/bitrix/menu/horizontal_multilevel/style.css?12538733694444','/bitrix/templates/BlogAndForum/components/bitrix/menu/template1/style.css?1250601965583','/bitrix/templates/BlogAndForum/components/bitrix/news.list/news_index/style.css?1250601965108','/bitrix/templates/BlogAndForum/components/bitrix/breadcrumb/template2/style.css?1250601965227','/bitrix/components/bitrix/main.share/templates/.default/style.css?14590893491293','/bitrix/templates/BlogAndForum/styles.css?15222684911139','/bitrix/templates/BlogAndForum/template_styles.css?15222684913679']); </script>
+<script src="/bitrix/js/main/utils.js"></script>
+<script src="/bitrix/components/bitrix/forum.interface/templates/.default/script.js"></script>
+
+
+
+<script type="text/javascript" src="/bitrix/cache/js/s1/BlogAndForum/template_8df9c00869dd961356d01addcc00e770/template_8df9c00869dd961356d01addcc00e770.js?14825210931827"></script>
+<script type="text/javascript" src="/bitrix/cache/js/s1/BlogAndForum/page_e0259ede410d8426e54a03911bb063c1/page_e0259ede410d8426e54a03911bb063c1.js?14825210934124"></script>
+<script type="text/javascript">var _ba = _ba || []; _ba.push(["aid", "a87b83cd95ffd44ed6d228af79be34f4"]); _ba.push(["host", "www.subaru-faq.ru"]); (function() {var ba = document.createElement("script"); ba.type = "text/javascript"; ba.async = true;ba.src = (document.location.protocol == "https:" ? "https://" : "http://") + "bitrix.info/ba.js";var s = document.getElementsByTagName("script")[0];s.parentNode.insertBefore(ba, s);})();</script>
+
+
+<title>Субару Форум. Subaru-FAQ.
+
+Тюнинг - мотор, турбины, фильтры, коробка, подвеска, тормоза,  каркасы и проч..&nbsp;
+Harsh scents or even start smoking it most likely be sent back</title>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({
+          google_ad_client: "ca-pub-9150566032954886",
+          enable_page_level_ads: true
+     });
+</script>
+
+</head>
+
+<body>
+
+
+
+<div id="panel"></div>
+
+<div id="header"><img src="/bitrix/templates/BlogAndForum/images/logo.jpg" id="header_logo" height="105" alt="" width="508" border="0"/>
+    <div id="header_text">
+ 
+<h1>Subaru-FAQ</h1>
+ Есть вопрос о Субару? 
+<br />
+Мы знаем о Subaru все&#33; :)
+<br />
+ 	</div>
+	
+	<div id="header_text2">
+<script type="text/javascript"><!--
+google_ad_client = "ca-pub-9150566032954886";
+/* Subaru-FAQ-2 */
+google_ad_slot = "8257608234";
+google_ad_width = 468;
+google_ad_height = 60;
+//-->
+</script>
+<script type="text/javascript"
+src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
+</script>
+
+
+
+
+	</div>
+	
+	<div id="header_menu">
+<a href="/" title="Главная"><img width="12" height="11" src="/bitrix/templates/BlogAndForum/include_areas/icons/home.gif" alt="Главная" border="0" /></a>
+<a href="/search/" title="Поиск"><img width="12" height="12" src="/bitrix/templates/BlogAndForum/include_areas/icons/search.gif" alt="Поиск" border="0" /></a>
+<a href="/search/map.php" title="Карта сайта"><img width="14" height="9" src="/bitrix/templates/BlogAndForum/include_areas/icons/map.gif" alt="Карта сайта" border="0" /></a>
+<a href="/forum/index.php?PAGE_NAME=message&amp;FID=18&amp;TID=96388&amp;MID=0&amp;print=Y" title="Версия для печати" rel="nofollow"><img width="12" height="12" src="/bitrix/templates/BlogAndForum/include_areas/icons/printer.gif" alt="Версия для печати" border="0" /></a> </div>
+
+</div>
+
+<ul id="horizontal-multilevel-menu">
+
+
+	
+	
+		
+							<li><a href="/index.php" class="root-item">Главная</a></li>
+			
+		
+	
+	
+
+	
+	
+		
+							<li><a href="/faq/index.php" class="root-item">Subaru-FAQ</a></li>
+			
+		
+	
+	
+
+	
+	
+		
+							<li><a href="/catalog/index.php?SECTION_ID=32" class="root-item">Сервисы Субару</a></li>
+			
+		
+	
+	
+
+	
+	
+		
+							<li><a href="/forum/" class="root-item-selected">Форум</a></li>
+			
+		
+	
+	
+
+	
+	
+		
+							<li><a href="/photo/index.php" class="root-item">Фотогалереи</a></li>
+			
+		
+	
+	
+
+	
+	
+		
+							<li><a href="/blogs/index.php" class="root-item">Блоги</a></li>
+			
+		
+	
+	
+
+
+</ul>
+<div class="menu-clear-left"></div>
+ 
+<div id="zebra"></div>
+
+<table id="content">
+  <tbody>
+    <tr><td class="left-column">
+
+	<!-- SOCIALNETWORK -->
+
+   
+        <div class="content-block">
+          <div class="content-block-head">Авторизация</div>
+        
+          <div class="content-block-body">
+
+<div id="at_bitrix">
+<form method="post" target="_top" action="/forum/index.php?login=yes&amp;PAGE_NAME=message&amp;FID=18&amp;TID=96388&amp;MID=0">
+			<input type="hidden" name="backurl" value="/forum/index.php?PAGE_NAME=message&amp;FID=18&amp;TID=96388&amp;MID=0" />
+			<input type="hidden" name="AUTH_FORM" value="Y" />
+	<input type="hidden" name="TYPE" value="AUTH" />
+	<table width="95%">
+			<tr>
+				<td colspan="2">
+				Логин:<br />
+				<input type="text" name="USER_LOGIN" maxlength="50" value="" size="17" /></td>
+			</tr>
+			<tr>
+				<td colspan="2">
+				Пароль:<br />
+				<input type="password" name="USER_PASSWORD" maxlength="50" size="17" /></td>
+			</tr>
+					<tr>
+				<td valign="top"><input type="checkbox" id="USER_REMEMBER" name="USER_REMEMBER" value="Y" /></td>
+				<td width="100%"><label for="USER_REMEMBER">Запомнить меня на этом компьютере</label></td>
+			</tr>
+							<tr>
+				<td colspan="2"><input type="submit" name="Login" value="Войти" /></td>
+			</tr>
+					<tr>
+				<td colspan="2"><a href="/auth/?register=yes&amp;backurl=%2Fforum%2Findex.php%3FPAGE_NAME%3Dmessage%26FID%3D18%26TID%3D96388%26MID%3D0">Регистрация</a><br /></td>
+			</tr>
+		
+			<tr>
+				<td colspan="2"><a href="/auth/?forgot_password=yes&amp;backurl=%2Fforum%2Findex.php%3FPAGE_NAME%3Dmessage%26FID%3D18%26TID%3D96388%26MID%3D0">Забыли свой пароль?</a></td>
+			</tr>
+	</table>
+</form>
+</div>
+
+
+			</div>
+        </div>
+		<div class="content-block">
+          <div class="content-block-head">Новости</div>
+          <div class="content-block-body">
+				<div class="news-list">
+	<p class="news-item">
+													<a href="/news/detail.php?ID=627"><b>Subaru XV 2012 - обзор и обсуждение</b></a><br />
+										<a href="http://www.subaru-faq.ru/forum/index.php?PAGE_NAME=message&amp;FID=14&amp;TID=35983" >Хороший обзор! Хорошая беседа! Хорошие люди! :)</a>									</p>
+	<p class="news-item">
+													<a href="/news/detail.php?ID=626"><b>! Руководства и мануалы ! </b></a><br />
+										<font color="#2F3192">Пополнение списка литературы </font>									</p>
+	<p class="news-item">
+													<a href="/news/detail.php?ID=624"><b>! Руководства и мануалы !</b></a><br />
+										Обновлена статья  <a href="http://www.subaru-faq.ru/blogs/index.php?page=post&amp;blog=rob_reflections&amp;post_id=117">&quot;Руководства и мануалы&quot;&#33;</a> 									</p>
+	<p class="news-item">
+													<a href="/news/detail.php?ID=623"><b>Есть у нас любители Футбола?</b></a><br />
+										<a href="http://www.subaru-faq.ru/forum/index.php?PAGE_NAME=message&amp;FID=20&amp;TID=33590" >Сборы любителей Футбола&#33; </a>
+<br />
+									</p>
+	<p class="news-item">
+													<a href="/news/detail.php?ID=622"><b>Угон!</b></a><br />
+										
+<div align="center"><a href="http://www.subaru-faq.ru/forum/index.php?PAGE_NAME=message&amp;FID=20&amp;TID=33675&amp;MID=270033&#35;message270033">Внимание&#33; Угнали машину&#33;</a> 
+  <br />
+ </div>
+ 
+<div align="center"><font color="&#35;800000" style="background-color: rgb(255, 0, 255);"><a href="http://www.subaru-faq.ru/forum/index.php?PAGE_NAME=message&amp;FID=20&amp;TID=33675&amp;PAGEN_1=2">&#33;Машина найдена&#33;</a></font><span style="background-color: rgb(255, 0, 255);"> </span> 
+  <br />
+ </div>
+ 									</p>
+</div>
+ 
+		  </div>
+        </div>
+      
+		<!--SUBSCRIBE-->
+      
+        <!--BANNER_LEFT-->
+
+        </div>
+      </td><td class="main-column">
+        <div id="navigation"><ul class="breadcrumb-navigation"><li><a href="/" title="Главная">Главная</a></li><li><span>&nbsp;&gt;&nbsp;</span></li><li><a href="/forum/" title="Форум">Форум</a></li><li><span>&nbsp;&gt;&nbsp;</span></li><li><a href="/forum/index.php?PAGE_NAME=forums&amp;GID=1" title="Форумы - технический">Форумы - технический</a></li><li><span>&nbsp;&gt;&nbsp;</span></li><li><a href="/forum/index.php?PAGE_NAME=list&amp;FID=18" title="Тюнинг - мотор, турбины, фильтры, коробка, подвеска, тормоза,  каркасы и проч.">Тюнинг - мотор, турбины, фильтры, коробка, подвеска, тормоза,  каркасы и проч.</a></li><li><span>&nbsp;&gt;&nbsp;</span></li><li>Harsh scents or even start smoking it most likely be sent back</li></ul> </div>
+      
+        <h1 id="pagetitle">Субару Форум. Subaru-FAQ</h1>
+      
+
+
+<div class="forum-info-box forum-menu-box">
+	<div class="forum-info-box-inner">
+		<span class="forum-menu-item forum-menu-item-first forum-menu-search"><a href="/forum/index.php?PAGE_NAME=search"><span>Поиск</span></a>&nbsp;</span>
+		<span class="forum-menu-item  forum-menu-users"><a href="/forum/index.php?PAGE_NAME=user_list"><span>Пользователи</span></a>&nbsp;</span>
+		<span class="forum-menu-item  forum-menu-rules"><a href="/forum/index.php?PAGE_NAME=rules"><span>Правила</span></a>&nbsp;</span>
+		<span class="forum-menu-item forum-menu-item-last forum-menu-authorize">
+		
+
+<div id="forum-login-form-window">
+
+<a href="" onclick="return ForumCloseLoginForm()" style="float:right;">Закрыть</a>
+
+<form method="post" target="_top" action="/forum/index.php?login=yes&amp;PAGE_NAME=message&amp;FID=18&amp;TID=96388&amp;MID=0">
+			<input type='hidden' name='backurl' value='/forum/index.php?PAGE_NAME=message&amp;FID=18&amp;TID=96388&amp;MID=0' />
+			<input type="hidden" name="AUTH_FORM" value="Y" />
+	<input type="hidden" name="TYPE" value="AUTH" />
+
+	<table width="95%">
+			<tr>
+				<td colspan="2">
+				Логин:<br />
+				<input type="text" name="USER_LOGIN" maxlength="50" value="" size="17" /></td>
+			</tr>
+			<tr>
+				<td colspan="2">
+				Пароль:<br />
+				<input type="password" name="USER_PASSWORD" maxlength="50" size="17" /></td>
+			</tr>
+					<tr>
+				<td valign="top"><input type="checkbox" id="USER_REMEMBER" name="USER_REMEMBER" value="Y" /></td>
+				<td width="100%"><label for="USER_REMEMBER">Запомнить меня на этом компьютере</label></td>
+			</tr>
+					<tr>
+				<td colspan="2"><input type="submit" name="Login" value="Войти" /></td>
+			</tr>
+
+			<tr>
+				<td colspan="2"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=18&amp;TID=96388&amp;MID=0&amp;forgot_password=yes&amp;backurl=%2Fforum%2Findex.php%3FPAGE_NAME%3Dmessage%26FID%3D18%26TID%3D96388%26MID%3D0">Забыли свой пароль?</a></td>
+			</tr>
+					<tr>
+				<td colspan="2"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=18&amp;TID=96388&amp;MID=0&amp;register=yes&amp;backurl=%2Fforum%2Findex.php%3FPAGE_NAME%3Dmessage%26FID%3D18%26TID%3D96388%26MID%3D0">Регистрация</a><br /></td>
+			</tr>
+			</table>	
+</form>
+</div>
+<a href="/forum/index.php?login=yes&amp;PAGE_NAME=message&amp;FID=18&amp;TID=96388&amp;MID=0" onclick="return ForumShowLoginForm(this);"><span>Войти</span></a>
+&nbsp;</span>
+	</div>
+</div>
+<script type="text/javascript">
+//<![CDATA[
+	if (phpVars == null || typeof(phpVars) != "object")
+	{
+		var phpVars = {
+			'ADMIN_THEME_ID': '.default',
+			'titlePrefix': 'Subaru-FAQ - '};
+	}
+	phpVars['isAuthorized'] = 'N';
+	if (typeof oText != "object")
+	{
+		var oText = {};
+	}
+	oText['wait_window'] = 'Загрузка...';
+//]]>
+window.oForumForm = {};
+</script><div class="forum-header-box">
+	<div class="forum-header-options">
+	</div>
+	<div class="forum-header-title"><span>
+Harsh scents or even start smoking it most likely be sent back	</span></div>
+</div>
+
+<div class="forum-block-container">
+	<div class="forum-block-outer">
+		<div class="forum-block-inner">
+		</div>
+	</div>
+</div>
+<script type="text/javascript">
+if (typeof oText != "object")
+	var oText = {};
+oText['cdt'] = 'Тема будет удалена без возможности восстановления. Удалить? ';
+oText['cdm'] = 'Сообщение будет удалено без возможности восстановления. Удалить? ';
+oText['cdms'] = 'Сообщения будут удалены без возможности восстановления. Удалить?';
+oText['ml'] = 'Скопируйте в буфер обмена адрес ссылки на это сообщение';
+oText['no_data'] = 'Не указан список сообщений. Выберите сообщения.';
+oText['no_action'] = 'Не выбрано действие. Выберите действие.';
+oText['quote_text'] = 'пишет';
+
+function reply2author(name)
+{
+	if (document.REPLIER.POST_MESSAGE)
+	{
+		document.REPLIER.POST_MESSAGE.value += '[b]'+name+'[/b]' + " \n";
+	}
+	return false;
+}
+</script><div class="forum-info-box forum-users-online">
+	<div class="forum-info-box-inner">
+		<span class="forum-users-online">Читают тему (гостей: <span>1</span>, пользователей: <span>0</span>, из них скрытых: <span>0</span>) </span>
+	</div>
+</div>
+<link href="/bitrix/css/main/font-awesome.css?145908935428777" type="text/css" rel="stylesheet" />
+<div class="bx-breadcrumb">
+			<div class="bx-breadcrumb-item" id="bx_breadcrumb_0" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb" itemref="bx_breadcrumb_1">
+				
+				<a href="/forum/" title="Форум" itemprop="url">
+					<span itemprop="title">Форум</span>
+				</a>
+			</div>
+			<div class="bx-breadcrumb-item" id="bx_breadcrumb_1" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb" itemprop="child" itemref="bx_breadcrumb_2">
+				<i class="fa fa-angle-right"></i>
+				<a href="/forum/index.php?PAGE_NAME=forums&amp;GID=1" title="Форумы - технический" itemprop="url">
+					<span itemprop="title">Форумы - технический</span>
+				</a>
+			</div>
+			<div class="bx-breadcrumb-item" id="bx_breadcrumb_2" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb" itemprop="child">
+				<i class="fa fa-angle-right"></i>
+				<a href="/forum/index.php?PAGE_NAME=list&amp;FID=18" title="Тюнинг - мотор, турбины, фильтры, коробка, подвеска, тормоза,  каркасы и проч." itemprop="url">
+					<span itemprop="title">Тюнинг - мотор, турбины, фильтры, коробка, подвеска, тормоза,  каркасы и проч.</span>
+				</a>
+			</div>
+			<div class="bx-breadcrumb-item">
+				<i class="fa fa-angle-right"></i>
+				<span>Harsh scents or even start smoking it most likely be sent back</span>
+			</div><div style="clear:both"></div></div><div class="forum-info-box forum-main-footer">
+	<div class="forum-info-box-inner">
+		<div class="forum-rapid-access-items">
+			<form action="/forum/index.php?PAGE_NAME=index" method="GET" class="forum-form">
+			<input type="hidden" name="buf_fid" value="18" />
+			<input type="hidden" name="rapid_access" value="Y" />
+			<select name="FID" class="forum-selector-single" onclick="if(this.value!=this.form.buf_fid.value){this.form.submit()}">
+				<option value="GID_6"  class="groups level1">FAQ-Форум</option>
+				<option value="19"  class="forum level1">&nbsp;&nbsp;&nbsp;Типовые вопросы о Субару</option>
+				<option value="GID_8"  class="groups level1">Subaru-FAQ!</option>
+				<option value="23"  class="forum level1">&nbsp;&nbsp;&nbsp;Наши партнеры и их скидки!</option>
+				<option value="26"  class="forum level1">&nbsp;&nbsp;&nbsp;Новости</option>
+				<option value="GID_9"  class="groups level1">Клуб поклонников Субару, Россия. Subaru-Russia Club.</option>
+				<option value="25"  class="forum level1">&nbsp;&nbsp;&nbsp;Клубные вопросы.</option>
+				<option value="20"  class="forum level1">&nbsp;&nbsp;&nbsp;Клубные Встречи!</option>
+				<option value="GID_1"  class="groups level1">Форумы - технический</option>
+				<option value="18" selected='selected' class="forum level1 active">&nbsp;&nbsp;&nbsp;Тюнинг - мотор, турбины, фильтры, коробка, подвеска, тормоза,  каркасы и проч.</option>
+				<option value="5"  class="forum level1">&nbsp;&nbsp;&nbsp;Тюнинг - аэрообвесы, аэрография, свет, салон, музыка, спойлеры, сидушки, ксенон и проч.</option>
+				<option value="4"  class="forum level1">&nbsp;&nbsp;&nbsp;Починка и ремонт авто (Спроси у Анри и Петровича)</option>
+				<option value="12"  class="forum level1">&nbsp;&nbsp;&nbsp;Редкие модели Субар и запчасти на них</option>
+				<option value="3"  class="forum level1">&nbsp;&nbsp;&nbsp;Обменяемся опытом</option>
+				<option value="6"  class="forum level1">&nbsp;&nbsp;&nbsp;Обсудим сервисы Субару</option>
+				<option value="GID_4"  class="groups level1">Форумы - общие</option>
+				<option value="22"  class="forum level1">&nbsp;&nbsp;&nbsp;Субару в регионах и за рубежом! :)</option>
+				<option value="10"  class="forum level1">&nbsp;&nbsp;&nbsp;Неавтомобильные разговоры</option>
+				<option value="14"  class="forum level1">&nbsp;&nbsp;&nbsp;Флеймы... ( Пойдем выйдем! )</option>
+				<option value="GID_7"  class="groups level1">Субару -  творчество или навеяло Subaru :)</option>
+				<option value="16"  class="forum level1">&nbsp;&nbsp;&nbsp;Зарисовки о Субару и не только.</option>
+				<option value="24"  class="forum level1">&nbsp;&nbsp;&nbsp;Фотографии Субару!</option>
+				<option value="GID_2"  class="groups level1">Коммерция</option>
+				<option value="28"  class="forum level1">&nbsp;&nbsp;&nbsp;Барахолка - покупки</option>
+				<option value="7"  class="forum level1">&nbsp;&nbsp;&nbsp;Барахолка - продажа/обмен</option>
+				<option value="8"  class="forum level1">&nbsp;&nbsp;&nbsp;Ищу Subaru!</option>
+				<option value="21"  class="forum level1">&nbsp;&nbsp;&nbsp;Профессиональные Услуги</option>
+				<option value="GID_5"  class="groups level1">Вспомогательный</option>
+				<option value="15"  class="forum level1">&nbsp;&nbsp;&nbsp;Картинки</option>
+				<option value="1"  class="forum level1">&nbsp;&nbsp;&nbsp;Тестирование и прочее...</option>
+				<option value="17"  class="forum level1">&nbsp;&nbsp;&nbsp;На добавку в ФАК</option>
+				<option value="2"  class="forum level1">&nbsp;&nbsp;&nbsp;Обсудим Сайт! Ваша критика и предложения ;)</option>
+			</select>
+			<input type="submit" value="OK" />
+			</form>
+		</div>
+		<div class="forum-clear-float"></div>
+	</div>
+</div>
+ 
+<br />
+ </td><td class="right-column">
+
+	
+		</td></tr>
+  </tbody>
+</table>
+
+<!--BANNER_BOTTOM-->
+
+<div id="footer"> 
+<table width="100%" cellspacing="0" cellpadding="0" border="0"> 
+  <tbody> 
+    <tr> <td width="172" style="border-image: none;"><a href="http://www.subaru-faq.ru" >SUBARU-FAQ, 2003-2017  
+          <br />
+         </a></td> 	 <td width="546" valign="botton" style="border-image: none;"> 
+        <div align="center"> 
+<!--begin of Rambler's Top100 code -->
+ <a href="http://top100.rambler.ru/top100/" > <img height="1" width="1" border="0" src="http://counter.rambler.ru/top100.cnt?443562"  /></a> 
+<!--end of Top100 code-->
+ 
+<!--begin of Top100 logo-->
+ <a href="http://top100.rambler.ru/top100/" > <img height="31" width="88" border="0" alt="Rambler's Top100" src="http://top100-images.rambler.ru/top100/banner-88x31-rambler-darkblue2.gif"  /></a> 
+<!--end of Top100 logo -->
+ 
+<!-- Yandex.Metrika -->
+ 
+          <div style="display: none;"> 
+<script type="text/javascript">
+(function(w, c) {
+    (w[c] = w[c] || []).push(function() {
+        try {
+            w.yaCounter2207233 = new Ya.Metrika(2207233);
+             yaCounter2207233.clickmap(true);
+             yaCounter2207233.trackLinks(true);
+        
+        } catch(e) {}
+    });
+})(window, 'yandex_metrika_callbacks');
+</script>
+ </div>
+         
+<script src="//mc.yandex.ru/metrika/watch.js" type="text/javascript" defer="defer"></script>
+ <noscript> 
+            <div style="position: absolute;"><img src="//mc.yandex.ru/watch/2207233"  /></div>
+           </noscript> 
+<!-- /Yandex.Metrika -->
+ 
+<!--Rating@Mail.ru COUNTER-->
+ <a href="http://top.mail.ru/jump?from=508800" target="_top" ><img height="31" width="88" border="0" alt="Рейтинг@Mail.ru" src="http://top.list.ru/counter?id=508800;t=56"  /></a> 
+<!--/COUNTER-->
+ 
+<!-- HotLog -->
+ 
+<script language="javascript">
+hotlog_js="1.0";
+hotlog_r=""+Math.random()+"&s=93516&im=101&r="+escape(document.referrer)+"&pg="+
+escape(window.location.href);
+document.cookie="hotlog=1; path=/"; hotlog_r+="&c="+(document.cookie?"Y":"N");
+</script>
+ 
+<script language="javascript1.1">
+hotlog_js="1.1";hotlog_r+="&j="+(navigator.javaEnabled()?"Y":"N")</script>
+ 
+<script language="javascript1.2">
+hotlog_js="1.2";
+hotlog_r+="&wh="+screen.width+'x'+screen.height+"&px="+
+(((navigator.appName.substring(0,3)=="Mic"))?
+screen.colorDepth:screen.pixelDepth)</script>
+ 
+<script language="javascript1.3">hotlog_js="1.3"</script>
+ 
+<script language="javascript">hotlog_r+="&js="+hotlog_js;
+document.write("<a id="bxid_832171" href="http://click.hotlog.ru/?93516" target="_top" ><img id="bxid_303683" border="0" height="31" src="http://hit5.hotlog.ru/cgi-bin/hotlog/count?&quot;+
+hotlog_r+&quot;&amp;"  /></a>")</script>
+ <noscript> <a target="_top" href="http://click.hotlog.ru/?93516" ><img height="31" width="88" border="0" align="bottom" alt="HotLog" src="http://hit5.hotlog.ru/cgi-bin/hotlog/count?s=93516&amp;im=101"  /></a> </noscript> 
+<!-- /HotLog -->
+   		 		</div>
+       </td> <td align="center" style="border-image: none;"><div class="share-window-parent">
+	<div id="share-dialog1" class="share-dialog share-dialog-left" style="display: block;">
+		<div class="share-dialog-inner share-dialog-inner-left"><table cellspacing="0" cellpadding="0" border="0" class="bookmarks-table">
+			<tr><td class="bookmarks"><script>
+if (__function_exists('fbs_click') == false) 
+{
+function fbs_click(url, title) 
+{ 
+window.open('http://www.facebook.com/share.php?u='+encodeURIComponent(url)+'&t='+encodeURIComponent(title),'sharer','toolbar=0,status=0,width=626,height=436'); 
+return false; 
+} 
+}
+</script>
+<a href="http://www.facebook.com/share.php?u=http://www.subaru-faq.ru&t=" onclick="return fbs_click('http://www.subaru-faq.ru', '');" target="_blank" class="facebook" title="Facebook"></a>
+</td><td class="bookmarks"><script>
+if (__function_exists('twitter_click_1') == false) 
+{
+function twitter_click_1(longUrl) 
+{ 
+window.open('http://twitter.com/home/?status='+encodeURIComponent(longUrl)+encodeURIComponent(' '),'sharer','toolbar=0,status=0,width=726,height=436'); 
+return false; 
+} 
+}
+</script>
+<a href="http://twitter.com/home/?status=http://www.subaru-faq.ru+" onclick="return twitter_click_1('http://www.subaru-faq.ru');" target="_blank" class="twitter" title="Twitter"></a>
+</td><td class="bookmarks"><script>
+if (__function_exists('delicious_click') == false)
+{
+function delicious_click(url, title) 
+{
+window.open('http://delicious.com/save?v=5&amp;noui&amp;jump=close&amp;url='+encodeURIComponent(url)+'&amp;title='+encodeURIComponent(title),'sharer','toolbar=0,status=0,width=626,height=550'); 
+return false; 
+}}</script>
+<a href="http://delicious.com/save" onclick="return delicious_click('http://www.subaru-faq.ru', '');" target="_blank" class="delicious" title="Delicious"></a></td><td class="bookmarks"><script>
+if (__function_exists('vk_click') == false) 
+{
+function vk_click(url) 
+{ 
+window.open('http://vkontakte.ru/share.php?url='+encodeURIComponent(url),'sharer','toolbar=0,status=0,width=626,height=436'); 
+return false; 
+} 
+}
+</script>
+<a href="http://vkontakte.ru/share.php?url=http://www.subaru-faq.ru" onclick="return vk_click('http://www.subaru-faq.ru');" target="_blank" class="vk" title="ВКонтакте"></a>
+</td><td class="bookmarks"><script>
+if (__function_exists('lj_click') == false) 
+{
+function lj_click(url, title) 
+{ 
+window.open('http://www.livejournal.com/update.bml?event='+encodeURIComponent(url)+'&subject='+encodeURIComponent(title),'sharer','toolbar=0,status=0,resizable=1,scrollbars=1,width=700,height=436'); 
+return false; 
+} 
+}
+</script>
+<a href="http://www.livejournal.com/update.bml?event=http://www.subaru-faq.ru&subject=" onclick="return lj_click('http://www.subaru-faq.ru', '');" target="_blank" class="lj" title="Livejournal"></a>
+</td><td class="bookmarks"><script>
+if (__function_exists('mailru_click') == false) 
+{
+function mailru_click(url) 
+{ 
+window.open('http://connect.mail.ru/share?share_url='+encodeURIComponent(url),'sharer','toolbar=0,status=0,resizable=1,scrollbars=1,width=626,height=436'); 
+return false; 
+} 
+}
+</script>
+<a href="http://connect.mail.ru/share?share_url=http://www.subaru-faq.ru" onclick="return mailru_click('http://www.subaru-faq.ru');" target="_blank" class="mailru" title="Мой мир@Mail.Ru"></a>
+</td></tr>		
+			</table></div>		
+	</div>
+	</div>
+	<a class="share-switch" href="#" onClick="return ShowShareDialog(1);" title="Показать/скрыть панель закладок"></a></td> <td width="301" valign="middle" align="center" style="border-image: none;">  
+<script type="text/javascript"><!--
+google_ad_client = "ca-pub-9150566032954886";
+/* Subaru-FAQ-3 */
+google_ad_slot = "3496388327";
+google_ad_width = 468;
+google_ad_height = 15;
+//-->
+</script>
+ 
+<script type="text/javascript"
+src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
+</script>
+ </td> </tr>
+   </tbody>
+ </table> </div>
+</body>
+</html>
