@@ -45,3 +45,35 @@ def test_image_wrapped_in_link_stays_an_image():
     # рендерить как картинку, а не превращать в голый URL текстом.
     html = '<a href="http://radikal.ru/page.jpg.html"><img src="http://s.radikal.ru/thumb.jpg" /></a>'
     assert html_text.to_markdown(html) == "![](http://s.radikal.ru/thumb.jpg)"
+
+
+def test_nested_quote_plain_text_strips_all_quote_markers():
+    # Ответ на цитату внутри чужой цитаты — частый паттерн на форуме.
+    # to_markdown корректно даёт двухуровневую разметку "> > текст",
+    # но plain_text должна снять ВСЕ уровни "> ", не оставляя ни одного
+    # хвостового ">", при этом не теряя текст ни одной из цитат.
+    html = (
+        "<table class='forum-quote'><thead><tr><th>Цитата</th></tr></thead>"
+        "<tbody><tr><td>Manur пишет: "
+        "<table class='forum-quote'><thead><tr><th>Цитата</th></tr></thead>"
+        "<tbody><tr><td>crazy_digger пишет: <br />Резинку зажевал"
+        "</td></tr></tbody></table>"
+        " ответ на цитату</td></tr></tbody></table>"
+        " основной текст"
+    )
+    pt = html_text.plain_text(html)
+    assert ">" not in pt
+    assert "Manur пишет:" in pt
+    assert "crazy_digger пишет:" in pt
+    assert "Резинку зажевал" in pt
+    assert "ответ на цитату" in pt
+    assert pt.rstrip().endswith("основной текст")
+
+
+def test_link_with_parenthesis_in_url_plain_text():
+    # Реальный случай из архива: URL со скобками (страница вида page(1).html).
+    # Наивный "жадный до первой закрывающей скобки" разбор ссылки в
+    # plain_text обрезает URL по первой ")" внутри самого адреса и оставляет
+    # хвост URL как текст.
+    html = '<a href="http://example.com/page(1).html">ссылка</a> текст'
+    assert html_text.plain_text(html) == "ссылка текст"
