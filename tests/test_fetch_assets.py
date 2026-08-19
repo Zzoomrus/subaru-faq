@@ -86,6 +86,26 @@ def test_download_calls_cdx_exactly_once_per_url(tmp_path, monkeypatch):
     assert len(calls) == 1
 
 
+def test_download_does_not_call_cdx_at_all_when_saved_snapshot_works(tmp_path, monkeypatch):
+    """Главное обещание переделки (задача 3, живая правка): если сохранённая
+    индексацией метка снимка рабочая, скачивание идёт БЕЗ единого обращения
+    к CDX — не «максимум один раз», а ноль раз на подавляющем большинстве
+    адресов. Раньше это проверялось только чтением кода — ревьюер справедливо
+    указал, что это не тест."""
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    conn.execute("INSERT INTO attachments(mid, kind, url, status) VALUES (1,'external_image','http://h/x.jpg','pending')")
+    conn.commit()
+    m = tmp_path / "m.jsonl"
+    assets_state.record(m, "http://h/x.jpg", None, "pending", note="20150101")
+
+    calls = []
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots", lambda url, **kw: calls.append(url))
+    monkeypatch.setattr(fetch_assets.fetcher, "fetch_snapshot", lambda ts, url, **kw: PNG_SIG)
+    stats = fetch_assets.download(conn, m, tmp_path / "assets")
+    assert stats["ok"] == 1
+    assert calls == []  # cdx_snapshots не вызван вовсе
+
+
 def test_download_uses_image_validity_not_antibot_marker(tmp_path, monkeypatch):
     """Антибот-маркер CleanTalk (ctSetCookie/ctMouseData) больше не признак
     пустышки: страница может нести его и при этом быть настоящей картинкой не
@@ -190,3 +210,59 @@ def test_download_marks_failed_when_every_snapshot_fetch_errors(tmp_path, monkey
     stats = fetch_assets.download(conn, m, tmp_path / "assets")
     assert stats["failed"] == 1
     assert stats["empty"] == 0
+
+
+def test_download_does_not_slow_the_pacer_down_on_empty_content(tmp_path, monkeypatch):
+    """Пустышка по содержимому — не сетевая неудача (тело скачалось, значит
+    сеть отработала), пейсер не должен её штрафовать — то же рассуждение,
+    что уже применено к "снимков нет" в index_pending. Иначе череда пустышек
+    подряд без всякой сетевой причины роняет темп скачивания до потолка
+    паузы (найдено ревью лида)."""
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    conn.execute("INSERT INTO attachments(mid, kind, url, status) VALUES (1,'external_image','http://h/x.jpg','pending')")
+    conn.commit()
+    m = tmp_path / "m.jsonl"
+    assets_state.record(m, "http://h/x.jpg", None, "pending", note="20150101")
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots", lambda url, **kw: [("20150101", url)])
+    monkeypatch.setattr(fetch_assets.fetcher, "fetch_snapshot", lambda ts, url, **kw: b"<html></html>")
+
+    notes = []
+
+    class FakePacer:
+        def note(self, ok):
+            notes.append(ok)
+
+        def wait(self):
+            pass
+
+    monkeypatch.setattr(fetch_assets.fetcher, "TokenBucketPacer", FakePacer)
+    stats = fetch_assets.download(conn, m, tmp_path / "assets")
+    assert stats["empty"] == 1
+    assert notes == [True]  # тело скачалось — сеть отработала, штрафа нет
+
+
+def test_download_does_slow_the_pacer_down_on_a_real_network_failure(tmp_path, monkeypatch):
+    """А вот настоящий сетевой сбой (тело не скачалось вовсе) пейсер
+    штрафовать обязан — иначе он никогда не притормозит при реальной
+    перегрузке/бане."""
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    conn.execute("INSERT INTO attachments(mid, kind, url, status) VALUES (1,'external_image','http://h/x.jpg','pending')")
+    conn.commit()
+    m = tmp_path / "m.jsonl"
+    assets_state.record(m, "http://h/x.jpg", None, "pending", note="20150101")
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots", lambda url, **kw: [("20150101", url)])
+    monkeypatch.setattr(fetch_assets.fetcher, "fetch_snapshot", lambda ts, url, **kw: None)
+
+    notes = []
+
+    class FakePacer:
+        def note(self, ok):
+            notes.append(ok)
+
+        def wait(self):
+            pass
+
+    monkeypatch.setattr(fetch_assets.fetcher, "TokenBucketPacer", FakePacer)
+    stats = fetch_assets.download(conn, m, tmp_path / "assets")
+    assert stats["failed"] == 1
+    assert notes == [False]

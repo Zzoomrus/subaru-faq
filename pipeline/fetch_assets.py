@@ -271,7 +271,13 @@ def download(conn, manifest: Path, assets_root: Path, limit: int | None = None) 
             reason = "empty" if saw_content else "failed"
             assets_state.record(manifest, url, None, reason)
             stats[reason] += 1
-            pacer.note(False)
+            # Пейсер штрафует только СЕТЕВУЮ неудачу (failed), не пустышку по
+            # содержимому (empty) — тело скачалось, значит сеть отработала;
+            # пустышка не сеть подвела, ровно то же рассуждение, что уже
+            # применено к "снимков нет" в index_pending (см. её докстринг).
+            # Иначе череда пустышек подряд (а не сетевых сбоев) без причины
+            # роняла бы темп скачивания до потолка паузы.
+            pacer.note(reason != "failed")
         else:
             rel = local_name(url)
             dst = Path(assets_root) / rel

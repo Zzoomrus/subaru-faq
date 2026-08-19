@@ -257,15 +257,19 @@ def test_cdx_find_snapshot_follows_resume_key_across_pages():
     second_call_url = mock_open.call_args_list[1].args[0].full_url
     assert "resumeKey=RESUME1" in second_call_url
 
-def test_cdx_find_snapshot_gives_up_after_max_pages_without_a_real_signal():
+def test_cdx_find_snapshot_gives_up_after_max_pages_without_a_real_signal(caplog):
     # Каждая страница усечена и не содержит совпадения — не должно уйти в
-    # бесконечный цикл, останавливается на max_pages.
+    # бесконечный цикл, останавливается на max_pages. Это "сдались", а не
+    # честное "снимка нет" — на масштабе 6600 адресов эти два случая
+    # неотличимы без явного лога, поэтому проверяем и предупреждение.
     def always_truncated(req, timeout=90):
         return _resume_response([["20180101000000", "http://host.ru/a.jpg2"]], resume_key="R")
     with patch("pipeline.fetcher.urllib.request.urlopen", side_effect=always_truncated) as mock_open:
-        result = fetcher.cdx_find_snapshot("http://host.ru/a.jpg", max_pages=2)
+        with caplog.at_level("WARNING", logger="pipeline.fetcher"):
+            result = fetcher.cdx_find_snapshot("http://host.ru/a.jpg", max_pages=2)
     assert result is None
     assert mock_open.call_count == 2
+    assert any("host.ru/a.jpg" in r.getMessage() for r in caplog.records)
 
 def test_fetch_snapshot_retries_then_succeeds():
     resp = MagicMock()

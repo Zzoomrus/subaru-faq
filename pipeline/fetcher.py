@@ -27,6 +27,7 @@
 признаком служит валидность самого формата — тоже через `content_probe`.
 """
 import json
+import logging
 import random
 import time
 import urllib.error
@@ -38,6 +39,7 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 NETWORK_ERRORS = (urllib.error.HTTPError, urllib.error.URLError, TimeoutError,
                   OSError, HTTPException, ValueError)
+_LOG = logging.getLogger(__name__)
 
 
 def _get(url: str, timeout: int = 90) -> bytes | None:
@@ -157,8 +159,18 @@ def cdx_find_snapshot(url: str, retries: int = 6, max_pages: int = 3) -> tuple[s
             if _canonical_key(original) == target:
                 return (ts, original)
         if resume is None:
+            # Честный конец данных: CDX сам сказал, что дальше строк нет —
+            # это настоящее "снимка нет", а не "мы сдались".
             return None
         query_url = base + "&resumeKey=" + urllib.parse.quote(resume)
+    # Страницы кончились (max_pages), а ответ всё ещё был усечён (иначе
+    # вышли бы через `resume is None` выше) — совпадения не нашли, но и не
+    # доказали его отсутствие: возможно, оно есть на следующей странице,
+    # которую не стали спрашивать. На масштабе тысяч URL молчаливое "не
+    # нашли" здесь неотличимо от честного "снимка нет" (см. ревью лида) —
+    # логируем, чтобы это было видно, а не терялось в общей цифре no_snapshot.
+    _LOG.warning("cdx_find_snapshot: не нашли %s за %d страниц(ы), а ответ "
+                 "всё ещё усечён — возможно, снимок есть дальше", url, max_pages)
     return None
 
 

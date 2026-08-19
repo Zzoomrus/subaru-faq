@@ -127,7 +127,10 @@ def test_assets_index_runs_and_syncs_db_once(tmp_path, monkeypatch):
     conn.execute("INSERT INTO attachments(mid, kind, url, status) VALUES (1,'external_image','http://dead/x.jpg','pending')")
     conn.commit(); conn.close()
 
-    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots", lambda url, **kw: [])
+    # index_pending ищет через cdx_find_snapshot (matchType=prefix), не через
+    # cdx_snapshots (matchType=exact) — мок не по той функции молча бил бы
+    # в живой архив на каждом прогоне набора тестов (найдено ревью лида).
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_find_snapshot", lambda url, **kw: None)
 
     sync_calls = []
     real_sync = assets_state.sync_to_db
