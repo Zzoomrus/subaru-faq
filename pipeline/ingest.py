@@ -29,6 +29,43 @@ from pipeline import parse_listing, parse_thread
 _PAGE_RE = re.compile(r"^(read|message)_(\d+)_(\d+)_(\d+)\.html$")
 
 
+def upsert_thread_from_listing(conn, t) -> None:
+    """Записывает тему из оглавления. Оглавление — авторитетный источник:
+    перезаписывает существующую строку (в т.ч. фолбэк-строку, созданную
+    `ensure_thread_from_page`) целиком, порядок вызовов не важен.
+    """
+    conn.execute(
+        "INSERT INTO threads(tid, fid, title, author, started_at, replies_expected, views, pages_expected) "
+        "VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(tid) DO UPDATE SET "
+        "fid=excluded.fid, title=excluded.title, author=excluded.author, started_at=excluded.started_at, "
+        "replies_expected=excluded.replies_expected, views=excluded.views, "
+        "pages_expected=max(threads.pages_expected, excluded.pages_expected)",
+        (t.tid, t.fid, t.title, t.author, t.started_at, t.replies, t.views, t.pages))
+
+
+def ensure_thread_from_page(conn, *, tid, fid, title) -> None:
+    """Фолбэк для тем, которых нет ни в одном оглавлении: часть архива
+    содержит страницы с постами для тем, отсутствующих во всех собранных
+    `list_*.html` (см. отчёт задачи 5 — 1612 таких тем). Без этой функции
+    их посты остаются "сиротами", ссылаясь на несуществующий `tid`, а
+    зеркало (задача 7, обход `SELECT tid FROM threads`) их вообще не увидит.
+
+    `INSERT OR IGNORE` — если строка уже есть (из оглавления или созданная
+    раньше другой страницей той же темы), не трогаем её: данные оглавления
+    авторитетнее данных со страницы темы, а между несколькими
+    страницами-фолбэками одной темы побеждает первая по порядку обхода.
+
+    `replies_expected` оставляем NULL, а не 0 — NULL значит "неизвестно,
+    сколько постов должно быть, темы нет в оглавлении", 0 соврал бы, что
+    тема пустая. `author`/`started_at`/`views`/`pages_expected` по той же
+    причине тоже NULL — оглавление их не проверить.
+    """
+    conn.execute(
+        "INSERT OR IGNORE INTO threads(tid, fid, title, author, started_at, replies_expected, views, pages_expected) "
+        "VALUES (?,?,?,?,?,?,?,?)",
+        (tid, fid, title, None, None, None, None, None))
+
+
 def upsert_post(conn, *, mid, tid, page_no, author, author_uid, posted_at,
                  number, html, text, edited_by, edited_at) -> None:
     row = conn.execute("SELECT text FROM posts WHERE mid = ?", (mid,)).fetchone()
@@ -59,35 +96,43 @@ def _load_manifest(manifest: Path) -> dict:
 
 
 def ingest_all(pages_dir: Path, manifest: Path, conn) -> dict[str, int]:
-    stats = {"threads": 0, "posts": 0, "pages": 0, "attachments": 0}
+    stats = {"threads": 0, "posts": 0, "pages": 0, "attachments": 0, "skipped_files": 0}
     prov = _load_manifest(manifest)
 
     for path in sorted(Path(pages_dir).glob("list_*.html")):
         for t in parse_listing.parse(_read(path)):
-            conn.execute(
-                "INSERT INTO threads(tid, fid, title, author, started_at, replies_expected, views, pages_expected) "
-                "VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(tid) DO UPDATE SET "
-                "fid=excluded.fid, title=excluded.title, author=excluded.author, started_at=excluded.started_at, "
-                "replies_expected=excluded.replies_expected, views=excluded.views, "
-                "pages_expected=max(threads.pages_expected, excluded.pages_expected)",
-                (t.tid, t.fid, t.title, t.author, t.started_at, t.replies, t.views, t.pages))
+            upsert_thread_from_listing(conn, t)
             stats["threads"] += 1
 
     for path in sorted(Path(pages_dir).glob("*.html")):
         m = _PAGE_RE.match(path.name)
         if not m:
-            # Не совпадает по формату имени: index_*.html, list_*.html (уже
-            # обработаны выше), message_bot_challenge.html (без числовых
-            # сегментов) и файл со сломанным именем
-            # read_23_23771<br_1.html (обёрнут `<br` внутри сегмента TID) —
-            # его содержимое дублирует корректно именованный
-            # read_23_23771_1.html, который обходом каталога тоже найдётся
-            # и разберётся штатно, так что пропуск этого файла не теряет
-            # ни одного поста.
+            # list_*.html (уже обработаны в цикле выше) и index_*.html —
+            # не страницы тем, это не "пропуск", а другая категория файлов,
+            # в счётчик skipped_files не входят.
+            #
+            # read_*/message_* с именем, не совпавшим с _PAGE_RE, — это
+            # настоящие пропуски: считаем в skipped_files. На реальном
+            # корпусе таких ровно два, оба — подтверждённые эмпирически
+            # дубли корректно поименованных файлов (см. отчёт задачи 5,
+            # раздел «пропущенные файлы»): read_23_23771<br_1.html (`<br`
+            # внутри сегмента TID) и message_7_68277_unread_mid.html (текст
+            # вместо MID в последнем сегменте). Пропуск не теряет ни одного
+            # поста — контент дублируется в файлах с корректными именами.
+            if path.name.startswith("read_") or path.name.startswith("message_"):
+                stats["skipped_files"] += 1
             continue
         kind, fid, tid, tail = m.group(1), int(m.group(2)), int(m.group(3)), int(m.group(4))
         page_no = tail if kind == "read" else 1
         page = parse_thread.parse(_read(path))
+        if page.posts:
+            # Фолбэк создаём только когда страница реально дала хотя бы один
+            # пост. Часть страниц (см. отчёт задачи 5) — сбойные снимки без
+            # единого forum-post-text (спам-темы вроде "adidas Tubular
+            # Radial...", MID=0 в имени файла): у них нет никакого реального
+            # контента, и заводить для них строку threads означало бы
+            # протащить спам-заголовок в базу знаний зеркала (задача 7).
+            ensure_thread_from_page(conn, tid=tid, fid=fid, title=page.title)
         rec = prov.get(path.name, {})
         conn.execute(
             "INSERT OR REPLACE INTO pages(key, file, url, snapshot_ts, tid, page_no) VALUES (?,?,?,?,?,?)",
