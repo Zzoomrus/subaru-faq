@@ -1,6 +1,16 @@
 import sqlite3
 from pathlib import Path
 
+# `posts` хранит тело поста в трёх видах, и это намеренно:
+#   html     — исходный фрагмент `div.forum-post-text`, из него в любой
+#              момент можно пере-отрендерить всё остальное без пере-краулинга;
+#   markdown — то, что читает человек в заметке зеркала: цитаты остаются
+#              блокквотами, ссылки — ссылками с адресом (дефект I1 ревью:
+#              раньше эта колонка не существовала вовсе, и в заметку шёл
+#              plain_text, где цитата чужих слов неотличима от слов автора);
+#   text     — плоский текст для полнотекстового поиска (`posts_fts` строится
+#              именно по нему) и для механической проверки дословных цитат
+#              в статьях следующей фазы.
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sections (
     fid INTEGER PRIMARY KEY, title TEXT);
@@ -9,7 +19,8 @@ CREATE TABLE IF NOT EXISTS threads (
     started_at TEXT, replies_expected INTEGER, views INTEGER, pages_expected INTEGER);
 CREATE TABLE IF NOT EXISTS posts (
     mid INTEGER PRIMARY KEY, tid INTEGER, page_no INTEGER, author TEXT, author_uid INTEGER,
-    posted_at TEXT, number TEXT, html TEXT, text TEXT, edited_by TEXT, edited_at TEXT);
+    posted_at TEXT, number TEXT, html TEXT, markdown TEXT, text TEXT,
+    edited_by TEXT, edited_at TEXT);
 CREATE TABLE IF NOT EXISTS attachments (
     id INTEGER PRIMARY KEY AUTOINCREMENT, mid INTEGER, kind TEXT, url TEXT,
     local_path TEXT, status TEXT DEFAULT 'pending');

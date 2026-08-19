@@ -77,3 +77,16 @@ def test_link_with_parenthesis_in_url_plain_text():
     # хвост URL как текст.
     html = '<a href="http://example.com/page(1).html">ссылка</a> текст'
     assert html_text.plain_text(html) == "ссылка текст"
+
+
+def test_plain_text_is_derived_from_markdown_not_from_html_again():
+    # Тело поста разбиралось трижды (to_markdown, plain_text -> ещё раз
+    # to_markdown, images). Теперь plain_text — чистая функция от уже
+    # посчитанного markdown, и parse_thread считает markdown один раз.
+    html = ('<table class="forum-quote"><tr><td>Вася пишет:<br>привет</td></tr></table>'
+            'ответ <a href="http://example.com/x">тут</a> '
+            '<img src="/bitrix/images/smile.gif">')
+    md = html_text.to_markdown(html)
+    assert html_text.plain_text_from_markdown(md) == html_text.plain_text(html)
+    assert "> Вася пишет:" in md
+    assert "> " not in html_text.plain_text_from_markdown(md)

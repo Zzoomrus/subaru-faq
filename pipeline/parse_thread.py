@@ -66,6 +66,9 @@ def parse(html: str) -> ThreadPage:
         ed_user = table.select_one("span.forum-post-lastedit-user")
         ed_date = table.select_one("span.forum-post-lastedit-date")
         inner = body.decode_contents()
+        # HTML тела поста разбирается один раз: text — производная от
+        # markdown, а не второй проход по тому же HTML.
+        markdown = html_text.to_markdown(inner)
         posts.append(Post(
             mid=mid,
             author=author_node.get_text(" ", strip=True) if author_node else "",
@@ -73,8 +76,8 @@ def parse(html: str) -> ThreadPage:
             posted_at=_dt(date_node.get_text(" ", strip=True) if date_node else ""),
             number=num_node.get_text(" ", strip=True) if num_node else "",
             html=inner,
-            markdown=html_text.to_markdown(inner),
-            text=html_text.plain_text(inner),
+            markdown=markdown,
+            text=html_text.plain_text_from_markdown(markdown),
             images=html_text.images(inner),
             edited_by=ed_user.get_text(" ", strip=True) if ed_user else None,
             edited_at=_dt(ed_date.get_text(" ", strip=True)) if ed_date else None,

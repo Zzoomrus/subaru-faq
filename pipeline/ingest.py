@@ -84,17 +84,30 @@ def ensure_thread_from_page(conn, *, tid, fid, title) -> None:
 
 
 def upsert_post(conn, *, mid, tid, page_no, author, author_uid, posted_at,
-                 number, html, text, edited_by, edited_at) -> None:
+                 number, html, markdown, text, edited_by, edited_at) -> None:
+    """Пишет пост, если он новый или его `text` длиннее уже сохранённого.
+
+    ВАЖНО (дефект I7 ревью): условие «только если длиннее» означает, что
+    правка парсера, делающая текст короче или той же длины — а снятие
+    мусора это ровно она, — молча НЕ применится к уже населённой базе.
+    Единственный способ применить правку парсеров — пересоздать базу с нуля
+    (`python -m pipeline.run all --rebuild`, ~95 с). Идемпотентность
+    загрузчика значит «повторный прогон не портит», а не «изменения кода
+    подхватятся».
+    """
     row = conn.execute("SELECT text FROM posts WHERE mid = ?", (mid,)).fetchone()
     if row is not None and len(row[0] or "") >= len(text or ""):
         return
     conn.execute(
-        "INSERT INTO posts(mid, tid, page_no, author, author_uid, posted_at, number, html, text, edited_by, edited_at) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(mid) DO UPDATE SET "
+        "INSERT INTO posts(mid, tid, page_no, author, author_uid, posted_at, number, html, markdown, text, "
+        "edited_by, edited_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(mid) DO UPDATE SET "
         "tid=excluded.tid, page_no=excluded.page_no, author=excluded.author, author_uid=excluded.author_uid, "
-        "posted_at=excluded.posted_at, number=excluded.number, html=excluded.html, text=excluded.text, "
+        "posted_at=excluded.posted_at, number=excluded.number, html=excluded.html, "
+        "markdown=excluded.markdown, text=excluded.text, "
         "edited_by=excluded.edited_by, edited_at=excluded.edited_at",
-        (mid, tid, page_no, author, author_uid, posted_at, number, html, text, edited_by, edited_at))
+        (mid, tid, page_no, author, author_uid, posted_at, number, html, markdown, text,
+         edited_by, edited_at))
 
 
 def ingest_sections(pages_dir: Path, conn) -> int:
@@ -205,7 +218,8 @@ def ingest_all(pages_dir: Path, manifest: Path, conn) -> dict[str, int]:
         for p in page.posts:
             upsert_post(conn, mid=p.mid, tid=tid, page_no=page_no, author=p.author,
                         author_uid=p.author_uid, posted_at=p.posted_at, number=p.number,
-                        html=p.html, text=p.text, edited_by=p.edited_by, edited_at=p.edited_at)
+                        html=p.html, markdown=p.markdown, text=p.text,
+                        edited_by=p.edited_by, edited_at=p.edited_at)
             stats["posts"] += 1
             if already_ingested:
                 # Вложения этой страницы уже осели в attachments в прошлом

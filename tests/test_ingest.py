@@ -99,11 +99,14 @@ def test_content_local_attachment_is_pending_not_ok(tmp_path):
 def test_longer_text_wins_on_conflict(tmp_path):
     conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
     ingest.upsert_post(conn, mid=1, tid=9, page_no=1, author="a", author_uid=None,
-                       posted_at="", number="", html="", text="короткий", edited_by=None, edited_at=None)
+                       posted_at="", number="", html="", markdown="короткий", text="короткий",
+                       edited_by=None, edited_at=None)
     ingest.upsert_post(conn, mid=1, tid=9, page_no=1, author="a", author_uid=None,
-                       posted_at="", number="", html="", text="намного длиннее исходного", edited_by=None, edited_at=None)
+                       posted_at="", number="", html="", markdown="намного длиннее исходного",
+                       text="намного длиннее исходного", edited_by=None, edited_at=None)
     ingest.upsert_post(conn, mid=1, tid=9, page_no=1, author="a", author_uid=None,
-                       posted_at="", number="", html="", text="снова короткий", edited_by=None, edited_at=None)
+                       posted_at="", number="", html="", markdown="снова короткий", text="снова короткий",
+                       edited_by=None, edited_at=None)
     text = conn.execute("SELECT text FROM posts WHERE mid = 1").fetchone()[0]
     assert text == "намного длиннее исходного"
 
@@ -184,3 +187,35 @@ def test_ingest_sections_reads_names(tmp_path):
     assert ingest.ingest_sections(pages, conn) >= 20
     title = conn.execute("SELECT title FROM sections WHERE fid = 19").fetchone()[0]
     assert "Типовые вопросы" in title
+
+
+def test_ingest_stores_markdown_body_alongside_plain_text(tmp_path):
+    # I1: до этой правки parse_thread считал markdown и выбрасывал его —
+    # колонки в схеме не было, а в заметку шёл plain_text, где маркер
+    # цитаты снят и цитата чужих слов неотличима от слов автора поста
+    # (13775 постов с цитатами на корпусе). markdown нужен телу заметки,
+    # text остаётся для полнотекстового поиска и механической проверки
+    # цитат в статьях следующей фазы.
+    pages, manifest = _prepare(tmp_path, ["read_19_10045_1.html"])
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    ingest.ingest_all(pages, manifest, conn)
+    markdown, text = conn.execute(
+        "SELECT markdown, text FROM posts WHERE mid = 302230").fetchone()
+    assert markdown.startswith("> KOLESO пишет:"), "цитата обязана остаться блокквотом"
+    assert text.startswith("KOLESO пишет:"), "text по-прежнему плоский — он для поиска"
+    assert "Передаточное отношение" in markdown
+
+
+def test_longer_text_wins_keeps_markdown_of_the_same_version(tmp_path):
+    # Дедуп постов идёт по длине `text`; markdown обязан приезжать из той же
+    # версии поста, что и победивший text, иначе тело заметки и её индекс
+    # разойдутся.
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    ingest.upsert_post(conn, mid=1, tid=9, page_no=1, author="a", author_uid=None,
+                       posted_at="", number="", html="", markdown="> к", text="к",
+                       edited_by=None, edited_at=None)
+    ingest.upsert_post(conn, mid=1, tid=9, page_no=1, author="a", author_uid=None,
+                       posted_at="", number="", html="", markdown="> длинный текст",
+                       text="длинный текст", edited_by=None, edited_at=None)
+    assert conn.execute("SELECT markdown, text FROM posts WHERE mid = 1").fetchone() == \
+        ("> длинный текст", "длинный текст")
