@@ -1,4 +1,12 @@
+import yaml
+
 from pipeline import db, mirror
+
+
+def _frontmatter(md: str) -> dict:
+    assert md.startswith("---\n")
+    end = md.index("\n---", 4)
+    return yaml.safe_load(md[4:end])
 
 
 def _seed(tmp_path):
@@ -22,9 +30,13 @@ def test_block_anchor_for_every_post(tmp_path):
 
 
 def test_frontmatter_has_alias_and_section(tmp_path):
+    # Значения фронтматтера теперь всегда в кавычках (YAML double-quoted
+    # scalar, экранированный _yaml_dquote) — сравниваем через разбор YAML,
+    # а не буквальной подстрокой, само наличие кавычек не баг.
     md = mirror.render_thread(_seed(tmp_path), 10045)
-    assert 'aliases: ["Параметры коробок"]' in md
-    assert "раздел: Типовые вопросы о Субару" in md
+    fm = _frontmatter(md)
+    assert fm["aliases"] == ["Параметры коробок"]
+    assert fm["раздел"] == "Типовые вопросы о Субару"
 
 
 def test_lost_image_becomes_callout_not_broken_link(tmp_path):
@@ -135,3 +147,50 @@ def test_unknown_replies_expected_rendered_as_unknown(tmp_path):
     conn.commit()
     md = mirror.render_thread(conn, 998)
     assert "ответов: неизвестно" in md
+
+
+def test_frontmatter_survives_backslash_in_title(tmp_path):
+    # Реальный случай в базе: заголовки типа «Фары GC\GF» или «215\60 R16» —
+    # обратный слэш внутри двойных кавычек YAML начинает escape-последовательность,
+    # если его не экранировать отдельно от кавычек.
+    conn = db.connect(tmp_path / "t4.sqlite"); db.init_schema(conn)
+    conn.execute("INSERT INTO sections(fid, title) VALUES (19, 'Типовые вопросы о Субару')")
+    conn.execute("INSERT INTO threads(tid, fid, title, author, started_at, replies_expected, views) "
+                 "VALUES (997, 19, 'Фары GC\\GF', 'DTR', '2007-04-02', 1, 1)")
+    conn.commit()
+    md = mirror.render_thread(conn, 997)
+    fm = _frontmatter(md)
+    assert fm["aliases"] == ["Фары GC\\GF"]
+
+
+def test_frontmatter_survives_yaml_special_chars_in_author(tmp_path):
+    # Реальный случай: ник начинается со спецсимвола YAML (!, [, |) — без
+    # кавычек ломает весь блок фронтматтера (тег, список, блочный скаляр).
+    conn = db.connect(tmp_path / "t5.sqlite"); db.init_schema(conn)
+    conn.execute("INSERT INTO sections(fid, title) VALUES (19, 'Типовые вопросы о Субару')")
+    for tid, author in ((996, "!gryk"), (995, "[68]Father"), (994, "|Bot|")):
+        conn.execute(
+            "INSERT INTO threads(tid, fid, title, author, started_at, replies_expected, views) "
+            "VALUES (?, 19, 'Заголовок: с двоеточием и \"кавычкой\"', ?, '2007-04-02', 1, 1)",
+            (tid, author))
+    conn.commit()
+    for tid, author in ((996, "!gryk"), (995, "[68]Father"), (994, "|Bot|")):
+        md = mirror.render_thread(conn, tid)
+        fm = _frontmatter(md)
+        assert fm["автор"] == author
+        assert fm["aliases"] == ['Заголовок: с двоеточием и "кавычкой"']
+
+
+def test_all_generated_frontmatter_parses_as_yaml(tmp_path):
+    # Стресс-тест: смесь всех проблемных случаев сразу в одной теме.
+    conn = db.connect(tmp_path / "t6.sqlite"); db.init_schema(conn)
+    conn.execute("INSERT INTO sections(fid, title) VALUES (19, 'Раздел: с \"кавычкой\"')")
+    conn.execute("INSERT INTO threads(tid, fid, title, author, started_at, replies_expected, views) "
+                 "VALUES (993, 19, '215\\60 R16 ''RUS'' SUBaruZERO', '''RUS'' SUBaruZERO', "
+                 "'2007-04-02', NULL, 1)")
+    conn.commit()
+    md = mirror.render_thread(conn, 993)
+    fm = _frontmatter(md)
+    assert fm["автор"] == "'RUS' SUBaruZERO"
+    assert fm["раздел"] == 'Раздел: с "кавычкой"'
+    assert fm["aliases"] == ["215\\60 R16 'RUS' SUBaruZERO"]

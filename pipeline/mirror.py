@@ -53,8 +53,17 @@ def _ru_dt(iso: str) -> str:
     return "%s.%s.%s%s" % (day, m, y, (" " + t) if t else "")
 
 
-def _yaml_str(s: str) -> str:
-    return (s or "").replace('"', "'")
+def _yaml_dquote(s: str) -> str:
+    """Заворачивает строку в YAML double-quoted scalar с полным
+    экранированием — можно вставлять как значение фронтматтера, каким бы
+    ни было содержимое (кавычки, обратный слэш, двоеточие, ведущие `!`/`[`/`|`,
+    которые вне кавычек YAML трактует как тег/список/блочный скаляр).
+
+    Порядок экранирования важен: сначала `\\`, потом `"` — иначе `"` внутри
+    исходной строки задвоится через свежедобавленный `\\`.
+    """
+    s = (s or "").replace("\\", "\\\\").replace('"', '\\"')
+    return '"%s"' % s
 
 
 def render_thread(conn, tid: int) -> str:
@@ -67,16 +76,17 @@ def render_thread(conn, tid: int) -> str:
     tid, fid, title, author, started, replies, views, section = row
 
     replies_str = "неизвестно" if replies is None else str(replies)
+    display_title = title or "Тема %d" % tid
     out = ["---",
            "tid: %d" % tid,
            "fid: %d" % fid,
-           "раздел: %s" % _yaml_str(section),
-           'aliases: ["%s"]' % _yaml_str(title or "Тема %d" % tid),
-           "автор: %s" % _yaml_str(author or ""),
+           "раздел: %s" % _yaml_dquote(section),
+           "aliases: [%s]" % _yaml_dquote(display_title),
+           "автор: %s" % _yaml_dquote(author or ""),
            "начата: %s" % (started or ""),
            "ответов: %s" % replies_str,
            "просмотров: %s" % (views if views is not None else ""),
-           "---", "", "# %s" % (title or "Тема %d" % tid), ""]
+           "---", "", "# %s" % display_title, ""]
 
     posts = conn.execute(
         "SELECT mid, author, posted_at, number, text FROM posts WHERE tid = ? ORDER BY page_no, mid",
