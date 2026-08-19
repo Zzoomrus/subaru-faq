@@ -1,5 +1,5 @@
-"""Проверка целостности вики: битые межзаметочные ссылки, битые якоря и
-задвоенные якоря внутри одной заметки.
+"""Проверка целостности вики: битые межзаметочные ссылки, битые вставки
+файлов, битые якоря и задвоенные якоря внутри одной заметки.
 
 Проверяется всё дерево вики, а не один плоский каталог: спека кладёт
 источники в `Источники/`, а статьи следующей фазы — в `Статьи/Тормоза/`,
@@ -34,14 +34,39 @@
 
 Заметки читаются как обычный текст и разбираются регулярками — без
 парсинга Markdown/Obsidian-синтаксиса целиком.
+
+Вставка файла `![[путь]]` (генератор зеркала вставляет так картинки, задача
+4 фазы Ф2) отличается от ссылки на заметку `[[путь]]` ровно восклицательным
+знаком перед скобками — но этого признака мало, чтобы понять, ЧТО
+проверять: цель ссылки ищется среди ЗАМЕТОК (`notes`/`by_name`), а цель
+вставки — среди ФАЙЛОВ вики (`files`/`by_file_name`), это два разных
+пространства имён, и `assets/host/abc.jpg` никогда не найдётся среди
+заметок, даже если файл на месте. Поэтому:
+
+- `LINK` получил негативный lookbehind `(?<!!)` — `![[...]]` для него
+  больше не совпадение вовсе, вставки полностью выпадают из проверки ссылок
+  на заметки (иначе ЛЮБАЯ вставка после задачи 4 репортилась бы как битая
+  ссылка на несуществующую «заметку по имени файла» — сотни/тысячи ложных
+  находок, как только фаза добора положит первый файл).
+- Отдельный `EMBED` ищет `![[...]]` и резолвится по индексу файлов дерева
+  (`directory.rglob("*")`, а не только `*.md`) — тем же приёмом «точный
+  путь, потом по имени файла», что и для заметок (см. `_resolve`), только
+  без проверки якоря: у вставки картинки якоря не бывает, а вставка секции
+  чужой заметки (`![[Заметка#Заголовок]]`) генератором не производится —
+  если она когда-нибудь понадобится, довод для отдельного якорного разбора
+  появится вместе с ней, а не раньше.
 """
 import re
 from collections import Counter
 from pathlib import Path
 
 # `[[цель#якорь|подпись]]`: цель и подпись необязательны (`[[#Заголовок]]` —
-# ссылка внутри той же заметки).
-LINK = re.compile(r"\[\[([^\[\]|#]*)(#[^\[\]|]+)?(?:\|[^\[\]]*)?\]\]")
+# ссылка внутри той же заметки). `(?<!!)` исключает вставки `![[...]]` —
+# у них своё пространство целей (файлы, не заметки), см. docstring модуля.
+LINK = re.compile(r"(?<!!)\[\[([^\[\]|#]*)(#[^\[\]|]+)?(?:\|[^\[\]]*)?\]\]")
+# `![[путь]]` / `![[путь|подпись]]` — вставка файла. Цель — группа 1;
+# необязательный якорь/подпись после неё не проверяются (см. docstring).
+EMBED = re.compile(r"!\[\[([^\[\]|#]*)(?:#[^\[\]|]+)?(?:\|[^\[\]]*)?\]\]")
 # Блочный идентификатор в конце строки. Obsidian допускает в нём латиницу,
 # цифры и дефис.
 BLOCK_ANCHOR = re.compile(r"\^([A-Za-z0-9-]+)\s*$", re.M)
@@ -73,6 +98,18 @@ def check(directory: Path) -> dict[str, list[str]]:
     for key in notes:
         by_name.setdefault(key.rsplit("/", 1)[-1], []).append(key)
 
+    # Индекс ФАЙЛОВ (не только заметок) — цель вставки `![[путь]]` резолвится
+    # среди них, а не среди заметок (см. docstring модуля). Ключ — путь с
+    # расширением, в отличие от `notes` (там расширение снято).
+    files: set[str] = set()
+    for path in sorted(directory.rglob("*")):
+        if path.is_file():
+            files.add(path.relative_to(directory).as_posix())
+
+    by_file_name: dict[str, list[str]] = {}
+    for key in files:
+        by_file_name.setdefault(key.rsplit("/", 1)[-1], []).append(key)
+
     headings = {key: HEADING.findall(text) for key, text in notes.items()}
     blocks = {key: BLOCK_ANCHOR.findall(text) for key, text in notes.items()}
 
@@ -96,9 +133,20 @@ def check(directory: Path) -> dict[str, list[str]]:
         hits = by_name.get(target.rsplit("/", 1)[-1])
         return hits or None
 
-    broken_links, broken_anchors = [], []
+    def _file_exists(target: str) -> bool:
+        target = target.strip()
+        if not target:
+            return False
+        if target in files:
+            return True
+        return bool(by_file_name.get(target.rsplit("/", 1)[-1]))
+
+    broken_links, broken_anchors, broken_embeds = [], [], []
     for key, text in notes.items():
         body = _strip_frontmatter(text)
+        for target in EMBED.findall(body):
+            if not _file_exists(target):
+                broken_embeds.append("%s -> ![[%s]]" % (key, target.strip()))
         for target, anchor in LINK.findall(body):
             resolved = _resolve(target, key)
             if resolved is None:
@@ -120,4 +168,5 @@ def check(directory: Path) -> dict[str, list[str]]:
 
     return {"broken_links": sorted(broken_links),
             "broken_anchors": sorted(broken_anchors),
-            "duplicate_anchors": sorted(dupes)}
+            "duplicate_anchors": sorted(dupes),
+            "broken_embeds": sorted(broken_embeds)}

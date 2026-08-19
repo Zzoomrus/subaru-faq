@@ -8,6 +8,13 @@ def _note(root, rel, text):
     return p
 
 
+def _file(root, rel, content=b"\xff\xd8\xff"):
+    p = root / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_bytes(content)
+    return p
+
+
 def test_detects_broken_link_and_broken_heading_anchor(tmp_path):
     _note(tmp_path, "Тема 1.md",
           "##### Пост 100\n\nтекст\n\nсм. [[Тема 2#Пост 999]] и [[Тема 404#Пост 1]]\n")
@@ -25,7 +32,7 @@ def test_heading_anchor_link_is_actually_checked(tmp_path):
     _note(tmp_path, "Статья.md", "[[Тема 1#Пост 100]]\n")
     _note(tmp_path, "Тема 1.md", "##### Пост 100\n\nтекст\n")
     assert check_mirror.check(tmp_path) == {
-        "broken_links": [], "broken_anchors": [], "duplicate_anchors": []}
+        "broken_links": [], "broken_anchors": [], "duplicate_anchors": [], "broken_embeds": []}
 
 
 def test_block_anchor_links_still_supported(tmp_path):
@@ -93,4 +100,34 @@ def test_clean_mirror_has_no_findings(tmp_path):
     _note(tmp_path, "Источники/Тема 1.md", "##### Пост 100\n\nа\n")
     _note(tmp_path, "Источники/Тема 2.md", "##### Пост 200\n\nб\n\n[[Тема 1#Пост 100]]\n")
     assert check_mirror.check(tmp_path) == {
-        "broken_links": [], "broken_anchors": [], "duplicate_anchors": []}
+        "broken_links": [], "broken_anchors": [], "duplicate_anchors": [], "broken_embeds": []}
+
+
+def test_embed_to_existing_file_is_not_flagged_but_broken_link_is(tmp_path):
+    # Находка задачи 4: генератор зеркала вставляет картинки как
+    # `![[путь]]` — прежняя LINK-регулярка не отличала `![[...]]` от
+    # `[[...]]` и резолвила вставку как ссылку на заметку, которой нет.
+    # Ссылка на несуществующую заметку рядом ДОЛЖНА остаться в
+    # broken_links — регрессия здесь была бы «стали слепы к вставкам вообще».
+    _note(tmp_path, "Тема 1.md",
+          "##### Пост 100\n\nсмотри ![[assets/host/abc.jpg]] и заодно [[Тема 404]]\n")
+    _file(tmp_path, "assets/host/abc.jpg")
+    res = check_mirror.check(tmp_path)
+    assert res["broken_links"] == ["Тема 1 -> [[Тема 404]]"]
+    assert res["broken_embeds"] == []
+
+
+def test_embed_to_missing_file_is_flagged_as_broken_embed_not_broken_link(tmp_path):
+    _note(tmp_path, "Тема 1.md", "##### Пост 100\n\n![[assets/host/missing.jpg]]\n")
+    res = check_mirror.check(tmp_path)
+    assert res["broken_links"] == []
+    assert any("assets/host/missing.jpg" in e for e in res["broken_embeds"])
+
+
+def test_embed_resolves_by_filename_when_path_does_not_match_exactly(tmp_path):
+    # Как и для ссылок на заметки, Obsidian резолвит вставку по имени
+    # файла, если точный путь не совпал (заведомое приближение, см.
+    # docstring модуля про by_name).
+    _note(tmp_path, "Тема 1.md", "##### Пост 100\n\n![[abc.jpg]]\n")
+    _file(tmp_path, "assets/host/abc.jpg")
+    assert check_mirror.check(tmp_path)["broken_embeds"] == []
