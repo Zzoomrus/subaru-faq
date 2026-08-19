@@ -177,6 +177,44 @@ def test_same_url_twice_in_one_post_renders_at_both_positions():
     assert md.index("раз") < md.index("и два")
 
 
+def test_adjacent_lost_images_without_gap_dont_glue_into_one_line():
+    # Найдено ревью: реальный паттерн форума — вставленная галерея, где
+    # несколько `![](url)` идут подряд без пробела/переноса между ними.
+    # Без разделителя между соседними подстановками пометки сливались бы в
+    # одну нечитаемую строку `(...)(...)(...)`. На корпусе — 85 постов,
+    # 244 такие пары (независимый пересчёт совпадает по порядку величины с
+    # цифрой ревьюера 76/233 — расхождение из-за разных фильтров выборки).
+    md = mirror.render_post_body(
+        "Галерея:![](http://h/1.jpg)![](http://h/2.jpg)готово",
+        {"http://h/1.jpg": {"local_path": None, "status": "no_snapshot"},
+         "http://h/2.jpg": {"local_path": None, "status": "no_snapshot"}})
+    assert ")(" not in md
+    assert "изображение не сохранилось: http://h/1.jpg" in md
+    assert "изображение не сохранилось: http://h/2.jpg" in md
+    assert md.index("http://h/1.jpg") < md.index("http://h/2.jpg")
+
+
+def test_adjacent_embeds_without_gap_stay_on_separate_lines():
+    # Та же склейка ждала бы и настоящие вставки файлов `![[путь]]` —
+    # проверяем позитивный путь тоже, не только пометки об утрате.
+    md = mirror.render_post_body(
+        "Галерея:![](http://h/1.jpg)![](http://h/2.jpg)готово",
+        {"http://h/1.jpg": {"local_path": "h/1.jpg", "status": "ok"},
+         "http://h/2.jpg": {"local_path": "h/2.jpg", "status": "ok"}})
+    assert "![[h/1.jpg]]![[h/2.jpg]]" not in md
+    assert "![[h/1.jpg]]" in md and "![[h/2.jpg]]" in md
+    assert md.index("![[h/1.jpg]]") < md.index("![[h/2.jpg]]")
+
+
+def test_single_lost_image_gets_no_extra_blank_lines():
+    # Разделитель нужен ТОЛЬКО между соседними подстановками — одиночная
+    # картинка не должна обрасти лишними пустыми строками.
+    md = mirror.render_post_body(
+        "До ![](http://h/x.jpg) после",
+        {"http://h/x.jpg": {"local_path": None, "status": "no_snapshot"}})
+    assert "\n\n" not in md
+
+
 def test_orphan_attachment_without_inline_tag_still_not_lost():
     # `attachments` знает про URL, которого в тексте поста нет вовсе (13 из
     # 8960 на корпусе — картинка обёрнута в ссылку с непустым текстом,

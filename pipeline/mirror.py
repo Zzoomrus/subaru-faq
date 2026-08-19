@@ -197,24 +197,50 @@ def render_post_body(markdown: str, attachments_by_url: dict) -> str:
     `_escape_headings`) идёт ДО подстановки картинок: наши собственные
     вставки `![[...]]` и пометки строятся уже после и через экранирование
     не проходят — иначе `![[local_path]]` превратился бы в `!\\[\\[...`.
+
+    Соседние картинки БЕЗ пробела/переноса между собой в исходнике (реальный
+    паттерн форума — вставленная галерея) получают между своими вставками
+    пустую строку: без неё две подстановки подряд склеивались бы в одну
+    нечитаемую строку — `(изображение не сохранилось: …)(изображение не
+    сохранилось: …)` для пометок, то же самое грозило и вставкам файлов
+    `![[a]]![[b]]`. Разделитель вставляется, только когда в оригинале между
+    двумя картинками не было НИ ОДНОГО символа (`re.finditer`, а не
+    `re.sub`, — нужно видеть исходный зазор между совпадениями, а не только
+    каждое совпадение по отдельности); одиночная картинка лишних пустых
+    строк не получает.
     """
     text = _escape_wikilink_open(markdown or "")
     text = _escape_headings(text)
 
     seen = set()
-
-    def repl(m: re.Match) -> str:
+    pieces = []
+    last_end = 0
+    prev_was_block = False
+    for m in _IMG_MD.finditer(text):
+        gap = text[last_end:m.start()]
+        pieces.append(gap)
         url = m.group(1)
         info = attachments_by_url.get(url)
         if info is None:
-            if attachments.classify(url) == attachments.KIND_CHROME:
-                return ""
-            return _missing_note(url)
-        seen.add(url)
-        local = info.get("local_path")
-        return "![[%s]]" % local if local else _missing_note(url)
+            block = None if attachments.classify(url) == attachments.KIND_CHROME \
+                else _missing_note(url)
+        else:
+            seen.add(url)
+            local = info.get("local_path")
+            block = "![[%s]]" % local if local else _missing_note(url)
+        if block is not None:
+            if prev_was_block and gap == "":
+                pieces.append("\n\n")
+            pieces.append(block)
+            prev_was_block = True
+        # Хром вырезается в пустоту (`block is None`, ничего не добавлено) —
+        # `prev_was_block` намеренно не трогаем: следующая настоящая
+        # картинка сравнивается с последней РЕАЛЬНО выведенной вставкой, а
+        # не с только что вырезанным хромом.
+        last_end = m.end()
+    pieces.append(text[last_end:])
+    text = "".join(pieces)
 
-    text = _IMG_MD.sub(repl, text)
     # После подстановки остаются висячие пробелы и пустые строки (хром
     # вырезается в пустоту, а не заменяется пробелом).
     text = re.sub(r"[ \t]+\n", "\n", text)
