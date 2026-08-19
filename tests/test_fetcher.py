@@ -9,12 +9,34 @@ FIX = Path(__file__).parent / "fixtures"
 
 # --- Дословно из брифа задачи 1 (task-1-brief.md, Шаг 1) — не менять без ---
 # --- согласования: ревьюеры прошлой фазы дважды ловили на разночтениях. ---
+# --- ИСКЛЮЧЕНИЕ: test_looks_empty_detects_antibot переименован и переписан ---
+# --- по прямому решению лида (task-1-report.md, раздел «Правка: признак   ---
+# --- содержимого передаёт вызывающий») — гипотеза брифа «маркер           ---
+# --- ctSetCookie/ctMouseData = антибот-заглушка» опровергнута на корпусе: ---
+# --- это виджет CleanTalk, вшитый в ~30% обычных страниц сайта.          ---
 
 def test_looks_empty_detects_db_error():
     assert fetcher.looks_empty("<b>DB query error.</b> Please try later.".encode("cp1251")) == "db_error"
 
-def test_looks_empty_detects_antibot():
-    assert fetcher.looks_empty(b"<script>ctSetCookie(); ctMouseData()</script>") == "antibot"
+def test_looks_empty_antibot_marker_alone_is_no_longer_a_signal():
+    # Было: == "antibot". Маркер ctSetCookie/ctMouseData — JS антиспам-виджета
+    # CleanTalk, встречается на ~30% обычных страниц сайта (1758 из 5938 в
+    # корпусе Ф0/Ф1) — самостоятельным признаком пустоты быть не может.
+    # Короткая строка всё равно ловится общим порогом размера (too_small),
+    # но НЕ из-за маркера антибота — это следующий тест ниже доказывает,
+    # добавляя маркеру настоящий контент.
+    assert fetcher.looks_empty(b"<script>ctSetCookie(); ctMouseData()</script>") == "too_small"
+
+def test_looks_empty_page_with_antibot_marker_and_real_content_is_not_empty():
+    # Главный кейс задания: CleanTalk-виджет соседствует с настоящим
+    # содержимым форума — это НЕ пустышка, ни без probe, ни с ним.
+    page = ("<html><head><script>ctSetCookie(); ctMouseData();</script></head>"
+            "<body><div class='forum-post-text'>" +
+            "Течь сальника коленвала лечится заменой. " * 40 +
+            "</div></body></html>").encode("cp1251")
+    probe = lambda d: b"forum-post-text" in d
+    assert fetcher.looks_empty(page) is None
+    assert fetcher.looks_empty(page, content_probe=probe) is None
 
 def test_looks_empty_detects_too_small():
     assert fetcher.looks_empty(b"<html></html>") == "too_small"
@@ -38,10 +60,28 @@ def test_looks_empty_real_db_error_fixture():
     data = (FIX / "broken_db_error.html").read_bytes()
     assert fetcher.looks_empty(data) == "db_error"
 
-def test_looks_empty_real_antibot_fixture():
-    # Настоящая антибот-заглушка из архива (одна из 10 известных, задача 4 Ф0/Ф1).
+def test_looks_empty_real_antibot_fixture_without_probe_is_not_flagged():
+    # Настоящая антибот-заглушка из архива (одна из 10 известных, задача 4
+    # Ф0/Ф1), но БЕЗ content_probe. Заглушки весят 23-30 КБ — выше порога
+    # too_small, а маркер antibot больше не самостоятельный признак. Это и
+    # есть цена отказа от 30% ложных срабатываний: без probe от вызывающего
+    # кода fetcher сам эту заглушку не отличит от обычной страницы.
     data = (FIX / "message_bot_challenge.html").read_bytes()
-    assert fetcher.looks_empty(data) == "antibot"
+    assert fetcher.looks_empty(data) is None
+
+def test_looks_empty_real_antibot_fixture_with_forum_probe_is_no_content():
+    # С forum-специфичным probe (как реально будет использовать код,
+    # скачивающий форум) та же заглушка распознаётся верно.
+    data = (FIX / "message_bot_challenge.html").read_bytes()
+    probe = lambda d: b"forum-post-text" in d
+    assert fetcher.looks_empty(data, content_probe=probe) == "no_content"
+
+def test_looks_empty_content_probe_no_content_returns_no_content_even_when_large():
+    page = ("<html><body>" + "x" * 2000 + "</body></html>").encode("cp1251")
+    assert fetcher.looks_empty(page, content_probe=lambda d: False) == "no_content"
+
+def test_looks_empty_content_probe_true_still_enforces_size_threshold():
+    assert fetcher.looks_empty(b"<html></html>", content_probe=lambda d: True) == "too_small"
 
 def test_looks_empty_bare_db_error_text_is_not_a_false_positive():
     # На архиве нашлись 2 реальных поста форума, где пользователи ЦИТИРУЮТ
@@ -60,6 +100,25 @@ def test_pacer_reaches_max_delay_after_sustained_failures():
     for _ in range(30):
         p.note(False)
     assert p.delay() >= 15 * 0.7
+
+# --- looks_empty_binary: вариант для двоичных ответов (картинки и т.п.) ---
+# --- Порог "мало байт" здесь бессмыслен — валидный маленький PNG/JPEG   ---
+# --- весит меньше 1024 байт. Признаком служит валидность самого формата, ---
+# --- её проверяет content_probe вызывающего кода (задача 2 — картинки). ---
+
+def test_looks_empty_binary_none_data_is_too_small():
+    assert fetcher.looks_empty_binary(None) == "too_small"
+
+def test_looks_empty_binary_small_valid_data_without_probe_is_not_empty():
+    # Байтовый порог не применяется к двоичным данным: 8 байт — валидный
+    # PNG-заголовок, и без probe это не пустышка.
+    assert fetcher.looks_empty_binary(b"\x89PNG\r\n\x1a\n") is None
+
+def test_looks_empty_binary_probe_false_is_no_content():
+    assert fetcher.looks_empty_binary(b"garbage-not-an-image", content_probe=lambda d: False) == "no_content"
+
+def test_looks_empty_binary_probe_true_passes():
+    assert fetcher.looks_empty_binary(b"\x89PNG\r\n\x1a\n", content_probe=lambda d: True) is None
 
 def _cdx_response(rows):
     body = json.dumps([["timestamp", "original"]] + rows).encode("utf-8")
