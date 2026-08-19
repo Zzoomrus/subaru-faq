@@ -67,6 +67,17 @@ def test_listing_data_wins_over_page_fallback_regardless_of_order(tmp_path):
         (19, "Настоящее название", "Настоящий автор", "2007-04-02", 50, 90730)
 
 
+def test_classify_attachment_relative_path_without_leading_slash_is_local():
+    # Смайлы форума (`images/smiley_icons/icon_smile.gif`) — относительный
+    # путь без ведущего слэша, но это точно тот же хост, что и `/bitrix/...`.
+    assert ingest._classify_attachment("images/smiley_icons/icon_smile.gif") == "local"
+    assert ingest._classify_attachment("/bitrix/images/smiley_icons/icon_smile.gif") == "local"
+    # Настоящий внешний хост остаётся external_image.
+    assert ingest._classify_attachment("http://s017.radikal.ru/i430/x.jpg") == "external_image"
+    # Протокол-относительный адрес — это тоже другой хост, не локальный путь.
+    assert ingest._classify_attachment("//i57.fastpic.ru/big/x.jpg") == "external_image"
+
+
 def test_longer_text_wins_on_conflict(tmp_path):
     conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
     ingest.upsert_post(conn, mid=1, tid=9, page_no=1, author="a", author_uid=None,

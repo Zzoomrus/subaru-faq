@@ -23,6 +23,7 @@
 import json
 import re
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pipeline import parse_listing, parse_thread
 
@@ -78,6 +79,27 @@ def upsert_post(conn, *, mid, tid, page_no, author, author_uid, posted_at,
         "posted_at=excluded.posted_at, number=excluded.number, html=excluded.html, text=excluded.text, "
         "edited_by=excluded.edited_by, edited_at=excluded.edited_at",
         (mid, tid, page_no, author, author_uid, posted_at, number, html, text, edited_by, edited_at))
+
+
+def _classify_attachment(url: str) -> str:
+    """`local`, если адрес не указывает на чужой хост, иначе `external_image`.
+
+    Прежняя эвристика (`"subaru-faq" in url or url.startswith("/")`) не
+    распознавала относительный путь без ведущего слэша
+    (`images/smiley_icons/icon_smile.gif`) — тот же смайл форума, что при
+    пути `/bitrix/images/...` считался бы `local`. На корпусе это 2110
+    вложений, ушедших в `external_image`. Смысл правила: локальный — это
+    любой адрес, у которого нет собственного хоста (`urlparse(...).netloc`
+    пуст — относительный путь, с ведущим слэшем или без) плюс адреса самого
+    форума; внешний — `http(s)://` или протокол-относительный (`//host/...`)
+    адрес любого другого хоста. `urlparse("//host/x").netloc` возвращает
+    хост и без явной схемы, так что оба края (`http://`/`https://` и
+    `//host/...`) проверяются одинаково через `netloc`.
+    """
+    netloc = urlparse(url).netloc
+    if not netloc or "subaru-faq" in netloc:
+        return "local"
+    return "external_image"
 
 
 def _read(path: Path) -> str:
@@ -144,7 +166,7 @@ def ingest_all(pages_dir: Path, manifest: Path, conn) -> dict[str, int]:
                         html=p.html, text=p.text, edited_by=p.edited_by, edited_at=p.edited_at)
             stats["posts"] += 1
             for url in p.images:
-                kind_a = "local" if "subaru-faq" in url or url.startswith("/") else "external_image"
+                kind_a = _classify_attachment(url)
                 conn.execute(
                     "INSERT INTO attachments(mid, kind, url, local_path, status) VALUES (?,?,?,?,?)",
                     (p.mid, kind_a, url, None, "ok" if kind_a == "local" else "pending"))
