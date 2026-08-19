@@ -1,0 +1,1113 @@
+<html>
+<head>
+<script type="text/javascript">
+			function ctSetCookie(c_name, value){
+				document.cookie = c_name + "=" + escape(value) + "; path=/";
+			}
+			
+			var d = new Date(), 
+				ctTimeMs = new Date().getTime(),
+				ctMouseEventTimerFlag = true, //Reading interval flag
+				ctMouseData = "[",
+				ctMouseDataCounter = 0;
+				
+			setTimeout(function(){
+				ctSetCookie("ct_checkjs", "2206ff00c12b50d0fba0398d96d65caa");
+				ctSetCookie("ct_timezone", d.getTimezoneOffset()/60);
+			},1000);
+
+			//Stop observing function
+			function ctMouseStopData(){
+				window.removeEventListener("mousemove", func);
+				clearInterval(ctMouseReadInterval);
+				clearInterval(ctMouseWriteDataInterval);				
+			}
+				
+			//Reading interval
+			var ctMouseReadInterval = setInterval(function(){
+					ctMouseEventTimerFlag = true;
+				}, 300);
+				
+			//Writting interval
+			var ctMouseWriteDataInterval = setInterval(function(){ 
+					var ctMouseDataToSend = ctMouseData.slice(0,-1).concat("]");
+					ctSetCookie("ct_pointer_data", ctMouseDataToSend);
+				}, 3000);
+
+			//Logging mouse position each 300 ms
+			var func = function output(event){
+				if(ctMouseEventTimerFlag == true){
+					var mouseDate = new Date();
+					ctMouseData += "[" + event.pageY + "," + event.pageX + "," + (mouseDate.getTime() - ctTimeMs) + "],";
+					ctMouseDataCounter++;
+					ctMouseEventTimerFlag = false;
+					if(ctMouseDataCounter >= 100)
+						ctMouseStopData();
+				}
+			}
+
+			if(typeof window.addEventListener == "function")
+				window.addEventListener("mousemove", func);
+			else
+				window.attachEvent("onmousemove", func);
+		</script>
+<title>Субару Форум. Subaru-FAQ</title>
+
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({
+          google_ad_client: "ca-pub-9150566032954886",
+          enable_page_level_ads: true
+     });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1251" />
+<meta name="robots" content="index, follow" />
+<meta name="keywords" content="Subaru, Субару" />
+<meta name="description" content="Subaru" />
+<link href="/bitrix/cache/css/s1/BlogAndForum/kernel_main/kernel_main.css?161276422948075" type="text/css"  rel="stylesheet" />
+<link href="/bitrix/cache/css/s1/BlogAndForum/page_c5be6df090570f7ec4498627a1db1cb9/page_c5be6df090570f7ec4498627a1db1cb9.css?161276421233357" type="text/css"  rel="stylesheet" />
+<link href="/bitrix/cache/css/s1/BlogAndForum/template_391bb6656fca6dae3dde9b86b44aaa03/template_391bb6656fca6dae3dde9b86b44aaa03.css?161276460512034" type="text/css"  data-template-style="true"  rel="stylesheet" />
+<script type="text/javascript">if(!window.BX)window.BX={message:function(mess){if(typeof mess=='object') for(var i in mess) BX.message[i]=mess[i]; return true;}};</script>
+<script type="text/javascript">(window.BX||top.BX).message({'JS_CORE_LOADING':'Загрузка...','JS_CORE_NO_DATA':'- Нет данных -','JS_CORE_WINDOW_CLOSE':'Закрыть','JS_CORE_WINDOW_EXPAND':'Развернуть','JS_CORE_WINDOW_NARROW':'Свернуть в окно','JS_CORE_WINDOW_SAVE':'Сохранить','JS_CORE_WINDOW_CANCEL':'Отменить','JS_CORE_WINDOW_CONTINUE':'Продолжить','JS_CORE_H':'ч','JS_CORE_M':'м','JS_CORE_S':'с','JSADM_AI_HIDE_EXTRA':'Скрыть лишние','JSADM_AI_ALL_NOTIF':'Показать все','JSADM_AUTH_REQ':'Требуется авторизация!','JS_CORE_WINDOW_AUTH':'Войти','JS_CORE_IMAGE_FULL':'Полный размер'});</script>
+<script type="text/javascript">(window.BX||top.BX).message({'LANGUAGE_ID':'ru','FORMAT_DATE':'DD.MM.YYYY','FORMAT_DATETIME':'DD.MM.YYYY HH:MI:SS','COOKIE_PREFIX':'Subaru_FAQ','SERVER_TZ_OFFSET':'10800','SITE_ID':'s1','SITE_DIR':'/','USER_ID':'','SERVER_TIME':'1657176093','USER_TZ_OFFSET':'0','USER_TZ_AUTO':'Y','bitrix_sessid':'9c016e98bb884437b1440f6ddebb560b'});</script>
+
+
+<script type="text/javascript" src="/bitrix/cache/js/s1/BlogAndForum/kernel_main/kernel_main.js?1612764229267300"></script>
+<script type="text/javascript" src="/bitrix/js/main/cphttprequest.min.js?15941860463623"></script>
+<script type="text/javascript">BX.setJSList(['/bitrix/js/main/core/core.js?159418604670214','/bitrix/js/main/core/core_popup.js?159418604631170','/bitrix/js/main/core/core_ajax.js?159418604620978','/bitrix/js/main/json/json2.min.js?15941860463467','/bitrix/js/main/core/core_ls.js?15941860467365','/bitrix/js/main/session.js?15941860462511','/bitrix/js/main/core/core_window.js?159418604674917','/bitrix/js/main/core/core_date.js?159418604634276','/bitrix/js/main/utils.js?159418604619858','/bitrix/templates/BlogAndForum/components/bitrix/forum/template2/script.js?15941860601065','/bitrix/templates/BlogAndForum/components/bitrix/forum/template2/bitrix/system.auth.form/.default/script.js?1594186060556','/bitrix/templates/BlogAndForum/components/bitrix/menu/horizontal_multilevel/script.js?1594186060436']); </script>
+<script type="text/javascript">BX.setCSSList(['/bitrix/js/main/core/css/core.css?15941860462854','/bitrix/js/main/core/css/core_popup.css?159418604633075','/bitrix/js/main/core/css/core_date.css?15941860469689','/bitrix/templates/BlogAndForum/components/bitrix/forum/template2/style.css?159418606017402','/bitrix/templates/BlogAndForum/components/bitrix/forum/template2/themes/blue/style.css?15941860605118','/bitrix/templates/BlogAndForum/components/bitrix/forum/template2/styles/additional.css?15941860607774','/bitrix/components/bitrix/breadcrumb/templates/.default/style.css?1594186043448','/bitrix/templates/BlogAndForum/components/bitrix/catalog.element/template1/style.css?159418606032','/bitrix/templates/BlogAndForum/components/bitrix/menu/horizontal_multilevel/style.css?15941860604444','/bitrix/templates/BlogAndForum/components/bitrix/menu/template1/style.css?1594186060583','/bitrix/templates/BlogAndForum/components/bitrix/news.list/news_index/style.css?1594186060108','/bitrix/templates/BlogAndForum/components/bitrix/breadcrumb/template2/style.css?1594186060227','/bitrix/templates/BlogAndForum/styles.css?15941860601139','/bitrix/templates/BlogAndForum/template_styles.css?15941860603679']); </script>
+<script src="/bitrix/js/main/utils.js"></script>
+<script src="/bitrix/components/bitrix/forum.interface/templates/.default/script.js"></script>
+<script type="text/javascript">var ajaxMessages = {wait:"Загрузка..."}</script>
+
+
+
+<script type="text/javascript" src="/bitrix/cache/js/s1/BlogAndForum/template_23abc1d74a7a15bb53605356526d96a1/template_23abc1d74a7a15bb53605356526d96a1.js?1612764605836"></script>
+<script type="text/javascript" src="/bitrix/cache/js/s1/BlogAndForum/page_5cce91693b56901bb73749b31b4bc1d4/page_5cce91693b56901bb73749b31b4bc1d4.js?16127642122458"></script>
+<script type="text/javascript">var _ba = _ba || []; _ba.push(["aid", "a87b83cd95ffd44ed6d228af79be34f4"]); _ba.push(["host", "www.subaru-faq.ru"]); (function() {var ba = document.createElement("script"); ba.type = "text/javascript"; ba.async = true;ba.src = (document.location.protocol == "https:" ? "https://" : "http://") + "bitrix.info/ba.js";var s = document.getElementsByTagName("script")[0];s.parentNode.insertBefore(ba, s);})();</script>
+
+
+
+</head>
+
+<body>
+
+
+
+<div id="panel"></div>
+
+	<div id="header"><a href="/"><img src="/bitrix/templates/BlogAndForum/images/logo.jpg" id="header_logo" height="105" alt="" width="508" border="0"/></a>
+    <div id="header_text">
+		<a href="/" style="color: white; text-decoration: none;">
+ 
+<h1>Subaru-FAQ</h1>
+ Есть вопрос о Субару? 
+<br />
+Мы знаем о Subaru все&#33; :) 
+<br />
+ 		</a>
+	</div>
+	
+	<div id="header_text2">
+
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"
+     style="display:inline-block;width:468px;height:60px"
+     data-ad-client="ca-pub-9150566032954886"
+     data-ad-slot="8257608234"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+	</div>
+	
+	<div id="header_menu">
+<a href="/" title="Главная"><img width="12" height="11" src="/bitrix/templates/BlogAndForum/include_areas/icons/home.gif" alt="Главная" border="0" /></a>
+<a href="/search/" title="Поиск"><img width="12" height="12" src="/bitrix/templates/BlogAndForum/include_areas/icons/search.gif" alt="Поиск" border="0" /></a>
+<a href="/search/map.php" title="Карта сайта"><img width="14" height="9" src="/bitrix/templates/BlogAndForum/include_areas/icons/map.gif" alt="Карта сайта" border="0" /></a>
+<a href="/forum/index.php?print=Y" title="Версия для печати" rel="nofollow"><img width="12" height="12" src="/bitrix/templates/BlogAndForum/include_areas/icons/printer.gif" alt="Версия для печати" border="0" /></a> </div>
+
+</div>
+
+<ul id="horizontal-multilevel-menu">
+
+
+	
+	
+		
+							<li><a href="/index.php" class="root-item">Главная</a></li>
+			
+		
+	
+	
+
+	
+	
+		
+							<li><a href="/faq/index.php" class="root-item">Subaru-FAQ</a></li>
+			
+		
+	
+	
+
+	
+	
+		
+							<li><a href="/catalog/index.php?SECTION_ID=32" class="root-item">Сервисы Субару</a></li>
+			
+		
+	
+	
+
+	
+	
+		
+							<li><a href="/forum/" class="root-item-selected">Форум</a></li>
+			
+		
+	
+	
+
+	
+	
+		
+							<li><a href="/photo/index.php" class="root-item">Фотогалереи</a></li>
+			
+		
+	
+	
+
+	
+	
+		
+							<li><a href="/blogs/index.php" class="root-item">Блоги</a></li>
+			
+		
+	
+	
+
+
+</ul>
+<div class="menu-clear-left"></div>
+ 
+<div id="zebra"></div>
+
+<table id="content">
+  <tbody>
+    <tr><td class="left-column">
+
+	<!-- SOCIALNETWORK -->
+
+   
+        <div class="content-block">
+          <div class="content-block-head">Авторизация</div>
+        
+          <div class="content-block-body">
+
+<div id="at_bitrix">
+<form method="post" target="_top" action="/forum/index.php?login=yes">
+			<input type="hidden" name="backurl" value="/forum/index.php" />
+			<input type="hidden" name="AUTH_FORM" value="Y" />
+	<input type="hidden" name="TYPE" value="AUTH" />
+	<table width="95%">
+			<tr>
+				<td colspan="2">
+				Логин:<br />
+				<input type="text" name="USER_LOGIN" maxlength="50" value="" size="17" /></td>
+			</tr>
+			<tr>
+				<td colspan="2">
+				Пароль:<br />
+				<input type="password" name="USER_PASSWORD" maxlength="50" size="17" /></td>
+			</tr>
+					<tr>
+				<td valign="top"><input type="checkbox" id="USER_REMEMBER" name="USER_REMEMBER" value="Y" /></td>
+				<td width="100%"><label for="USER_REMEMBER">Запомнить меня на этом компьютере</label></td>
+			</tr>
+							<tr>
+				<td colspan="2"><input type="submit" name="Login" value="Войти" /></td>
+			</tr>
+					<tr>
+				<td colspan="2"><a href="/auth/?register=yes&amp;backurl=%2Fforum%2Findex.php">Регистрация</a><br /></td>
+			</tr>
+		
+			<tr>
+				<td colspan="2"><a href="/auth/?forgot_password=yes&amp;backurl=%2Fforum%2Findex.php">Забыли свой пароль?</a></td>
+			</tr>
+	</table>
+</form>
+</div>
+
+
+			</div>
+        </div>
+		<div class="content-block">
+          <div class="content-block-head">Новости</div>
+          <div class="content-block-body">
+				<div class="news-list">
+	<p class="news-item">
+													<a href="/news/detail.php?ID=629"><b>Обновления на Сайте </b></a><br />
+										На сайте произошли следующие изменения:<br>
+ <br>
+<ul>
+	<li>Восстановлена работа <a href="http://www.subaru-faq.ru/search/">поиска</a></li>
+	<li>Расширены права <a href="http://www.subaru-faq.ru/forum/index.php?PAGE_NAME=message&FID=2&TID=99864">Редакторов</a></li>
+</ul>
+ <br>
+ Более подробная информация об изменениях - в блоге&nbsp;<a href="http://www.subaru-faq.ru/blogs/index.php?page=post&blog=subaru-faq&post_id=14089">Subaru-FAQ</a><br>
+ <br>									</p>
+	<p class="news-item">
+													<a href="/news/detail.php?ID=628"><b>Смена хостинга сайта. </b></a><br />
+										Сменился хостер сайта. В связи с задержкой расхождения DNS может наблюдаться временная недоступность у ряда провайдеров.<br />
+									</p>
+	<p class="news-item">
+													<a href="/news/detail.php?ID=627"><b>Subaru XV 2012 - обзор и обсуждение</b></a><br />
+										<a href="http://www.subaru-faq.ru/forum/index.php?PAGE_NAME=message&amp;FID=14&amp;TID=35983" >Хороший обзор! Хорошая беседа! Хорошие люди! :)</a>									</p>
+	<p class="news-item">
+													<a href="/news/detail.php?ID=626"><b>! Руководства и мануалы ! </b></a><br />
+										<font color="#2F3192">Пополнение списка литературы </font>									</p>
+	<p class="news-item">
+													<a href="/news/detail.php?ID=624"><b>! Руководства и мануалы !</b></a><br />
+										Обновлена статья  <a href="http://www.subaru-faq.ru/blogs/index.php?page=post&amp;blog=rob_reflections&amp;post_id=117">&quot;Руководства и мануалы&quot;&#33;</a> 									</p>
+</div>
+ 
+		  </div>
+        </div>
+      
+		<!--SUBSCRIBE-->
+      
+        <!--BANNER_LEFT-->
+
+        </div>
+      </td><td class="main-column">
+        <div id="navigation"><ul class="breadcrumb-navigation"><li><a href="/" title="Главная">Главная</a></li><li><span>&nbsp;&gt;&nbsp;</span></li><li><a href="/forum/" title="Форум">Форум</a></li></ul> </div>
+      
+        <h1 id="pagetitle">Субару Форум. Subaru-FAQ</h1>
+      
+
+
+<div class="forum-info-box forum-menu-box">
+	<div class="forum-info-box-inner">
+		<span class="forum-menu-item forum-menu-item-first forum-menu-search"><a href="/forum/index.php?PAGE_NAME=search"><span>Поиск</span></a>&nbsp;</span>
+		<span class="forum-menu-item  forum-menu-users"><a href="/forum/index.php?PAGE_NAME=user_list"><span>Пользователи</span></a>&nbsp;</span>
+		<span class="forum-menu-item  forum-menu-rules"><a href="/forum/index.php?PAGE_NAME=rules"><span>Правила</span></a>&nbsp;</span>
+		<span class="forum-menu-item forum-menu-item-last forum-menu-authorize">
+		
+
+<div id="forum-login-form-window">
+
+<a href="" onclick="return ForumCloseLoginForm()" style="float:right;">Закрыть</a>
+
+<form method="post" target="_top" action="/forum/index.php?login=yes">
+			<input type='hidden' name='backurl' value='/forum/index.php' />
+			<input type="hidden" name="AUTH_FORM" value="Y" />
+	<input type="hidden" name="TYPE" value="AUTH" />
+
+	<table width="95%">
+			<tr>
+				<td colspan="2">
+				Логин:<br />
+				<input type="text" name="USER_LOGIN" maxlength="50" value="" size="17" /></td>
+			</tr>
+			<tr>
+				<td colspan="2">
+				Пароль:<br />
+				<input type="password" name="USER_PASSWORD" maxlength="50" size="17" /></td>
+			</tr>
+					<tr>
+				<td valign="top"><input type="checkbox" id="USER_REMEMBER" name="USER_REMEMBER" value="Y" /></td>
+				<td width="100%"><label for="USER_REMEMBER">Запомнить меня на этом компьютере</label></td>
+			</tr>
+					<tr>
+				<td colspan="2"><input type="submit" name="Login" value="Войти" /></td>
+			</tr>
+
+			<tr>
+				<td colspan="2"><a href="/forum/index.php?forgot_password=yes&amp;backurl=%2Fforum%2Findex.php">Забыли свой пароль?</a></td>
+			</tr>
+					<tr>
+				<td colspan="2"><a href="/forum/index.php?register=yes&amp;backurl=%2Fforum%2Findex.php">Регистрация</a><br /></td>
+			</tr>
+			</table>	
+</form>
+</div>
+<a href="/forum/index.php?login=yes" onclick="return ForumShowLoginForm(this);"><span>Войти</span></a>
+&nbsp;</span>
+	</div>
+</div>
+<script type="text/javascript">
+//<![CDATA[
+	if (phpVars == null || typeof(phpVars) != "object")
+	{
+		var phpVars = {
+			'ADMIN_THEME_ID': '.default',
+			'titlePrefix': 'Subaru-FAQ - '};
+	}
+	phpVars['isAuthorized'] = 'N';
+	if (typeof oText != "object")
+	{
+		var oText = {};
+	}
+	oText['wait_window'] = 'Загрузка...';
+//]]>
+window.oForumForm = {};
+</script><div class="forum-header-box">
+	<div class="forum-header-title"><span>Форумы</span></div>
+</div>
+
+<div class="forum-block-container">
+	<div class="forum-block-outer">
+		<div class="forum-block-inner">
+			<table cellspacing="0" class="forum-table forum-forum-list">
+		<thead>
+			<tr>
+				<th class="forum-column-title" colspan="2" scope="col"><div class="forum-head-title"><span><a href="/forum/index.php?PAGE_NAME=forums&amp;GID=6">FAQ-Форум</a></span></div></th>
+				<th class="forum-column-topics" scope="col"><span>Темы</span></th>
+				<th class="forum-column-replies" scope="col"><span>Сообщения</span></th>
+				<th class="forum-column-lastpost" scope="col"><span>Обновление</span></th>
+			</tr>
+		</thead>
+			<tbody>
+ 				<tr class="forum-row-first forum-row-last forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=19">Типовые вопросы о Субару</a></span></div>
+							<span class="forum-item-desc">Здесь собраны наиболее частые темы форума с типовыми вопросами</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>38</span></td>
+					<td class="forum-column-replies"><span>458</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=19&amp;TID=10045&amp;TITLE_SEO=10045&amp;MID=420637#message420637" title="Параметры коробок и редукторов Субару (Manur)">Параметры коробок и ред... <span class="forum-lastpost-author">(Manur)</span></a></span>
+							<span class="forum-lastpost-date">10.07.2021 12:43:13</span>
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		<tbody class="forum-category-separator">
+			<tr>
+				<td class="forum-category-separator" colspan="5"></td>
+			</tr>
+		</tbody>
+		<thead>
+			<tr>
+				<th class="forum-column-title" colspan="2" scope="col"><div class="forum-head-title"><span><a href="/forum/index.php?PAGE_NAME=forums&amp;GID=8">Subaru-FAQ!</a></span></div></th>
+				<th class="forum-column-topics" scope="col"><span>Темы</span></th>
+				<th class="forum-column-replies" scope="col"><span>Сообщения</span></th>
+				<th class="forum-column-lastpost" scope="col"><span>Обновление</span></th>
+			</tr>
+		</thead>
+			<tbody>
+ 				<tr class="forum-row-first forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=23">Наши партнеры и их скидки!</a></span></div>
+							<span class="forum-item-desc">Дисконтная  система.
+Наши партнеры и спонсоры.
+Карты Subaru-FAQ.
+Новости партнеров сайта.
+Вопросы к партнерам и спонсорам сайта. Конкурсы сайта.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>49</span></td>
+					<td class="forum-column-replies"><span>536</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=23&amp;TID=42190&amp;TITLE_SEO=42190&amp;MID=418993#message418993" title="Технический Центр - &quot;SUBA.RU&quot; ! (suba_ru)">Технический Центр - &quot;SU... <span class="forum-lastpost-author">(suba_ru)</span></a></span>
+							<span class="forum-lastpost-date">14.01.2019 10:32:33</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-last forum-row-even " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=26">Новости</a></span></div>
+							<span class="forum-item-desc">Новости Сайта. Новости Subaru. Автомобильные новости.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>290</span></td>
+					<td class="forum-column-replies"><span>3556</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=26&amp;TID=87381&amp;TITLE_SEO=87381-subaru-ascent-2018&amp;MID=419379#message419379" title="Subaru Ascent 2018 (Алексей Павленко)">Subaru Ascent 2018 <span class="forum-lastpost-author">(Алексей Павленко)</span></a></span>
+							<span class="forum-lastpost-date">08.04.2019 23:13:21</span>
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		<tbody class="forum-category-separator">
+			<tr>
+				<td class="forum-category-separator" colspan="5"></td>
+			</tr>
+		</tbody>
+		<thead>
+			<tr>
+				<th class="forum-column-title" colspan="2" scope="col"><div class="forum-head-title"><span><a href="/forum/index.php?PAGE_NAME=forums&amp;GID=9">Клуб поклонников Субару, Россия. Subaru-Russia Club.</a></span></div></th>
+				<th class="forum-column-topics" scope="col"><span>Темы</span></th>
+				<th class="forum-column-replies" scope="col"><span>Сообщения</span></th>
+				<th class="forum-column-lastpost" scope="col"><span>Обновление</span></th>
+			</tr>
+		</thead>
+			<tbody>
+ 				<tr class="forum-row-first forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=25">Клубные вопросы.</a></span></div>
+							<span class="forum-item-desc">Клубные вопросы, Клубная символика, Организационные вопросы.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>29</span></td>
+					<td class="forum-column-replies"><span>1120</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=25&amp;TID=16684&amp;TITLE_SEO=16684&amp;MID=418875#message418875" title="Клубная Символика (SERR)">Клубная Символика <span class="forum-lastpost-author">(SERR)</span></a></span>
+							<span class="forum-lastpost-date">04.12.2018 17:20:50</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-last forum-row-even " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=20">Клубные Встречи!</a></span></div>
+							<span class="forum-item-desc">Место для обсуждения и планирования встреч, покатушек, посидушек и дружеского общения.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>587</span></td>
+					<td class="forum-column-replies"><span>25188</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=20&amp;TID=51983&amp;TITLE_SEO=51983-subafest-2016&amp;MID=408631#message408631" title="SUBAFEST 2016 (Олень)">SUBAFEST 2016 <span class="forum-lastpost-author">(Олень)</span></a></span>
+							<span class="forum-lastpost-date">28.06.2016 17:13:53</span>
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		<tbody class="forum-category-separator">
+			<tr>
+				<td class="forum-category-separator" colspan="5"></td>
+			</tr>
+		</tbody>
+		<thead>
+			<tr>
+				<th class="forum-column-title" colspan="2" scope="col"><div class="forum-head-title"><span><a href="/forum/index.php?PAGE_NAME=forums&amp;GID=1">Форумы - технический</a></span></div></th>
+				<th class="forum-column-topics" scope="col"><span>Темы</span></th>
+				<th class="forum-column-replies" scope="col"><span>Сообщения</span></th>
+				<th class="forum-column-lastpost" scope="col"><span>Обновление</span></th>
+			</tr>
+		</thead>
+			<tbody>
+ 				<tr class="forum-row-first forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=18">Тюнинг - мотор, турбины, фильтры, коробка, подвеска, тормоза,  каркасы и проч.</a></span></div>
+							<span class="forum-item-desc">Только по обозначенным направлениям тюнинга.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>815</span></td>
+					<td class="forum-column-replies"><span>10022</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=18&amp;TID=102203&amp;TITLE_SEO=102203-kakov-potentsial-okolo-stokovogo-ej25-turbo&amp;MID=419787#message419787" title="Каков потенциал около стокового EJ25 турбо? (kenneth)">Каков потенциал около с... <span class="forum-lastpost-author">(kenneth)</span></a></span>
+							<span class="forum-lastpost-date">14.10.2019 08:07:03</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-even " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=5">Тюнинг - аэрообвесы, аэрография, свет, салон, музыка, спойлеры, сидушки, ксенон и проч.</a></span></div>
+							<span class="forum-item-desc">Только по обозначенным направлениям тюнинга.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>621</span></td>
+					<td class="forum-column-replies"><span>5530</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=5&amp;TID=102342&amp;TITLE_SEO=102342-raspinovka-razemov-magnitoly-subaru-xv-gt3-pravyy-rul&amp;MID=420763#message420763" title="распиновка разъемов магнитолы subaru xv gt3 правый руль (игорь)">распиновка разъемов маг... <span class="forum-lastpost-author">(игорь)</span></a></span>
+							<span class="forum-lastpost-date">16.02.2022 15:36:49</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=4">Починка и ремонт авто (Спроси у Анри и Петровича)</a></span></div>
+							<span class="forum-item-desc"></span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>9601</span></td>
+					<td class="forum-column-replies"><span>86650</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=4&amp;TID=43173&amp;TITLE_SEO=43173&amp;MID=420823#message420823" title="Прежде чем создать тему спроси здесь (bomba)">Прежде чем создать тему... <span class="forum-lastpost-author">(bomba)</span></a></span>
+							<span class="forum-lastpost-date">04.07.2022 08:54:43</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-even " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=12">Редкие модели Субар и запчасти на них</a></span></div>
+							<span class="forum-item-desc">Leone, Justy, Vivio, Pleo, Alcyone, SVX, Libero, Domingo... 
+Поиск запчастей для этих моделей. Форум настоящих героев.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>1060</span></td>
+					<td class="forum-column-replies"><span>67585</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=12&amp;TID=1467&amp;TITLE_SEO=1467&amp;MID=420826#message420826" title="Технические вопросы по Леонам тут. (Александр Хромцов)">Технические вопросы по ... <span class="forum-lastpost-author">(Александр Хромцов)</span></a></span>
+							<span class="forum-lastpost-date">05.07.2022 21:39:34</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=3">Обменяемся опытом</a></span></div>
+							<span class="forum-item-desc"></span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>7690</span></td>
+					<td class="forum-column-replies"><span>76920</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=3&amp;TID=102267&amp;TITLE_SEO=102267-shtatnaya-signalizatsiya-subaru-forester-2019&amp;MID=420240#message420240" title="Штатная сигнализация Subaru Forester 2019 (Boris89)">Штатная сигнализация Su... <span class="forum-lastpost-author">(Boris89)</span></a></span>
+							<span class="forum-lastpost-date">01.09.2020 20:24:48</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-last forum-row-even " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=6">Обсудим сервисы Субару</a></span></div>
+							<span class="forum-item-desc">Обсуждение работы Subaru-сервисов.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>375</span></td>
+					<td class="forum-column-replies"><span>4184</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=6&amp;TID=102344&amp;TITLE_SEO=102344-tekhosmotr-v-moske&amp;MID=420791#message420791" title="Техосмотр в Моске (Алекс Алекс)">Техосмотр в Моске <span class="forum-lastpost-author">(Алекс Алекс)</span></a></span>
+							<span class="forum-lastpost-date">10.04.2022 19:08:52</span>
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		<tbody class="forum-category-separator">
+			<tr>
+				<td class="forum-category-separator" colspan="5"></td>
+			</tr>
+		</tbody>
+		<thead>
+			<tr>
+				<th class="forum-column-title" colspan="2" scope="col"><div class="forum-head-title"><span><a href="/forum/index.php?PAGE_NAME=forums&amp;GID=4">Форумы - общие</a></span></div></th>
+				<th class="forum-column-topics" scope="col"><span>Темы</span></th>
+				<th class="forum-column-replies" scope="col"><span>Сообщения</span></th>
+				<th class="forum-column-lastpost" scope="col"><span>Обновление</span></th>
+			</tr>
+		</thead>
+			<tbody>
+ 				<tr class="forum-row-first forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=22">Субару в регионах и за рубежом! :)</a></span></div>
+							<span class="forum-item-desc">Найди соотечественника, земляка и друга на субару! :)</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>104</span></td>
+					<td class="forum-column-replies"><span>1204</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=22&amp;TID=21311&amp;TITLE_SEO=21311&amp;MID=415884#message415884" title="Калуга!!! (Василий Паров)">Калуга!!! <span class="forum-lastpost-author">(Василий Паров)</span></a></span>
+							<span class="forum-lastpost-date">11.12.2017 22:54:17</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-even " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=10">Неавтомобильные разговоры</a></span></div>
+							<span class="forum-item-desc">Форум для ОФФов и тому подобного.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>958</span></td>
+					<td class="forum-column-replies"><span>13042</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=10&amp;TID=37186&amp;TITLE_SEO=37186&amp;MID=420822#message420822" title="Мобильники (jt32)">Мобильники <span class="forum-lastpost-author">(jt32)</span></a></span>
+							<span class="forum-lastpost-date">03.07.2022 22:44:45</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-last forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=14">Флеймы... ( Пойдем выйдем! )</a></span></div>
+							<span class="forum-item-desc">Для флеймов... :)</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>980</span></td>
+					<td class="forum-column-replies"><span>17087</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=14&amp;TID=102198&amp;TITLE_SEO=102198-kto-iz-pitera-mozhete-pomoch&amp;MID=420756#message420756" title="Кто из Питера  можете помочь? (Виктор)">Кто из Питера  можете п... <span class="forum-lastpost-author">(Виктор)</span></a></span>
+							<span class="forum-lastpost-date">18.01.2022 12:23:53</span>
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		<tbody class="forum-category-separator">
+			<tr>
+				<td class="forum-category-separator" colspan="5"></td>
+			</tr>
+		</tbody>
+		<thead>
+			<tr>
+				<th class="forum-column-title" colspan="2" scope="col"><div class="forum-head-title"><span><a href="/forum/index.php?PAGE_NAME=forums&amp;GID=7">Субару -  творчество или навеяло Subaru :)</a></span></div></th>
+				<th class="forum-column-topics" scope="col"><span>Темы</span></th>
+				<th class="forum-column-replies" scope="col"><span>Сообщения</span></th>
+				<th class="forum-column-lastpost" scope="col"><span>Обновление</span></th>
+			</tr>
+		</thead>
+			<tbody>
+ 				<tr class="forum-row-first forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=16">Зарисовки о Субару и не только.</a></span></div>
+							<span class="forum-item-desc">Литературное творчество.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>66</span></td>
+					<td class="forum-column-replies"><span>343</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=16&amp;TID=34487&amp;TITLE_SEO=34487&amp;MID=420194#message420194" title="Авто-Видео (ролики и фильмы про Субару) (Виктор)">Авто-Видео (ролики и фи... <span class="forum-lastpost-author">(Виктор)</span></a></span>
+							<span class="forum-lastpost-date">27.07.2020 12:33:48</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-last forum-row-even " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=24">Фотографии Субару!</a></span></div>
+							<span class="forum-item-desc">Для красивых фотографий связанных с Subaru!</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>63</span></td>
+					<td class="forum-column-replies"><span>913</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=24&amp;TID=40453&amp;TITLE_SEO=40453&amp;MID=420193#message420193" title="Просто удачные фото красивых субар (Виктор)">Просто удачные фото кра... <span class="forum-lastpost-author">(Виктор)</span></a></span>
+							<span class="forum-lastpost-date">27.07.2020 12:32:46</span>
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		<tbody class="forum-category-separator">
+			<tr>
+				<td class="forum-category-separator" colspan="5"></td>
+			</tr>
+		</tbody>
+		<thead>
+			<tr>
+				<th class="forum-column-title" colspan="2" scope="col"><div class="forum-head-title"><span><a href="/forum/index.php?PAGE_NAME=forums&amp;GID=2">Коммерция</a></span></div></th>
+				<th class="forum-column-topics" scope="col"><span>Темы</span></th>
+				<th class="forum-column-replies" scope="col"><span>Сообщения</span></th>
+				<th class="forum-column-lastpost" scope="col"><span>Обновление</span></th>
+			</tr>
+		</thead>
+			<tbody>
+ 				<tr class="forum-row-first forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=28">Барахолка - покупки</a></span></div>
+							<span class="forum-item-desc">Объявления о покупке всего что относится к Субарам (кроме самих Субар);. Только частным лицам!</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>71</span></td>
+					<td class="forum-column-replies"><span>247</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=28&amp;TID=102355&amp;TITLE_SEO=102355-ventilyator-pechki-72023aa000&amp;MID=420820#message420820" title="вентилятор печки 72023AA000 (mitsubaru)">вентилятор печки 72023A... <span class="forum-lastpost-author">(mitsubaru)</span></a></span>
+							<span class="forum-lastpost-date">01.07.2022 01:25:16</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-even " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=7">Барахолка - продажа/обмен</a></span></div>
+							<span class="forum-item-desc">Объявления о продаже/обмене/отдаче за пиво и т.п. всего что относится к Субарам (кроме самих Субар);. Только частным лицам!</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>361</span></td>
+					<td class="forum-column-replies"><span>5211</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=7&amp;TID=102350&amp;TITLE_SEO=102350-ej254-_-gtd-prodam&amp;MID=420804#message420804" title="EJ254 + гтд продам (STiAMV)">EJ254 + гтд продам <span class="forum-lastpost-author">(STiAMV)</span></a></span>
+							<span class="forum-lastpost-date">07.06.2022 15:36:23</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=8">Ищу Subaru!</a></span></div>
+							<span class="forum-item-desc">Объявления о купле/продаже/обмене/отдаче за пиво самих Субар. Только частным лицам!</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>17</span></td>
+					<td class="forum-column-replies"><span>76</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=8&amp;TID=102241&amp;TITLE_SEO=102241-ishchu-kuzov-legacy-b10-_bf&amp;MID=420750#message420750" title="Ищу кузов Legacy B10 (BF) (Saka)">Ищу кузов Legacy B10 (B... <span class="forum-lastpost-author">(Saka)</span></a></span>
+							<span class="forum-lastpost-date">07.01.2022 20:00:12</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-last forum-row-even " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=21">Профессиональные Услуги</a></span></div>
+							<span class="forum-item-desc">Форум для профессионально зарабатывающих на Субару :)
+Перегон, Продажа, Запчасти</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>148</span></td>
+					<td class="forum-column-replies"><span>1589</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=21&amp;TID=31214&amp;TITLE_SEO=31214&amp;MID=419732#message419732" title="Запчасти б/у на СУБАРУ (Дрэй)">Запчасти б/у на СУБАРУ <span class="forum-lastpost-author">(Дрэй)</span></a></span>
+							<span class="forum-lastpost-date">23.09.2019 13:27:45</span>
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		<tbody class="forum-category-separator">
+			<tr>
+				<td class="forum-category-separator" colspan="5"></td>
+			</tr>
+		</tbody>
+		<thead>
+			<tr>
+				<th class="forum-column-title" colspan="2" scope="col"><div class="forum-head-title"><span><a href="/forum/index.php?PAGE_NAME=forums&amp;GID=5">Вспомогательный</a></span></div></th>
+				<th class="forum-column-topics" scope="col"><span>Темы</span></th>
+				<th class="forum-column-replies" scope="col"><span>Сообщения</span></th>
+				<th class="forum-column-lastpost" scope="col"><span>Обновление</span></th>
+			</tr>
+		</thead>
+			<tbody>
+ 				<tr class="forum-row-first forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=15">Картинки</a></span></div>
+							<span class="forum-item-desc">В этом форуме разрешено выкладывать картинки.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>1149</span></td>
+					<td class="forum-column-replies"><span>4099</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=15&amp;TID=43086&amp;TITLE_SEO=43086&amp;MID=420770#message420770" title="китай теперь качественный))) (Nikola93)">китай теперь качественн... <span class="forum-lastpost-author">(Nikola93)</span></a></span>
+							<span class="forum-lastpost-date">11.03.2022 22:19:14</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-even " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=1">Тестирование и прочее...</a></span></div>
+							<span class="forum-item-desc">Здесь можно тестировать возможности форума.</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>3</span></td>
+					<td class="forum-column-replies"><span>50</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=1&amp;TID=28714&amp;TITLE_SEO=28714&amp;MID=418135#message418135" title="учусь встраивать видео (OrfanowKostya)">учусь встраивать видео <span class="forum-lastpost-author">(OrfanowKostya)</span></a></span>
+							<span class="forum-lastpost-date">06.07.2018 10:28:14</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-odd " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=17">На добавку в ФАК</a></span></div>
+							<span class="forum-item-desc">Пишите сюда то, что по вашему мнению должно быть в ФАКе.
+Перед прочтением, ознакомьтесь с условиями :).</span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>56</span></td>
+					<td class="forum-column-replies"><span>203</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=17&amp;TID=33950&amp;TITLE_SEO=33950&amp;MID=418686#message418686" title="фильмы, клипы с участием субару... (Константин)">фильмы, клипы с участие... <span class="forum-lastpost-author">(Константин)</span></a></span>
+							<span class="forum-lastpost-date">15.10.2018 14:44:43</span>
+						</div>
+					</td>
+				</tr>
+ 				<tr class="forum-row-last forum-row-even " >
+					<td class="forum-column-icon">
+						<div class="forum-icon-container">
+							<div class="forum-icon forum-icon-default" title="Нет новых сообщений"><!-- ie --></div>
+						</div>
+					</td>
+					<td class="forum-column-title">
+						<div class="forum-item-info">
+							<div class="forum-item-name"><span class="forum-item-title"><a href="/forum/index.php?PAGE_NAME=list&amp;FID=2">Обсудим Сайт! Ваша критика и предложения ;)</a></span></div>
+							<span class="forum-item-desc">Форум администрации. Сюда можно писать замечания, сообщения об ошибках на сайте, пожелания по развитию сайта. Замечания и информация о банах. </span>
+						</div>
+					</td>
+					<td class="forum-column-topics"><span>192</span></td>
+					<td class="forum-column-replies"><span>1580</span></td>
+					<td class="forum-column-lastpost">
+						<div class="forum-lastpost-box">
+							<span class="forum-lastpost-title"><a href="/forum/index.php?PAGE_NAME=message&amp;FID=2&amp;TID=35857&amp;TITLE_SEO=35857&amp;MID=419345#message419345" title="Ссылка для редактирования подписки! (subsha)">Ссылка для редактирован... <span class="forum-lastpost-author">(subsha)</span></a></span>
+							<span class="forum-lastpost-date">01.04.2019 08:49:58</span>
+						</div>
+					</td>
+				</tr>
+			</tbody>
+			<tfoot>
+				<tr>
+					<td colspan="5" class="forum-column-footer">
+						<div class="forum-footer-inner">
+							&nbsp;
+						</div>
+					</td>
+				</tr>
+			</tfoot>
+			</table>
+		</div>
+	</div>
+</div>
+<div class="forum-info-box forum-users-online">
+	<div class="forum-info-box-inner">
+		<span class="forum-users-online">Сейчас на форуме (гостей: <span>187</span>, пользователей: <span>1</span>, из них скрытых: <span>0</span>) <a href="/forum/index.php?PAGE_NAME=profile_view&amp;UID=30773" title="Профиль пользователя">bomba</a></span>
+	</div>
+</div>
+<div class="forum-info-box forum-users-birthday">
+	<div class="forum-info-box-inner">
+		<span class="forum-users-birthday">Сегодня отмечают день рождения <a href="/forum/index.php?PAGE_NAME=profile_view&amp;UID=30568" title="Профиль пользователя">Sarez  Soshkin</a> (<span>36</span>), <a href="/forum/index.php?PAGE_NAME=profile_view&amp;UID=32057" title="Профиль пользователя">s7er</a> (<span>34</span>), <a href="/forum/index.php?PAGE_NAME=profile_view&amp;UID=64114" title="Профиль пользователя">Эмилия  Бобылёва</a> (<span>45</span>)</span>
+	</div>
+</div>
+<div class="forum-info-box forum-statistics">
+	<div class="forum-info-box-inner">
+		<div class="forum-statistics-allusers">Всего зарегистрированных пользователей:&nbsp;<span>10625</span></div>
+		<div class="forum-statistics-users">Приняло участие в обсуждении:&nbsp;<span>8570</span></div>
+		<div class="forum-statistics-topics">Всего тем:&nbsp;<span>25323</span></div>
+		<div class="forum-statistics-replies">Всего сообщений:&nbsp;<span>327393</span></div>
+		<div class="forum-clear-float"></div>
+	</div>
+	
+</div>
+<link href="/bitrix/css/main/font-awesome.css?159418604528777" type="text/css" rel="stylesheet" />
+<div class="bx-breadcrumb">
+			<div class="bx-breadcrumb-item">
+				
+				<span>Форум</span>
+			</div><div style="clear:both"></div></div><div class="forum-info-box forum-main-footer">
+	<div class="forum-info-box-inner">
+		<div class="forum-legend-info">
+			<div class="forum-legend-item"><div class="forum-icon-container"><div class="forum-icon forum-icon-newposts"><!-- ie --></div></div>
+				<span>есть новые сообщения</span></div>
+			<div class="forum-legend-item"><div class="forum-icon-container"><div class="forum-icon forum-icon-default"><!-- ie --></div></div>
+				<span>нет новых сообщений</span></div>
+		</div>
+		<div class="forum-clear-float"></div>
+	</div>
+</div>
+ 
+<br />
+ </td><td class="right-column">
+
+	
+		</td></tr>
+  </tbody>
+</table>
+
+<!--BANNER_BOTTOM-->
+
+<div id="footer">
+
+
+
+ 
+<table width="100%" cellspacing="0" cellpadding="0" border="0"> 
+  <tbody> 
+    <tr> <td width="172" style="border-image: none;"><a href="http://www.subaru-faq.ru" >SUBARU-FAQ, 2003-2021<br/>
+         </a></td> 	 <td width="546" valign="botton" style="border-image: none;"> 
+        <div align="center"> 
+
+ 
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript" >
+    (function (d, w, c) {
+        (w[c] = w[c] || []).push(function() {
+            try {
+                w.yaCounter49699399 = new Ya.Metrika2({
+                    id:49699399,
+                    clickmap:true,
+                    trackLinks:true,
+                    accurateTrackBounce:true
+                });
+            } catch(e) { }
+        });
+
+        var n = d.getElementsByTagName("script")[0],
+            s = d.createElement("script"),
+            f = function () { n.parentNode.insertBefore(s, n); };
+        s.type = "text/javascript";
+        s.async = true;
+        s.src = "https://mc.yandex.ru/metrika/tag.js";
+
+        if (w.opera == "[object Opera]") {
+            d.addEventListener("DOMContentLoaded", f, false);
+        } else { f(); }
+    })(document, window, "yandex_metrika_callbacks2");
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/49699399" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+ 
+
+ 
+   		 		</div>
+       </td> <td align="center" style="border-image: none;"></td> <td width="301" valign="middle" align="center" style="border-image: none;">  
+<script type="text/javascript"><!--
+google_ad_client = "ca-pub-9150566032954886";
+/* Subaru-FAQ-3 */
+google_ad_slot = "3496388327";
+google_ad_width = 468;
+google_ad_height = 15;
+//-->
+</script>
+ 
+<script type="text/javascript"
+src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
+</script>
+ </td> </tr>
+   </tbody>
+ </table> </div>
+
+</body>
+</html>

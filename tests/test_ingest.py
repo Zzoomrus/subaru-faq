@@ -88,3 +88,12 @@ def test_longer_text_wins_on_conflict(tmp_path):
                        posted_at="", number="", html="", text="снова короткий", edited_by=None, edited_at=None)
     text = conn.execute("SELECT text FROM posts WHERE mid = 1").fetchone()[0]
     assert text == "намного длиннее исходного"
+
+
+def test_ingest_sections_reads_names(tmp_path):
+    pages = tmp_path / "pages"; pages.mkdir()
+    (pages / "index_1.html").write_bytes((FIX / "index_1.html").read_bytes())
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    assert ingest.ingest_sections(pages, conn) >= 20
+    title = conn.execute("SELECT title FROM sections WHERE fid = 19").fetchone()[0]
+    assert "Типовые вопросы" in title

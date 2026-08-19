@@ -81,6 +81,44 @@ def upsert_post(conn, *, mid, tid, page_no, author, author_uid, posted_at,
         (mid, tid, page_no, author, author_uid, posted_at, number, html, text, edited_by, edited_at))
 
 
+def ingest_sections(pages_dir: Path, conn) -> int:
+    """Заполняет `sections` названиями разделов форума.
+
+    Основной источник — корневая страница `index_1.html`: там перечислены
+    все разделы одной страницей. Фолбэк — навигационная ссылка `PAGE_NAME=list&FID=<fid>`
+    на любой странице темы раздела (нужен для разделов, которых по какой-то
+    причине не оказалось на корневой странице конкретного снимка архива —
+    например, исторически FID 5 не всегда отображался на index_1.html).
+    """
+    import re
+    from bs4 import BeautifulSoup
+    names: dict[int, str] = {}
+    index = Path(pages_dir) / "index_1.html"
+    if index.exists():
+        soup = BeautifulSoup(_read(index), "lxml")
+        for a in soup.select('a[href*="PAGE_NAME=list"]'):
+            m = re.search(r"FID=(\d+)", a.get("href", ""))
+            text = a.get_text(" ", strip=True)
+            if m and text and len(text) > 2:
+                names.setdefault(int(m.group(1)), text)
+    for path in sorted(Path(pages_dir).glob("read_*.html")):
+        m = re.match(r"read_(\d+)_", path.name)
+        if not m:
+            continue
+        fid = int(m.group(1))
+        if fid in names:
+            continue
+        soup = BeautifulSoup(_read(path), "lxml")
+        link = soup.select_one('a[href*="PAGE_NAME=list&FID=%d"]' % fid)
+        if link and link.get_text(" ", strip=True):
+            names[fid] = link.get_text(" ", strip=True)
+    for fid, title in names.items():
+        conn.execute("INSERT INTO sections(fid, title) VALUES (?,?) "
+                     "ON CONFLICT(fid) DO UPDATE SET title=excluded.title", (fid, title))
+    conn.commit()
+    return len(names)
+
+
 def _classify_attachment(url: str) -> str:
     """`local`, если адрес не указывает на чужой хост, иначе `external_image`.
 
