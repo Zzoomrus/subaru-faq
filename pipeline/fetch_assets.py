@@ -143,7 +143,22 @@ def _targets(conn, manifest: Path, want: str, limit: int | None):
 
 
 def index_pending(conn, manifest: Path, limit: int | None = None) -> dict[str, int]:
-    """Шаг 1: у скольких URL в CDX вообще есть снимок. Тела не тянет."""
+    """Шаг 1: у скольких URL в CDX вообще есть снимок. Тела не тянет.
+
+    `pacer.note(True)` вызывается ВСЕГДА, независимо от того, нашёлся ли
+    снимок. Замер на живом прогоне (VPS `bots`, 2026-08-19) показал: при
+    ожидаемой выживаемости ~15% большинство ответов CDX — "снимков нет", и
+    если бы это считалось неудачей пейсера (как при скачивании тела, где
+    неудача — это про сеть), скользящий рейт быстро проваливался к 0 и держал
+    паузу на потолке (10-19 с/запрос) почти весь прогон — 40 минут по брифу
+    превращались в десятки часов. Технически "снимков нет" — это ЧЕСТНЫЙ
+    ответ архива, а не признак перегрузки; признак перегрузки (сетевые
+    ошибки) уже обрабатывает свой backoff внутри `cdx_snapshots` (retries с
+    нарастающей паузой). Внешний пейсер здесь — это только вежливый интервал
+    между запросами МЕТАДАННЫХ (CDX), а не тот же токен-бакет, что бережёт
+    отдачу тел снимков (см. `global-constraints.md`: лимит "~2 стр/мин" — про
+    отдачу страниц, к CDX-поиску не относится).
+    """
     stats = {"pending": 0, "no_snapshot": 0}
     pacer = fetcher.TokenBucketPacer()
     targets = _targets(conn, manifest, "index", limit)
@@ -153,11 +168,10 @@ def index_pending(conn, manifest: Path, limit: int | None = None) -> dict[str, i
         if snaps:
             assets_state.record(manifest, url, None, "pending", note=snaps[0][0])
             stats["pending"] += 1
-            pacer.note(True)
         else:
             assets_state.record(manifest, url, None, "no_snapshot")
             stats["no_snapshot"] += 1
-            pacer.note(False)
+        pacer.note(True)
         if i % _PROGRESS_EVERY == 0 or i == total:
             _LOG.info("индексация: %d/%d — pending=%d no_snapshot=%d",
                        i, total, stats["pending"], stats["no_snapshot"])

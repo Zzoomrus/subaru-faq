@@ -129,6 +129,37 @@ def test_download_rejects_unrecognized_bytes_for_local_kind(tmp_path, monkeypatc
     assert stats["empty"] == 1
 
 
+def test_index_does_not_slow_the_pacer_down_on_a_low_hit_rate(tmp_path, monkeypatch):
+    """`no_snapshot` — честный ответ CDX, а не сетевая неудача. Если бы пейсер
+    считал его неудачей (как при скачивании тела), низкая выживаемость (в
+    реальности ~15%) держала бы паузу на потолке весь прогон — замер на живом
+    сервере показал десятки секунд на URL вместо ожидаемых секунд. Пейсер
+    должен получать note(True) независимо от того, нашёлся снимок или нет."""
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    for i in range(5):
+        conn.execute(
+            "INSERT INTO attachments(mid, kind, url, status) VALUES (?, 'external_image', ?, 'pending')",
+            (i, "http://dead/%d.jpg" % i))
+    conn.commit()
+
+    notes = []
+
+    class FakePacer:
+        def note(self, ok):
+            notes.append(ok)
+
+        def wait(self):
+            pass
+
+    monkeypatch.setattr(fetch_assets.fetcher, "TokenBucketPacer", FakePacer)
+    # 4 из 5 URL без снимка — низкий hit rate, как в реальности (~15%).
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots",
+                         lambda url, **kw: [] if "0" not in url else [("20150101", url)])
+    m = tmp_path / "m.jsonl"
+    fetch_assets.index_pending(conn, m)
+    assert notes == [True] * 5
+
+
 def test_download_marks_failed_when_every_snapshot_fetch_errors(tmp_path, monkeypatch):
     """Если снимки в CDX есть, но скачать тело ни одного не удалось (сеть),
     это `failed`, а не `empty` — «пустышка» это про содержимое, а не про сеть."""
