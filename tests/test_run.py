@@ -108,3 +108,67 @@ def test_ingest_still_creates_the_database(tmp_path):
     # Загрузчику базу создавать — прямая обязанность.
     assert run.main(_args(tmp_path, "ingest")) == 0
     assert (tmp_path / "forum.sqlite").exists()
+
+
+def test_assets_without_action_reports_error(tmp_path, capsys):
+    rc = run.main(["assets", "--db", str(tmp_path / "forum.sqlite")])
+    assert rc == 2
+    assert "assets index" in capsys.readouterr().out
+
+
+def test_assets_index_runs_and_syncs_db_once(tmp_path, monkeypatch):
+    # Сквозная проверка через точку входа: подкоманда `assets index` должна
+    # дойти до fetch_assets.index_pending и синхронизировать манифест с базой
+    # РОВНО один раз по завершении — не в цикле по URL (см. докстринг run.py).
+    from pipeline import assets_state, db as _db, fetch_assets
+
+    db_path = tmp_path / "forum.sqlite"
+    conn = _db.connect(db_path); _db.init_schema(conn)
+    conn.execute("INSERT INTO attachments(mid, kind, url, status) VALUES (1,'external_image','http://dead/x.jpg','pending')")
+    conn.commit(); conn.close()
+
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots", lambda url, **kw: [])
+
+    sync_calls = []
+    real_sync = assets_state.sync_to_db
+
+    def counting_sync(conn, manifest, assets_root):
+        sync_calls.append(1)
+        return real_sync(conn, manifest, assets_root)
+
+    monkeypatch.setattr(assets_state, "sync_to_db", counting_sync)
+
+    manifest = tmp_path / "assets-manifest.jsonl"
+    rc = run.main(["assets", "index", "--db", str(db_path), "--assets-manifest", str(manifest),
+                   "--assets-root", str(tmp_path / "assets")])
+    assert rc == 0
+    assert len(sync_calls) == 1
+
+    row = sqlite3.connect(db_path).execute(
+        "SELECT status FROM attachments WHERE url='http://dead/x.jpg'").fetchone()
+    assert row == ("no_snapshot",)  # sync_to_db реально применил манифест к базе
+
+
+def test_assets_download_uses_assets_root_and_manifest(tmp_path, monkeypatch):
+    from pipeline import assets_state, db as _db, fetch_assets
+
+    db_path = tmp_path / "forum.sqlite"
+    conn = _db.connect(db_path); _db.init_schema(conn)
+    conn.execute("INSERT INTO attachments(mid, kind, url, status) VALUES (1,'external_image','http://h/x.jpg','pending')")
+    conn.commit(); conn.close()
+
+    manifest = tmp_path / "assets-manifest.jsonl"
+    assets_state.record(manifest, "http://h/x.jpg", None, "pending", note="20150101")
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots", lambda url, **kw: [("20150101", url)])
+    monkeypatch.setattr(fetch_assets.fetcher, "fetch_snapshot",
+                         lambda ts, url, **kw: b"\x89PNG\r\n\x1a\n" + b"\x00" * 40)
+
+    assets_root = tmp_path / "assets"
+    rc = run.main(["assets", "download", "--db", str(db_path), "--assets-manifest", str(manifest),
+                   "--assets-root", str(assets_root)])
+    assert rc == 0
+    assert list(assets_root.rglob("*.jpg"))  # файл лёг именно в переданный --assets-root (имя — по URL)
+
+    row = sqlite3.connect(db_path).execute(
+        "SELECT status FROM attachments WHERE url='http://h/x.jpg'").fetchone()
+    assert row == ("ok",)

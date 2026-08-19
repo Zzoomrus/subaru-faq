@@ -7,14 +7,26 @@
 
 Команды:
 
-    ingest    разобрать сырые страницы в SQLite (`--rebuild` — с нуля)
-    coverage  отчёт покрытия в CSV + сводка в stdout
-    mirror    сгенерировать зеркало `wiki/Источники`
-    check     проверка целостности всей вики (код возврата 1 при находках)
-    all       всё перечисленное подряд
+    ingest        разобрать сырые страницы в SQLite (`--rebuild` — с нуля)
+    coverage      отчёт покрытия в CSV + сводка в stdout
+    mirror        сгенерировать зеркало `wiki/Источники`
+    check         проверка целостности всей вики (код возврата 1 при находках)
+    all           всё перечисленное подряд
+    assets index    добор Ф2: индексация CDX (тела не тянет, ~40 мин на 6008 URL)
+    assets download добор Ф2: скачивание тел там, где индексация нашла снимок
 
 Порядок в `all` не случаен: `ingest_sections` обязан отработать до
 генерации заметок, иначе в каждой заметке пустое поле «раздел».
+
+`assets` — отдельная пара команд (`assets index`, затем `assets download`),
+намеренно не входящая в `all`: прогон на всём списке — это часы работы, его
+запускают вручную и с сервера (см. `global-constraints.md` фазы Ф2 про
+токен-бакет Wayback), а не при каждом обычном прогоне конвейера. `sync_to_db`
+(запись найденного в `attachments`) вызывается ровно один раз — после того,
+как вся команда отработала, а не внутри цикла по URL: у Python предупреждения
+с одинаковым текстом из одного места кода показываются один раз за процесс,
+и повторные вызовы `sync_to_db` в цикле создали бы у предупреждений о
+повреждённом манифесте ложное впечатление, что проблема исчезла.
 
 Базу создаёт только загрузчик (`ingest`/`all`). Для `coverage`/`mirror`
 отсутствующая база — ошибка (код 2), а не пустой результат: молча созданная
@@ -31,10 +43,11 @@
 архиве).
 """
 import argparse
+import logging
 import sys
 from pathlib import Path
 
-from pipeline import check_mirror, coverage, db, ingest, mirror
+from pipeline import assets_state, check_mirror, coverage, db, fetch_assets, ingest, mirror
 
 DEFAULT_PAGES = Path("data/raw/archive/pages")
 DEFAULT_MANIFEST = Path("data/raw/archive/manifest.jsonl")
@@ -42,13 +55,17 @@ DEFAULT_DB = Path("data/forum.sqlite")
 DEFAULT_CSV = Path("data/coverage.csv")
 DEFAULT_WIKI = Path("wiki")
 DEFAULT_MIRROR_DIR = "Источники"
+DEFAULT_ASSETS_MANIFEST = Path("data/assets/manifest.jsonl")
+DEFAULT_ASSETS_ROOT = Path("data/assets/files")
 
 
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m pipeline.run",
         description="Конвейер subaru-faq: сырой HTML архива -> SQLite -> зеркало Obsidian.")
-    p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all"])
+    p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all", "assets"])
+    p.add_argument("assets_action", nargs="?", choices=["index", "download"], default=None,
+                   help="для command=assets: index — индексация CDX, download — скачивание")
     p.add_argument("--pages", type=Path, default=DEFAULT_PAGES,
                    help="каталог сырых страниц архива (по умолчанию %s)" % DEFAULT_PAGES)
     p.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST,
@@ -62,6 +79,12 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--rebuild", action="store_true",
                    help="снести базу перед загрузкой — единственный способ "
                         "применить правку парсеров")
+    p.add_argument("--assets-manifest", type=Path, default=DEFAULT_ASSETS_MANIFEST,
+                   help="манифест добора Ф2 (по умолчанию %s)" % DEFAULT_ASSETS_MANIFEST)
+    p.add_argument("--assets-root", type=Path, default=DEFAULT_ASSETS_ROOT,
+                   help="куда класть скачанные файлы (по умолчанию %s)" % DEFAULT_ASSETS_ROOT)
+    p.add_argument("--limit", type=int, default=None,
+                   help="ограничить число URL за прогон (для проб/тестов)")
     return p
 
 
@@ -76,8 +99,31 @@ def _drop_db(path: Path) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Прогон добора идёт часами на сервере под nohup, лог — единственный
+    # свидетель; предупреждения о повреждённом манифесте (warnings.warn в
+    # assets_state) без этого улетают мимо лога, а не просто мимо глаз.
+    logging.captureWarnings(True)
     args = _parser().parse_args(argv)
     cmd = args.command
+
+    if cmd == "assets":
+        if args.assets_action is None:
+            print("укажи действие: assets index | assets download")
+            return 2
+        conn = db.connect(args.db)
+        db.init_schema(conn)
+        if args.assets_action == "index":
+            stats = fetch_assets.index_pending(conn, args.assets_manifest, limit=args.limit)
+            print("индексация:", stats)
+        else:
+            stats = fetch_assets.download(conn, args.assets_manifest, args.assets_root, limit=args.limit)
+            print("скачивание:", stats)
+        # Один раз по завершении всего прогона, не в цикле по URL — см.
+        # докстринг модуля про предупреждения "once per process".
+        sync_stats = assets_state.sync_to_db(conn, args.assets_manifest, args.assets_root)
+        print("синхронизация с базой:", sync_stats)
+        return 0
+
     mirror_path = args.wiki / args.mirror_dir
     rc = 0
 
