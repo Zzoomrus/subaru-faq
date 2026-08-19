@@ -94,6 +94,38 @@ def test_thread_without_posts_gets_note_with_metadata(tmp_path):
     assert "tid: 999" in md
 
 
+def test_bitrix_components_getfile_is_content_not_chrome(tmp_path):
+    # Правка после осмотра: bitrix/components/.../show_file.php?fid=N — это
+    # тот же механизм раздачи вложений, что и getfile, а не хром интерфейса.
+    # Настоящий хром (смайл bitrix/images) рядом не должен дать вообще ничего.
+    conn = _seed(tmp_path)
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (53392, 'local', "
+                 "'http://subaru-faq.ru/bitrix/components/bitrix/forum.interface/show_file.php?fid=123', "
+                 "NULL, 'ok')")
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (53392, 'local', '/bitrix/images/forum/smile/icon_smile.gif', NULL, 'ok')")
+    conn.commit()
+    md = mirror.render_thread(conn, 10045)
+    assert "show_file.php?fid=123" in md
+    assert "> [!missing] изображение не сохранилось" in md
+    assert "icon_smile" not in md
+
+
+def test_duplicate_attachment_url_in_same_post_renders_once(tmp_path):
+    # Дублирующиеся строки (mid, url) в attachments (реальный кейс в базе:
+    # один и тот же URL встретился в разметке поста дважды) не должны давать
+    # два одинаковых коллаута подряд — один URL внутри поста -> один блок.
+    conn = _seed(tmp_path)
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (53392, 'external_image', 'http://host/dup.jpg', NULL, 'no_snapshot')")
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (53392, 'external_image', 'http://host/dup.jpg', NULL, 'no_snapshot')")
+    conn.commit()
+    md = mirror.render_thread(conn, 10045)
+    assert md.count("dup.jpg") == 1
+
+
 def test_unknown_replies_expected_rendered_as_unknown(tmp_path):
     # Решение 6: NULL replies_expected -> "неизвестно", не пусто и не 0.
     conn = db.connect(tmp_path / "t3.sqlite"); db.init_schema(conn)

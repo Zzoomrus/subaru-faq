@@ -10,12 +10,21 @@
   внутри цитаты раскрывал бы пометку вместо текста — а весь смысл блочной
   ссылки в том, чтобы раскрывался именно текст.
 - Интерфейсный хром форума (смайлы `images/smiley_icons`, иконки
-  `bitrix/images`, `bitrix/components`) не рендерится вовсе — не вставка,
-  не пометка об утрате: терять там нечего, это не контент поста.
+  `bitrix/images`) не рендерится вовсе — не вставка, не пометка об утрате:
+  терять там нечего, это не контент поста. `bitrix/components` в хром
+  НЕ входит (правка после осмотра задачи 7, см. отчёт): по факту это
+  `.../bitrix/components/bitrix/forum.interface/show_file.php?fid=N` —
+  тот же механизм раздачи вложений, что и `getfile`, то есть контент.
 - Всё остальное без файла — коллаут "изображение не сохранилось" с
   исходным URL. Вставка `![[...]]` происходит только когда `local_path`
   не пуст, независимо от значения `status` (в базе есть мусорная запись
   status='ok' с пустым local_path).
+- Один и тот же URL внутри одного поста рендерится один раз: `attachments`
+  местами содержит дублирующиеся строки `(mid, url)` (задача ingest, не
+  переписываем — таблица отражает то, что реально встретилось в разметке).
+  Дедуп — только на уровне вывода заметки, по порядку встречи; если среди
+  дублей есть строка с заполненным `local_path`, побеждает она (показываем
+  вставку, а не пометку об утрате).
 - Темы без единого поста получают заметку с метаданными оглавления и
   коллаутом "содержимое не сохранилось".
 - `replies_expected IS NULL` -> "неизвестно" во frontmatter, не 0 и не пусто.
@@ -23,9 +32,10 @@
 from pathlib import Path
 
 # Интерфейсный хром форума: смайлы и иконки, вшитые в шаблон движка.
-# На корпусе это 20501 из 20764 "local"-вложений (см. отчёт задачи 7) —
+# На корпусе это 20416 из 20764 "local"-вложений (см. отчёт задачи 7) —
 # у них никогда не было и не будет собственного файла, это не потеря контента.
-_CHROME_MARKERS = ("bitrix/images", "images/smiley_icons", "bitrix/components")
+# ВАЖНО: "bitrix/components" сюда НЕ входит — см. docstring модуля.
+_CHROME_MARKERS = ("bitrix/images", "images/smiley_icons")
 
 
 def _is_interface_chrome(kind: str, url: str) -> bool:
@@ -91,11 +101,26 @@ def render_thread(conn, tid: int) -> str:
         else:
             out.append("^p%d" % mid)
 
-        extra_blocks = []
+        # Дедуп по URL: attachments местами содержит дублирующиеся строки
+        # (mid, url) — один и тот же URL не должен давать два одинаковых
+        # блока подряд. Если среди дублей есть строка с заполненным
+        # local_path, она побеждает (реальная вставка важнее пометки).
+        by_url = {}
+        order = []
         for a_kind, a_url, a_local, a_status in conn.execute(
                 "SELECT kind, url, local_path, status FROM attachments WHERE mid = ?", (mid,)):
             if _is_interface_chrome(a_kind, a_url):
                 continue
+            key = a_url or ""
+            if key not in by_url:
+                order.append(key)
+                by_url[key] = (a_local, a_url)
+            elif a_local and not by_url[key][0]:
+                by_url[key] = (a_local, a_url)
+
+        extra_blocks = []
+        for key in order:
+            a_local, a_url = by_url[key]
             if a_local:
                 # Решение 4: вставка файла только когда local_path реально
                 # заполнен — status='ok' сам по себе ничего не гарантирует.
