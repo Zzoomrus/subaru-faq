@@ -181,6 +181,29 @@ def test_frontmatter_survives_yaml_special_chars_in_author(tmp_path):
         assert fm["aliases"] == ['Заголовок: с двоеточием и "кавычкой"']
 
 
+def test_bbcode_leak_with_double_brackets_is_not_a_wikilink(tmp_path):
+    # Реальный случай (18 постов, 13 тем): в текст поста утекает необработанный
+    # BBCode форума с задвоенными квадратными скобками — "[[IMG]url[/img]",
+    # "[[QUOTE]...", "[[/URL [URL=...]]", "[[url=...]" — html_text.plain_text
+    # снимает только НАШИ markdown-ссылки/картинки, а этот мусор — буквальный
+    # текст оригинального поста. Без экранирования "[[...]]" Obsidian читает
+    # его как вики-ссылку на несуществующую заметку — check_mirror.check
+    # (задача 8) находил такие как broken_links на реальном корпусе.
+    conn = db.connect(tmp_path / "t7.sqlite"); db.init_schema(conn)
+    conn.execute("INSERT INTO sections(fid, title) VALUES (19, 'Типовые вопросы о Субару')")
+    conn.execute("INSERT INTO threads(tid, fid, title, author, started_at, replies_expected, views) "
+                 "VALUES (992, 19, 'Тема с мусором', 'DTR', '2007-04-02', 1, 1)")
+    conn.execute("INSERT INTO posts(mid, tid, page_no, author, posted_at, number, text) "
+                 "VALUES (53500, 992, 1, 'DTR', '2007-04-02 12:04:04', '#1', "
+                 "'фото тут [[IMG]http://example.com/x.jpg[/img]')")
+    conn.commit()
+    md = mirror.render_thread(conn, 992)
+    assert "[[IMG]" not in md
+    assert "\\[\\[IMG]" in md
+    # свою собственную сноску-якорь ("^p53500") экранирование не должно портить
+    assert "^p53500" in md
+
+
 def test_all_generated_frontmatter_parses_as_yaml(tmp_path):
     # Стресс-тест: смесь всех проблемных случаев сразу в одной теме.
     conn = db.connect(tmp_path / "t6.sqlite"); db.init_schema(conn)
