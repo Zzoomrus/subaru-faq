@@ -75,3 +75,41 @@ def test_section_listing_page_has_no_answer():
 
 def test_unrelated_page_yields_none():
     assert parse_faq.parse(_html("broken_db_error.html")) is None
+
+
+def test_bitrix_embedded_question_promoted_over_mismatched_title():
+    # Дефект, найденный лидом на живом корпусе (FAQ 103): часть страниц
+    # Bitrix несёт в теле catalog-element СВОЙ дублирующий "Вопрос:"/"Ответ:"
+    # (миграция из старого движка вставила текст целиком), и заголовок h1 —
+    # НЕ сам вопрос, а название темы раздела. Настоящий вопрос — из тела,
+    # заголовок уходит в `title` (алиас), метки и дублированный текст вопроса
+    # не должны оставаться в ответе.
+    entry = parse_faq.parse(_html("faq_element_bitrix_embedded_qa_mismatch.html"))
+    assert entry is not None
+    assert entry.question == "Не вредно ли на машине с АКПП буксировать прицеп?"
+    assert entry.title == "Рекомендации по использованию прицепов на автомобилях с АКПП"
+    assert "Вопрос:" not in entry.answer_md
+    assert "Ответ:" not in entry.answer_md
+    assert entry.answer_md.startswith("На автомобилях с АКПП допускается")
+    # Сам вопрос не должен повторяться внутри ответа.
+    assert "Не вредно ли на машине с АКПП" not in entry.answer_md
+
+
+def test_bitrix_answer_label_only_is_stripped_without_touching_title():
+    # У части записей в теле только метка "Ответ:" без дублированного
+    # вопроса — заголовок h1 уже несёт настоящий вопрос, трогать question
+    # не нужно, только убрать служебную метку.
+    entry = parse_faq.parse(_html("faq_element_bitrix_answer_label_only.html"))
+    assert entry is not None
+    assert entry.question == "Замена шлангов ГУР своими руками"
+    assert entry.title is None
+    assert "Ответ:" not in entry.answer_md
+    assert entry.answer_md.startswith("Если шланги гидроусилителя")
+
+
+def test_bitrix_entry_without_markers_has_no_title():
+    # Регрессия: у записей без дублирующих меток `title` должен остаться
+    # `None`, а не что-то унаследованное от предыдущего разбора.
+    entry = parse_faq.parse(_html("faq_element_bitrix.html"))
+    assert entry is not None
+    assert entry.title is None

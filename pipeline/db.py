@@ -34,9 +34,15 @@ CREATE TABLE IF NOT EXISTS pages (
 -- составной (engine, nr), а не просто nr. `catnr` осмыслен только для
 -- старого движка (Bitrix-адрес его не несёт) — сознательное отклонение от
 -- брифа (тот писан до открытия двух движков в задаче 5).
+-- `title` (задача 6, ревизия по дефекту): у части страниц Bitrix заголовок
+-- h1 — название темы, а не сам вопрос (настоящий вопрос лежал ВНУТРИ тела
+-- ответа под собственной меткой "Вопрос:" — см. `parse_faq._split_embedded_
+-- qa`); NULL — заголовок и есть вопрос (старый движок всегда, Bitrix — где
+-- дублирования не было или заголовок совпал с вопросом из тела).
 CREATE TABLE IF NOT EXISTS faq (
     engine TEXT, nr INTEGER, catnr INTEGER, prog TEXT, category TEXT,
     question TEXT, answer_md TEXT, source_url TEXT, snapshot_ts TEXT,
+    title TEXT,
     PRIMARY KEY (engine, nr));
 CREATE TABLE IF NOT EXISTS faq_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT, engine TEXT, nr INTEGER, url TEXT, local_path TEXT);

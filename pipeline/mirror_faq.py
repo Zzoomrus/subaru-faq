@@ -116,7 +116,7 @@ def _resolve_image(url: str, asset_index: set[str], assets_root: Path, dest_dir:
 
 
 def render_entry(row: tuple, images_by_url: dict) -> str:
-    engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts = row
+    engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts, title = row
     question = question or ""
     body = mirror.render_post_body(answer_md or "", images_by_url)
 
@@ -125,6 +125,15 @@ def render_entry(row: tuple, images_by_url: dict) -> str:
     # сломал бы структуру заметки так же молча, как и в теле ответа.
     question_line = mirror._escape_headings(mirror._escape_wikilink_open(question))
 
+    # `title` (задача 6, ревизия по дефекту) — заголовок темы Bitrix, когда
+    # он расходится с настоящим вопросом (см. `parse_faq._split_embedded_
+    # qa`): показываем в "## Вопрос" вопрос, а название темы не теряем,
+    # кладём вторым алиасом — по нему тоже находят заметку поиском/линком.
+    aliases = [question]
+    if title and title != question:
+        aliases.append(title)
+    aliases_line = ", ".join(mirror._yaml_dquote(a) for a in aliases)
+
     out = ["---",
            "номер: %d" % nr,
            "движок: %s" % ("bitrix" if engine == "bitrix" else "старый"),
@@ -132,7 +141,7 @@ def render_entry(row: tuple, images_by_url: dict) -> str:
            "категория: %s" % mirror._yaml_dquote(category or ""),
            "адрес: %s" % mirror._yaml_dquote(source_url or ""),
            "снимок: %s" % mirror._yaml_dquote(snapshot_ts or ""),
-           "aliases: [%s]" % mirror._yaml_dquote(question),
+           "aliases: [%s]" % aliases_line,
            "---", "",
            "## Вопрос", "",
            question_line or "(вопрос не сохранился)", "",
@@ -158,7 +167,7 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
     names: set[str] = set()
     n = 0
     rows = conn.execute(
-        "SELECT engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts "
+        "SELECT engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts, title "
         "FROM faq ORDER BY engine, nr").fetchall()
     for row in rows:
         engine, nr = row[0], row[1]

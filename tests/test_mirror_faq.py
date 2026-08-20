@@ -95,6 +95,33 @@ def test_missing_image_gets_loss_note_not_broken_embed(tmp_path):
     assert "![[" not in md
 
 
+def test_title_mismatch_adds_second_alias(tmp_path):
+    # Задача 6, ревизия по дефекту: заголовок темы Bitrix (`title`), когда он
+    # расходится с настоящим вопросом (`question`, уже очищенным парсером от
+    # меток "Вопрос:"/"Ответ:" — см. parse_faq), не должен теряться — он
+    # уходит во второй алиас, а не пропадает из заметки вовсе.
+    conn = _seed(tmp_path)
+    conn.execute(
+        "INSERT INTO faq(engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts, title) "
+        "VALUES ('bitrix', 103, NULL, 'Субару - ездим.', 'Буксировка и использование прицепа', "
+        "'Не вредно ли на машине с АКПП буксировать прицеп?', "
+        "'На автомобилях с АКПП допускается такая же буксировка, как и на механике.', "
+        "'http://www.subaru-faq.ru/faq/index.php?ELEMENT_ID=103', '20100404023158', "
+        "'Рекомендации по использованию прицепов на автомобилях с АКПП')")
+    conn.commit()
+    out = tmp_path / "FAQ"
+    mirror_faq.write_all(conn, out, assets_manifest=FIX_ASSETS / "manifest-assets.jsonl",
+                          assets_root=FIX_ASSETS / "assets")
+    md = (out / "FAQ 103.md").read_text(encoding="utf-8")
+    fm = _frontmatter(md)
+    assert fm["aliases"] == [
+        "Не вредно ли на машине с АКПП буксировать прицеп?",
+        "Рекомендации по использованию прицепов на автомобилях с АКПП",
+    ]
+    assert "Не вредно ли на машине с АКПП буксировать прицеп?" in md.split("## Ответ")[0]
+    assert "Вопрос:" not in md and "Ответ:" not in md.split("## Ответ")[1]
+
+
 def test_write_all_removes_stale_notes_but_not_foreign_files(tmp_path):
     conn = _seed(tmp_path)
     out = tmp_path / "FAQ"

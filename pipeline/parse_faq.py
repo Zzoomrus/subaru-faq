@@ -75,10 +75,83 @@ class FaqEntry:
     question: str
     answer_md: str
     images: list[str] = field(default_factory=list)
+    # Заголовок темы (h1), когда он расходится с настоящим вопросом,
+    # найденным ВНУТРИ тела ответа (см. `_split_embedded_qa`) — `None` у
+    # старого движка (там `question` и так из `td.question`) и у Bitrix,
+    # когда дублирования вообще нет или заголовок совпадает с вопросом.
+    title: str | None = None
 
 
 def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", text or "").strip()
+
+
+# Дефект задачи 6 (найден лидом на живом корпусе, пример FAQ 103): часть
+# страниц Bitrix (70 из 154 — см. task-6-report.md) несёт в теле
+# `catalog-element` СВОЙ дублирующий "Вопрос:"/"Ответ:" — тело мигрировало
+# со старого движка целиком, вместе с метками, вместо того чтобы остаться
+# просто ответом. Устроено ТРЕМЯ разными способами (проверено на всех 70):
+#   - метка "Ответ:" одна, без вопроса (34) — заголовок h1 уже несёт
+#     настоящий вопрос, нужно только убрать служебное слово;
+#   - метка "Вопрос:" с текстом ВОПРОСА, затем метка "Ответ:" (34) — и вот
+#     тут заголовок h1 сплошь и рядом (32 из 34) несёт не сам вопрос, а
+#     название темы ("Рекомендации по использованию прицепов...") —
+#     настоящий вопрос лежит только в теле;
+#   - метка "Вопрос:" вовсе без "Ответ:" (2, FAQ 120 и FAQ 223) — не
+#     обрамлена ничем, поэтому НЕ пытаемся угадать, где вопрос кончается и
+#     начинается ответ (см. предостережение в докстринге `_split_embedded_
+#     qa`), просто убираем самую метку.
+# Все три видны исключительно у Bitrix (проверено на всех 23 файлах старого
+# движка — ни одного случая): у старого движка `question` и так берётся из
+# отдельной ячейки `td.question`, дублировать ей неоткуда.
+_ANSWER_LABEL_ONLY = re.compile(r"^\s*Ответ\s*:\s*", re.S)
+# Гэп после "Вопрос:" — ЖАДНЫЙ `\s*` (в отличие от предыдущей ревизии этого
+# regex): здесь это безопасно, потому что регекс ограничен СПРАВА
+# однозначным якорем "Ответ:", а не первой попавшейся пустой строкой —
+# сколько бы пустых строк (стиль <br><br> у части страниц, пример FAQ 141)
+# ни было внутри самого вопроса, `.*?` остановится ровно на "Ответ:".
+_QUESTION_WITH_ANSWER_LABEL = re.compile(r"^\s*Вопрос\s*:?\s*(?P<q>.*?)\s*\n\s*Ответ\s*:\s*", re.S)
+# Без парного "Ответ:" граница вопроса неоднозначна — на живом корпусе она
+# ОБА раза приходится на пустую строку сразу после метки, но означает
+# противоположное: у FAQ 120 сразу за меткой идёт настоящий вопрос (просто
+# через один перевод строки, не через пустую строку — тут пустой строки как
+# раз НЕТ), у FAQ 223 — пустая строка и следом список ссылок без единого
+# слова вопроса. Различить эти два случая надёжно нечем (оба текстовые, без
+# доп. разметки), поэтому вместо угадывания — только снять саму метку и
+# оставить текст как есть: не идеально для FAQ 120 (вопрос останется
+# нетронутым текстом внутри ответа), но безопасно для FAQ 223 (не
+# придумываем вопрос из списка ссылок, см. task-6-report.md).
+_QUESTION_LABEL_BARE = re.compile(r"^\s*Вопрос\s*:?\s*", re.S)
+
+
+def _split_embedded_qa(answer_md: str) -> tuple[str | None, str]:
+    """Срезает служебные метки "Вопрос:"/"Ответ:" из тела ответа Bitrix.
+
+    Возвращает `(вопрос_из_тела | None, очищенный_ответ)`. `None` для
+    вопроса значит: либо дублирования не было вовсе, либо была только
+    метка "Ответ:" без вопроса (заголовок h1 уже верен), либо "Вопрос:"
+    стояла без парной "Ответ:" (граница вопроса неоднозначна — см. докстринг
+    `_QUESTION_LABEL_BARE`, снимается только метка).
+    """
+    m = _QUESTION_WITH_ANSWER_LABEL.match(answer_md)
+    if m:
+        return (_clean(m.group("q")) or None), answer_md[m.end():].lstrip("\n ")
+    m = _ANSWER_LABEL_ONLY.match(answer_md)
+    if m:
+        return None, answer_md[m.end():].lstrip("\n ")
+    m = _QUESTION_LABEL_BARE.match(answer_md)
+    if m:
+        return None, answer_md[m.end():].lstrip("\n ")
+    return None, answer_md
+
+
+def _loosely_equal(a: str, b: str) -> bool:
+    """Сравнение вопроса из тела с заголовком h1 без шума пунктуации/
+    регистра — на живом корпусе 2 из 34 страниц с embedded-вопросом несут
+    его словно в словно (буква в букву, кроме этого шума).
+    """
+    norm = lambda s: re.sub(r"[\s.?!:;,\"'«»]+", " ", s.strip().lower()).strip()
+    return norm(a) == norm(b)
 
 
 def _bitrix_id(html: str) -> int | None:
@@ -138,8 +211,21 @@ def _parse_bitrix(soup: BeautifulSoup, html: str) -> FaqEntry | None:
     answer_md = _absolutize_images(html_text.to_markdown(inner), _BASE_BITRIX)
     images = [urllib.parse.urljoin(_BASE_BITRIX, u) for u in html_text.images(inner)]
 
+    # Снять дублирующие метки/вопрос из тела (см. docstring
+    # `_split_embedded_qa`) ДО экранирования заголовков/wikilink в
+    # `mirror_faq.render_entry` — иначе "Вопрос:"/"Ответ:" остались бы в
+    # заметке рядом с настоящим ответом.
+    embedded_question, answer_md = _split_embedded_qa(answer_md)
+    title = None
+    if embedded_question and not _loosely_equal(embedded_question, question):
+        # Заголовок h1 — название темы, а не вопрос (см. пример FAQ 103 в
+        # докстринге модуля): настоящий вопрос важнее, заголовок уходит в
+        # `title` — `mirror_faq` кладёт его в aliases, а не теряет.
+        title = question
+        question = embedded_question
+
     return FaqEntry(nr=nr, engine="bitrix", catnr=None, prog=prog, category=category,
-                     question=question, answer_md=answer_md, images=images)
+                     question=question, answer_md=answer_md, images=images, title=title)
 
 
 def _parse_old(soup: BeautifulSoup) -> FaqEntry | None:
@@ -258,13 +344,13 @@ def load_all(site_root: Path, site_manifest: Path, conn) -> dict[str, int]:
         seen_keys.add(key)
 
         conn.execute(
-            "INSERT INTO faq(engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts) "
-            "VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(engine, nr) DO UPDATE SET "
+            "INSERT INTO faq(engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts, title) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(engine, nr) DO UPDATE SET "
             "catnr=excluded.catnr, prog=excluded.prog, category=excluded.category, "
             "question=excluded.question, answer_md=excluded.answer_md, "
-            "source_url=excluded.source_url, snapshot_ts=excluded.snapshot_ts",
+            "source_url=excluded.source_url, snapshot_ts=excluded.snapshot_ts, title=excluded.title",
             (entry.engine, entry.nr, entry.catnr, entry.prog, entry.category,
-             entry.question, entry.answer_md, url, ts_by_url.get(url, "")))
+             entry.question, entry.answer_md, url, ts_by_url.get(url, ""), entry.title))
         # Картинки этой записи — полностью пересчитываем при каждой загрузке
         # (см. `upsert_post`/`ingest_all` для прецедента "чужого" паттерна;
         # здесь он не нужен — записей мало, полный пересчёт дешевле, чем
