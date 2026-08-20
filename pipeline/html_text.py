@@ -6,7 +6,7 @@
 """
 import re
 
-from bs4 import BeautifulSoup, NavigableString, Tag
+from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 
 
 def _soup(html: str) -> BeautifulSoup:
@@ -31,6 +31,14 @@ _SKIP_TAGS = {"script", "style", "noscript"}
 
 
 def _render(node, parts: list[str]) -> None:
+    if isinstance(node, Comment):
+        # `Comment` — ПОДКЛАСС `NavigableString` (проверка isinstance ниже
+        # для него тоже истинна), поэтому без этой ветки текст HTML-
+        # комментария (`<!-- ... -->`) рендерился бы как обычный текст поста
+        # — найдено на живом корпусе FAQ (задача 6, ревизия): редакторские
+        # маркеры "SPCode Start"/"SPCode End" старого WYSIWYG протекали в
+        # markdown как видимый мусор (23 из 174 заметок).
+        return
     if isinstance(node, NavigableString):
         parts.append(str(node).replace("\xa0", " "))
         return

@@ -29,6 +29,26 @@ def _args(tmp_path, *cmd):
             "--mirror-dir", "Источники"]
 
 
+def _faq_site(tmp_path):
+    # Одна реальная страница FAQ (nr=10, движок Bitrix, без дублирующих
+    # меток) — минимальный, но настоящий сырой снимок, а не synthетика.
+    site_root = tmp_path / "site"
+    faq_dir = site_root / "faq"
+    faq_dir.mkdir(parents=True)
+    raw = (FIX / "faq_element_bitrix.html").read_bytes()
+    (faq_dir / "10.html").write_bytes(raw)
+    manifest = tmp_path / "manifest-site.jsonl"
+    from pipeline import assets_state
+    assets_state.record(manifest, "http://www.subaru-faq.ru/faq/index.php?ELEMENT_ID=10",
+                         "faq/10.html", "ok")
+    return site_root, manifest
+
+
+def _args_with_faq(tmp_path, *cmd):
+    site_root, site_manifest = _faq_site(tmp_path)
+    return _args(tmp_path, *cmd) + ["--site-root", str(site_root), "--site-manifest", str(site_manifest)]
+
+
 def test_all_runs_the_whole_pipeline(tmp_path):
     # Единственная точка входа: следующая фаза состоит из повторных прогонов,
     # heredoc в документе для этого не годится.
@@ -36,6 +56,69 @@ def test_all_runs_the_whole_pipeline(tmp_path):
     assert (tmp_path / "forum.sqlite").exists()
     assert (tmp_path / "coverage.csv").exists()
     assert (tmp_path / "wiki" / "Источники" / "Тема 10045.md").exists()
+
+
+def test_all_includes_faq_notes_alongside_the_forum(tmp_path):
+    # Ревизия задачи 6: FAQ обязан собираться ВНУТРИ обычного `all`, а не
+    # только ручным вызовом — иначе полный прогон с нуля молча даёт вики
+    # без раздела FAQ.
+    assert run.main(_args_with_faq(tmp_path, "all")) == 0
+    assert (tmp_path / "wiki" / "Источники" / "Тема 10045.md").exists()
+    assert (tmp_path / "wiki" / "Источники" / "FAQ" / "FAQ 10.md").exists()
+
+
+def test_faq_command_loads_and_mirrors_without_touching_the_forum(tmp_path):
+    # Отдельная команда — для точечной перегенерации FAQ (правка парсера)
+    # без полного форумного `ingest`.
+    site_root, site_manifest = _faq_site(tmp_path)
+    args = ["faq", "--db", str(tmp_path / "forum.sqlite"),
+            "--site-root", str(site_root), "--site-manifest", str(site_manifest),
+            "--wiki", str(tmp_path / "wiki"), "--mirror-dir", "Источники"]
+    assert run.main(args) == 0
+    conn = sqlite3.connect(tmp_path / "forum.sqlite")
+    assert conn.execute("SELECT COUNT(*) FROM faq").fetchone()[0] == 1
+    assert (tmp_path / "wiki" / "Источники" / "FAQ" / "FAQ 10.md").exists()
+    # Форумные таблицы существуют (общая схема), но пустые — ingest не звался.
+    assert conn.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 0
+
+
+def test_faq_command_load_only_then_mirror_only(tmp_path):
+    site_root, site_manifest = _faq_site(tmp_path)
+    common = ["--db", str(tmp_path / "forum.sqlite"),
+              "--site-root", str(site_root), "--site-manifest", str(site_manifest),
+              "--wiki", str(tmp_path / "wiki"), "--mirror-dir", "Источники"]
+    assert run.main(["faq", "load", *common]) == 0
+    assert not (tmp_path / "wiki").exists()  # mirror ещё не звался
+    assert run.main(["faq", "mirror", *common]) == 0
+    assert (tmp_path / "wiki" / "Источники" / "FAQ" / "FAQ 10.md").exists()
+
+
+def test_faq_command_rejects_unknown_sub_action(tmp_path, capsys):
+    rc = run.main(["faq", "index", "--db", str(tmp_path / "forum.sqlite")])
+    assert rc == 2
+    assert "faq load" in capsys.readouterr().out
+
+
+def test_rebuild_from_scratch_reproduces_faq_table_and_column(tmp_path):
+    # Требование лида (ревизия задачи 6): полная пересборка — главная
+    # гарантия проекта, она должна восстанавливать FAQ (таблицу И колонку
+    # `title`) с нуля, а не только через ручной `ALTER TABLE` на живой базе.
+    args = _args_with_faq(tmp_path, "all", "--rebuild")
+    assert run.main(args) == 0
+    db_path = tmp_path / "forum.sqlite"
+    conn = sqlite3.connect(db_path)
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(faq)").fetchall()}
+    assert "title" in cols
+    assert conn.execute("SELECT COUNT(*) FROM faq").fetchone()[0] == 1
+    conn.close()
+
+    # Второй проход с --rebuild — тот самый "снёс и собрал заново": FAQ
+    # переживает пересборку так же, как форумные таблицы.
+    assert run.main(args) == 0
+    conn = sqlite3.connect(db_path)
+    assert conn.execute("SELECT COUNT(*) FROM faq").fetchone()[0] == 1
+    conn.close()
+    assert (tmp_path / "wiki" / "Источники" / "FAQ" / "FAQ 10.md").exists()
 
 
 def test_rebuild_recreates_the_database_from_scratch(tmp_path):

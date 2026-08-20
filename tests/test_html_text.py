@@ -128,3 +128,15 @@ def test_layout_table_without_quote_cell_is_not_quoted():
     # Обычная табличка в посте (не цитата) остаётся обычным текстом.
     html = '<table><tr><td>слева</td><td>справа</td></tr></table>'
     assert "> " not in html_text.to_markdown(html)
+
+
+def test_html_comments_do_not_leak_into_markdown():
+    # Дефект, найденный при ревизии задачи 6 (FAQ): `<!-- -->` — это
+    # `bs4.Comment`, а `Comment` — ПОДКЛАСС `NavigableString`, так что без
+    # явной проверки текст комментария рендерится как обычный текст поста.
+    # На живом корпусе FAQ это оставляло видимый мусор "SPCode Start"/"SPCode
+    # End" (редакторские маркеры старого WYSIWYG) в 23 из 174 заметок —
+    # см. task-6-report.md.
+    md = html_text.to_markdown("до<!-- SPCode Start -->между<!-- SPCode End -->после")
+    assert "SPCode" not in md
+    assert md == "домеждупосле"
