@@ -49,6 +49,28 @@ def _args_with_faq(tmp_path, *cmd):
     return _args(tmp_path, *cmd) + ["--site-root", str(site_root), "--site-manifest", str(site_manifest)]
 
 
+_BLOG_POST_URL = "http://www.subaru-faq.ru:80/blogs/index.php?page=post&blog=a-detal&post_id=304"
+
+
+def _blog_site(tmp_path):
+    # Одна реальная страница блога (a-detal/304, движок Bitrix, без тегов и
+    # комментариев) — минимальный, но настоящий сырой снимок (задача 7).
+    site_root = tmp_path / "site"
+    blogs_dir = site_root / "blogs"
+    blogs_dir.mkdir(parents=True)
+    raw = (FIX / "blog_post_simple.html").read_bytes()
+    (blogs_dir / "304.html").write_bytes(raw)
+    manifest = tmp_path / "manifest-site.jsonl"
+    from pipeline import assets_state
+    assets_state.record(manifest, _BLOG_POST_URL, "blogs/304.html", "ok")
+    return site_root, manifest
+
+
+def _args_with_blog(tmp_path, *cmd):
+    site_root, site_manifest = _blog_site(tmp_path)
+    return _args(tmp_path, *cmd) + ["--site-root", str(site_root), "--site-manifest", str(site_manifest)]
+
+
 def test_all_runs_the_whole_pipeline(tmp_path):
     # Единственная точка входа: следующая фаза состоит из повторных прогонов,
     # heredoc в документе для этого не годится.
@@ -119,6 +141,64 @@ def test_rebuild_from_scratch_reproduces_faq_table_and_column(tmp_path):
     assert conn.execute("SELECT COUNT(*) FROM faq").fetchone()[0] == 1
     conn.close()
     assert (tmp_path / "wiki" / "Источники" / "FAQ" / "FAQ 10.md").exists()
+
+
+def test_all_includes_blog_notes_alongside_the_forum(tmp_path):
+    # Задача 7, тот же принцип, что ревизия задачи 6 закрепила для FAQ:
+    # блоги обязаны собираться ВНУТРИ обычного `all`, иначе полный прогон с
+    # нуля молча даёт вики без раздела блогов.
+    assert run.main(_args_with_blog(tmp_path, "all")) == 0
+    assert (tmp_path / "wiki" / "Источники" / "Тема 10045.md").exists()
+    assert (tmp_path / "wiki" / "Источники" / "Блоги" / "Блог a-detal 304.md").exists()
+
+
+def test_blog_command_loads_and_mirrors_without_touching_the_forum(tmp_path):
+    site_root, site_manifest = _blog_site(tmp_path)
+    args = ["blog", "--db", str(tmp_path / "forum.sqlite"),
+            "--site-root", str(site_root), "--site-manifest", str(site_manifest),
+            "--wiki", str(tmp_path / "wiki"), "--mirror-dir", "Источники"]
+    assert run.main(args) == 0
+    conn = sqlite3.connect(tmp_path / "forum.sqlite")
+    assert conn.execute("SELECT COUNT(*) FROM blog_posts").fetchone()[0] == 1
+    assert (tmp_path / "wiki" / "Источники" / "Блоги" / "Блог a-detal 304.md").exists()
+    assert conn.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 0
+
+
+def test_blog_command_load_only_then_mirror_only(tmp_path):
+    site_root, site_manifest = _blog_site(tmp_path)
+    common = ["--db", str(tmp_path / "forum.sqlite"),
+              "--site-root", str(site_root), "--site-manifest", str(site_manifest),
+              "--wiki", str(tmp_path / "wiki"), "--mirror-dir", "Источники"]
+    assert run.main(["blog", "load", *common]) == 0
+    assert not (tmp_path / "wiki").exists()
+    assert run.main(["blog", "mirror", *common]) == 0
+    assert (tmp_path / "wiki" / "Источники" / "Блоги" / "Блог a-detal 304.md").exists()
+
+
+def test_blog_command_rejects_unknown_sub_action(tmp_path, capsys):
+    rc = run.main(["blog", "index", "--db", str(tmp_path / "forum.sqlite")])
+    assert rc == 2
+    assert "blog load" in capsys.readouterr().out
+
+
+def test_rebuild_from_scratch_reproduces_blog_tables(tmp_path):
+    # То же требование, что и у FAQ: полная пересборка обязана восстановить
+    # схему блогов (таблицы) с нуля, а не через ручной ALTER TABLE.
+    args = _args_with_blog(tmp_path, "all", "--rebuild")
+    assert run.main(args) == 0
+    db_path = tmp_path / "forum.sqlite"
+    conn = sqlite3.connect(db_path)
+    tables = {row[0] for row in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    assert {"blog_posts", "blog_images", "blog_comments"} <= tables
+    assert conn.execute("SELECT COUNT(*) FROM blog_posts").fetchone()[0] == 1
+    conn.close()
+
+    assert run.main(args) == 0
+    conn = sqlite3.connect(db_path)
+    assert conn.execute("SELECT COUNT(*) FROM blog_posts").fetchone()[0] == 1
+    conn.close()
+    assert (tmp_path / "wiki" / "Источники" / "Блоги" / "Блог a-detal 304.md").exists()
 
 
 def test_rebuild_recreates_the_database_from_scratch(tmp_path):

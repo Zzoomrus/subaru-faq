@@ -8,9 +8,9 @@
 Команды:
 
     ingest        разобрать сырые страницы в SQLite (`--rebuild` — с нуля;
-                  включает и форум, и FAQ — см. `faq` ниже)
+                  включает форум, FAQ и блоги — см. `faq`/`blog` ниже)
     coverage      отчёт покрытия в CSV + сводка в stdout
-    mirror        сгенерировать зеркало `wiki/Источники` (форум + FAQ)
+    mirror        сгенерировать зеркало `wiki/Источники` (форум + FAQ + блоги)
     check         проверка целостности всей вики (код возврата 1 при находках)
     all           всё перечисленное подряд
     faq [load|mirror]  FAQ отдельно от полного прогона: load — только разбор
@@ -19,6 +19,9 @@
                        в `<--wiki>/<--mirror-dir>/FAQ/`, без действия — оба
                        (тот же код, что и внутри `ingest`/`mirror`/`all` —
                        для точечного повтора без полного форумного прогона)
+    blog [load|mirror]  блоги (задача 7), тот же приём, что у `faq` — load в
+                       таблицы `blog_posts`/`blog_images`/`blog_comments`,
+                       mirror — заметки в `<--wiki>/<--mirror-dir>/Блоги/`
     assets index    добор Ф2: индексация CDX (тела не тянет, ~40 мин на 6008 URL)
     assets download добор Ф2: скачивание тел там, где индексация нашла снимок
     site build <faq|blogs>  добор Ф2 задача 5: план скачивания раздела по CDX,
@@ -78,7 +81,7 @@ import sys
 from pathlib import Path
 
 from pipeline import (assets_state, check_mirror, coverage, db, fetch_assets, fetch_site, ingest, mirror,
-                      mirror_faq, parse_faq)
+                      mirror_blog, mirror_faq, parse_blog, parse_faq)
 
 DEFAULT_PAGES = Path("data/raw/archive/pages")
 DEFAULT_MANIFEST = Path("data/raw/archive/manifest.jsonl")
@@ -90,6 +93,9 @@ DEFAULT_MIRROR_DIR = "Источники"
 # `mirror_faq.write_all` писал заметки до этой правки (`wiki/Источники/
 # FAQ/`), просто теперь путь собирается в одном месте, а не подразумевается.
 DEFAULT_FAQ_MIRROR_DIRNAME = "FAQ"
+# Подкаталог зеркала блогов ВНУТРИ --mirror-dir (задача 7, тот же приём,
+# что у FAQ) — `wiki/Источники/Блоги/`.
+DEFAULT_BLOG_MIRROR_DIRNAME = "Блоги"
 DEFAULT_ASSETS_MANIFEST = Path("data/assets/manifest.jsonl")
 DEFAULT_ASSETS_ROOT = Path("data/assets/files")
 DEFAULT_SITE_ROOT = Path("data/raw/site")
@@ -100,12 +106,13 @@ def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m pipeline.run",
         description="Конвейер subaru-faq: сырой HTML архива -> SQLite -> зеркало Obsidian.")
-    p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all", "assets", "site", "faq"])
+    p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all", "assets", "site",
+                                        "faq", "blog"])
     p.add_argument("sub_action", nargs="?", choices=["index", "download", "build", "fetch", "load", "mirror"],
                    default=None,
                    help="для command=assets: index — индексация CDX, download — скачивание; "
                         "для command=site: build — план по CDX, fetch — скачивание по плану; "
-                        "для command=faq: load — только разбор в SQLite, mirror (см. --mirror-dir) — "
+                        "для command=faq/blog: load — только разбор в SQLite, mirror (см. --mirror-dir) — "
                         "только генерация заметок, без действия — оба")
     p.add_argument("site_section", nargs="?", choices=["faq", "blogs"], default=None,
                    help="для command=site: какой раздел (build/fetch — оба обязаны его знать)")
@@ -198,6 +205,28 @@ def main(argv: list[str] | None = None) -> int:
             print("faq заметок:", n, "->", faq_mirror_path)
         return 0
 
+    if cmd == "blog":
+        if args.sub_action not in (None, "load", "mirror"):
+            print("укажи действие: blog load | blog mirror (без действия — оба)")
+            return 2
+        if args.rebuild:
+            _drop_db(args.db)
+            print("база пересоздана с нуля: %s" % args.db)
+        conn = db.connect(args.db)
+        db.init_schema(conn)
+        blog_mirror_path = args.wiki / args.mirror_dir / DEFAULT_BLOG_MIRROR_DIRNAME
+        if args.sub_action in (None, "load"):
+            stats = parse_blog.load_all(args.site_root, args.site_manifest, conn)
+            print("blog загрузка:", stats)
+        if args.sub_action in (None, "mirror"):
+            try:
+                n = mirror_blog.write_all(conn, blog_mirror_path)
+            except RuntimeError as e:
+                print("ОШИБКА:", e)
+                return 2
+            print("blog заметок:", n, "->", blog_mirror_path)
+        return 0
+
     if cmd == "site":
         if args.sub_action not in ("build", "fetch") or args.site_section is None:
             print("укажи действие и раздел: site build faq|blogs | site fetch faq|blogs")
@@ -248,6 +277,10 @@ def main(argv: list[str] | None = None) -> int:
         # молча даёт 0 записей), а не повод падать: чистый чекаут без
         # добора FAQ должен всё равно собираться.
         print("faq загрузка:", parse_faq.load_all(args.site_root, args.site_manifest, conn))
+        # Блоги (задача 7) — тот же приём, что и FAQ выше: живёт внутри
+        # ingest/all, а не только в отдельной команде `blog`, иначе
+        # `all --rebuild` пересоздаёт схему без данных блогов.
+        print("blog загрузка:", parse_blog.load_all(args.site_root, args.site_manifest, conn))
 
     if cmd in ("coverage", "all"):
         rows = coverage.report(conn)
@@ -256,9 +289,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if cmd in ("mirror", "all"):
         faq_mirror_path = mirror_path / DEFAULT_FAQ_MIRROR_DIRNAME
+        blog_mirror_path = mirror_path / DEFAULT_BLOG_MIRROR_DIRNAME
         try:
             print("заметок:", mirror.write_all(conn, mirror_path), "->", mirror_path)
             print("faq заметок:", mirror_faq.write_all(conn, faq_mirror_path), "->", faq_mirror_path)
+            print("blog заметок:", mirror_blog.write_all(conn, blog_mirror_path), "->", blog_mirror_path)
         except RuntimeError as e:
             # Предохранитель генератора (общий у mirror и mirror_faq): база
             # не описывает это зеркало. Печатаем причину без трейсбека и
