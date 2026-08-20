@@ -44,6 +44,20 @@ def test_bitrix_entry_with_images_gets_absolute_urls():
     assert all(u.startswith("http://www.subaru-faq.ru/upload/blog/") for u in entry.images)
 
 
+def test_images_in_answer_md_use_the_same_absolute_url_as_entry_images():
+    # Регрессия: html_text.to_markdown кладёт в `![](url)` СЫРОЙ (относительный)
+    # адрес из HTML, а entry.images абсолютизирован через urljoin — если их не
+    # свести к одной форме, pipeline.mirror.render_post_body ищет картинку в
+    # тексте по одному URL, а находит её в словаре по другому: каждая реально
+    # найденная картинка превращается разом и в "потерянную" в тексте, и в
+    # "сироту" в конце заметки (найдено на живом корпусе, FAQ 502).
+    entry = parse_faq.parse(_html("faq_element_bitrix_images.html"))
+    assert entry is not None
+    for url in entry.images:
+        assert ("![](%s)" % url) in entry.answer_md
+    assert "../upload/blog/" not in entry.answer_md
+
+
 def test_bitrix_id_falls_back_to_backurl_when_print_link_absent():
     # ELEMENT_ID=377 со служебными query-декорациями (clear_cache) — снимок
     # без верхнего меню, значит без ссылки "печать" рядом с ELEMENT_ID=N.

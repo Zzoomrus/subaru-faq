@@ -46,6 +46,24 @@ _BASE_OLD = "http://www.subaru-faq.ru/faq/faq.php"
 
 _BACK_LINK_TEXT = "Назад в раздел"
 
+# `![]()` целиком, как рендерит `html_text.to_markdown` (URL может содержать
+# один уровень вложенных скобок — та же осторожность, что в `html_text`/
+# `mirror._IMG_MD`, см. их докстринги).
+_IMG_MD = re.compile(r"!\[\]\(((?:[^()]|\([^()]*\))*)\)")
+
+
+def _absolutize_images(markdown: str, base: str) -> str:
+    """Переписывает `![](относительный/url)` на абсолютный, СРАЗУ после
+    рендера в markdown — иначе `entry.images` (нужен абсолютный адрес для
+    сверки с уже скачанными вложениями Ф0/Ф1, см. `pipeline.mirror_faq`) и
+    сам текст ответа несли бы РАЗНЫЕ формы одного и того же URL: находка
+    задачи 6 — `mirror.render_post_body` ищет картинку в тексте по URL
+    буквально, и малейшее расхождение (relative vs absolute) превращает
+    каждую найденную картинку в "потерянную" в тексте и в "сироту" в конце
+    заметки одновременно (оба неверных сразу, тот же URL под двумя видами).
+    """
+    return _IMG_MD.sub(lambda m: "![](%s)" % urllib.parse.urljoin(base, m.group(1)), markdown)
+
 
 @dataclass
 class FaqEntry:
@@ -117,7 +135,7 @@ def _parse_bitrix(soup: BeautifulSoup, html: str) -> FaqEntry | None:
         links[-1].extract()
 
     inner = ce.decode_contents()
-    answer_md = html_text.to_markdown(inner)
+    answer_md = _absolutize_images(html_text.to_markdown(inner), _BASE_BITRIX)
     images = [urllib.parse.urljoin(_BASE_BITRIX, u) for u in html_text.images(inner)]
 
     return FaqEntry(nr=nr, engine="bitrix", catnr=None, prog=prog, category=category,
@@ -134,7 +152,7 @@ def _parse_old(soup: BeautifulSoup) -> FaqEntry | None:
     # ячейка каждого класса — метка "Вопрос:"/"Ответ:", вторая — текст.
     question = _clean(qs[1].get_text(" ", strip=True))
     answer_inner = ans[1].decode_contents()
-    answer_md = html_text.to_markdown(answer_inner)
+    answer_md = _absolutize_images(html_text.to_markdown(answer_inner), _BASE_OLD)
     images = [urllib.parse.urljoin(_BASE_OLD, u) for u in html_text.images(answer_inner)]
 
     # nr/catnr/prog — из хидден-полей формы оценки (`rateform`), не из URL:
