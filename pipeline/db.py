@@ -47,6 +47,39 @@ CREATE TABLE IF NOT EXISTS faq (
 CREATE TABLE IF NOT EXISTS faq_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT, engine TEXT, nr INTEGER, url TEXT, local_path TEXT);
 CREATE INDEX IF NOT EXISTS idx_faq_images_entry ON faq_images(engine, nr);
+-- Блоги (Ф2, задача 7): движок Bitrix "Blog". Ключ записи — составной
+-- (blog, post_id), а не просто post_id: разведка задачи 7 нашла, что
+-- post_id УНИКАЛЕН только внутри одного блога (слага) — на живом корпусе
+-- 10 номеров реально пересекаются между блогами `remont`/`remontSubaru`
+-- (см. task-7-report.md, тот же класс находки, что и (engine, nr) у FAQ в
+-- задаче 6). `is_excerpt` — запись восстановлена только из выдержки в ленте
+-- (`page=blog`), отдельной страницы `page=post` для неё не сохранилось;
+-- `truncated` — выдержка сама обрезана меткой "Читать подробнее..." (текст
+-- заведомо неполный, честная пометка, а не потеря парсера). `tags` — JSON-
+-- список строк (текстовых меток `blog-post-tag`), не отдельная таблица:
+-- меток на запись мало (медиана 0-1), заводить M:N ради этого не стоило.
+CREATE TABLE IF NOT EXISTS blog_posts (
+    blog TEXT, post_id INTEGER, title TEXT, author TEXT, posted_at TEXT,
+    body_md TEXT, tags TEXT, source_url TEXT, snapshot_ts TEXT,
+    is_excerpt INTEGER DEFAULT 0, truncated INTEGER DEFAULT 0,
+    PRIMARY KEY (blog, post_id));
+-- Картинки записи (только содержательные — `attachments.classify` уже
+-- отсеял хром движка на этапе разбора, см. `parse_blog.py`), тот же
+-- паттерн, что и `faq_images`.
+CREATE TABLE IF NOT EXISTS blog_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, blog TEXT, post_id INTEGER, url TEXT, local_path TEXT);
+CREATE INDEX IF NOT EXISTS idx_blog_images_entry ON blog_images(blog, post_id);
+-- Комментарии — только у записей, сохранившихся отдельной страницей
+-- (лента комментариев не показывает вовсе, см. task-7-report.md). `depth`
+-- — уровень вложенности ответа (из `padding-left` разметки, шаг 2.5em),
+-- `parent_id` — номер комментария, на который отвечают (`NULL` — комментарий
+-- верхнего уровня). Постраничная разбивка комментариев (`pagen=N` в URL)
+-- схлопнута в загрузчике ДО записи сюда — здесь уже полный, слитый список.
+CREATE TABLE IF NOT EXISTS blog_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, blog TEXT, post_id INTEGER,
+    comment_id INTEGER, parent_id INTEGER, depth INTEGER,
+    author TEXT, posted_at TEXT, text_md TEXT);
+CREATE INDEX IF NOT EXISTS idx_blog_comments_entry ON blog_comments(blog, post_id);
 CREATE INDEX IF NOT EXISTS idx_posts_tid ON posts(tid);
 CREATE INDEX IF NOT EXISTS idx_attach_mid ON attachments(mid);
 CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(
