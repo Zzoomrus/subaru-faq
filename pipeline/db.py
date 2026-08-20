@@ -58,10 +58,15 @@ CREATE INDEX IF NOT EXISTS idx_faq_images_entry ON faq_images(engine, nr);
 -- заведомо неполный, честная пометка, а не потеря парсера). `tags` — JSON-
 -- список строк (текстовых меток `blog-post-tag`), не отдельная таблица:
 -- меток на запись мало (медиана 0-1), заводить M:N ради этого не стоило.
+-- `declared_comments` — счётчик "Комментариев: N" со страницы, НЕ то же
+-- самое, что число строк в `blog_comments`: разведка задачи 7 нашла его
+-- ненадёжным (расходится с реально распарсенным числом на 17 из 468
+-- нераспагинированных записей, см. task-7-report.md) — хранится только
+-- для диагностики будущих доборов, ничего не решает и нигде не считается.
 CREATE TABLE IF NOT EXISTS blog_posts (
     blog TEXT, post_id INTEGER, title TEXT, author TEXT, posted_at TEXT,
     body_md TEXT, tags TEXT, source_url TEXT, snapshot_ts TEXT,
-    is_excerpt INTEGER DEFAULT 0, truncated INTEGER DEFAULT 0,
+    is_excerpt INTEGER DEFAULT 0, truncated INTEGER DEFAULT 0, declared_comments INTEGER,
     PRIMARY KEY (blog, post_id));
 -- Картинки записи (только содержательные — `attachments.classify` уже
 -- отсеял хром движка на этапе разбора, см. `parse_blog.py`), тот же

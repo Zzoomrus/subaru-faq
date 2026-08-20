@@ -162,6 +162,10 @@ def test_blog_command_loads_and_mirrors_without_touching_the_forum(tmp_path):
     assert conn.execute("SELECT COUNT(*) FROM blog_posts").fetchone()[0] == 1
     assert (tmp_path / "wiki" / "Источники" / "Блоги" / "Блог a-detal 304.md").exists()
     assert conn.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 0
+    # declared_comments — счётчик со страницы сохраняется в базу для
+    # диагностики (ненадёжен, см. task-7-report.md), но реально сохраняется,
+    # а не только упоминается в отчёте.
+    assert conn.execute("SELECT declared_comments FROM blog_posts").fetchone()[0] == 0
 
 
 def test_blog_command_load_only_then_mirror_only(tmp_path):

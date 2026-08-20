@@ -458,14 +458,16 @@ def load_all(site_root: Path, site_manifest: Path, conn) -> dict[str, int]:
             stats["empty_body"] += 1
         conn.execute(
             "INSERT INTO blog_posts(blog, post_id, title, author, posted_at, body_md, tags, "
-            "source_url, snapshot_ts, is_excerpt, truncated) VALUES (?,?,?,?,?,?,?,?,?,?,?) "
+            "source_url, snapshot_ts, is_excerpt, truncated, declared_comments) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?) "
             "ON CONFLICT(blog, post_id) DO UPDATE SET title=excluded.title, author=excluded.author, "
             "posted_at=excluded.posted_at, body_md=excluded.body_md, tags=excluded.tags, "
             "source_url=excluded.source_url, snapshot_ts=excluded.snapshot_ts, "
-            "is_excerpt=excluded.is_excerpt, truncated=excluded.truncated",
+            "is_excerpt=excluded.is_excerpt, truncated=excluded.truncated, "
+            "declared_comments=excluded.declared_comments",
             (blog, post_id, entry.title, entry.author, entry.posted_at, entry.body_md,
              json.dumps(entry.tags, ensure_ascii=False), entry.source_url,
-             entry.snapshot_ts, int(entry.is_excerpt), int(entry.truncated)))
+             entry.snapshot_ts, int(entry.is_excerpt), int(entry.truncated), entry.declared_comments))
 
         conn.execute("DELETE FROM blog_images WHERE blog = ? AND post_id = ?", (blog, post_id))
         for img_url in entry.images:
