@@ -26,6 +26,21 @@ CREATE TABLE IF NOT EXISTS attachments (
     local_path TEXT, status TEXT DEFAULT 'pending');
 CREATE TABLE IF NOT EXISTS pages (
     key TEXT PRIMARY KEY, file TEXT, url TEXT, snapshot_ts TEXT, tid INTEGER, page_no INTEGER);
+-- FAQ (Ф2, задача 6): раздел архивирован ДВУМЯ движками разом (см. отчёт
+-- задачи 5) — современным Bitrix (`ELEMENT_ID`) и старым самописным
+-- (`nr`/`catnr`/`prog`). Их номера — НЕЗАВИСИМЫЕ пространства имён, которые
+-- на живом корпусе реально пересекаются (17 из 177 файлов, разный контент
+-- под одним числом — см. task-6-report.md), поэтому первичный ключ таблицы
+-- составной (engine, nr), а не просто nr. `catnr` осмыслен только для
+-- старого движка (Bitrix-адрес его не несёт) — сознательное отклонение от
+-- брифа (тот писан до открытия двух движков в задаче 5).
+CREATE TABLE IF NOT EXISTS faq (
+    engine TEXT, nr INTEGER, catnr INTEGER, prog TEXT, category TEXT,
+    question TEXT, answer_md TEXT, source_url TEXT, snapshot_ts TEXT,
+    PRIMARY KEY (engine, nr));
+CREATE TABLE IF NOT EXISTS faq_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, engine TEXT, nr INTEGER, url TEXT, local_path TEXT);
+CREATE INDEX IF NOT EXISTS idx_faq_images_entry ON faq_images(engine, nr);
 CREATE INDEX IF NOT EXISTS idx_posts_tid ON posts(tid);
 CREATE INDEX IF NOT EXISTS idx_attach_mid ON attachments(mid);
 CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(
