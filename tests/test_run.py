@@ -201,6 +201,53 @@ def test_site_build_then_fetch_end_to_end(tmp_path, monkeypatch):
     assert list((site_root / "blogs").glob("*.html"))
 
 
+def test_site_fetch_resumes_after_an_interruption_without_rebuilding_the_plan(tmp_path, monkeypatch):
+    # Требование лида: суточный прогон может оборваться на середине —
+    # повторный запуск обязан читать план С ДИСКА и докачивать только то,
+    # что осталось, а не строить план заново (второй CDX-запрос за тем же
+    # списком) и не перекачивать уже скачанное.
+    from pipeline import fetch_site
+
+    build_cdx_calls = []
+
+    def fake_cdx(url, **kw):
+        build_cdx_calls.append((url, kw))
+        return [("20100101000000", "http://subaru-faq.ru/blogs/index.php?page=post&blog=x&post_id=%d" % i)
+                for i in range(4)]
+
+    monkeypatch.setattr(fetch_site.fetcher, "cdx_snapshots", fake_cdx)
+    site_root = tmp_path / "site"
+    manifest = tmp_path / "manifest-site.jsonl"
+    assert run.main(["site", "build", "blogs", "--site-root", str(site_root)]) == 0
+    assert len(build_cdx_calls) == 1  # build — ровно один запрос CDX на весь раздел
+
+    fetch_calls = []
+    monkeypatch.setattr(fetch_site.fetcher, "fetch_snapshot",
+                         lambda ts, url, **kw: fetch_calls.append(url) or
+                         (b'<div class="blog-post">post ' + b"x" * 2000 + b"</div>"))
+
+    # "прогон оборвался" — качаем только половину одной командой (--limit)
+    rc = run.main(["site", "fetch", "blogs", "--site-root", str(site_root),
+                   "--site-manifest", str(manifest), "--limit", "2"])
+    assert rc == 0
+    assert len(fetch_calls) == 2
+    assert len(build_cdx_calls) == 1  # ни один шаг fetch не звал CDX за планом заново
+
+    # "перезапуск после обрыва" — та же команда, без --limit, план не пересчитывается
+    fetch_calls.clear()
+    rc = run.main(["site", "fetch", "blogs", "--site-root", str(site_root),
+                   "--site-manifest", str(manifest)])
+    assert rc == 0
+    assert len(build_cdx_calls) == 1  # по-прежнему один — план читается с диска, не строится заново
+    assert len(fetch_calls) == 2  # докачаны только оставшиеся 2 из 4, не все 4 заново
+
+    from pipeline import assets_state
+    state = assets_state.load(manifest)
+    assert len(state) == 4
+    assert all(v["status"] == "ok" for v in state.values())
+    assert len(list((site_root / "blogs").glob("*.html"))) == 4
+
+
 def test_assets_download_uses_assets_root_and_manifest(tmp_path, monkeypatch):
     from pipeline import assets_state, db as _db, fetch_assets
 

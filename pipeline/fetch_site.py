@@ -112,12 +112,54 @@ _FAQ_DROP_PARAMS = frozenset({
     "print", "sphrase_id", "clear_cache", "bitrix_include_areas", "bitrix_show_mode"})
 
 
+def _faq_kind(url: str) -> str:
+    """Разметка плана — не только "качать/не качать" (это уже сделал
+    `_faq_is_noise`), но и "чего вообще ждать": `"answer"` — отдельный
+    вопрос-ответ (в любом из двух движков, см. докстринг модуля, "Главная
+    находка"), `"listing"` — категория/старый список без своего ответа
+    (`SECTION_ID`, `list=category|subcategory`) — то, что почти наверняка
+    даст `"empty"` у `faq_content_probe`, и это ОЖИДАЕМЫЙ, а не потерянный
+    результат (см. отчёт задачи 5, "Что НЕ отсеивается на уровне плана").
+    `"other"` — блан/краевые варианты (`proginfo.php` и пустые query),
+    контент под вопросом, но не листинг и не подтверждённый ответ.
+    """
+    p = urllib.parse.urlsplit(url)
+    qs = urllib.parse.parse_qs(p.query)
+    if p.path == "/faq/index.php":
+        if "ELEMENT_ID" in qs:
+            return "answer"
+        if "SECTION_ID" in qs:
+            return "listing"
+        return "other"
+    if p.path == "/faq/faq.php":
+        if qs.get("display", [None])[0] == "faq":
+            return "answer"
+        if "list" in qs:
+            return "listing"
+        return "other"
+    if p.path == "/faq/proginfo.php":
+        return "answer"
+    return "other"
+
+
 # --- Блоги: что отсеиваем на этапе плана -----------------------------------
 
 # `page=` значения, для которых живая проверка (task-5-report.md) показала:
 # содержательных блоков `div.blog-post` в теле НЕ бывает вовсе. `history` в
 # список НЕ входит намеренно — там `blog-post` реально нашёлся (см. докстринг).
 _BLOGS_SERVICE_PAGES = frozenset({"search", "rss", "rss_all", "blog_edit", "user", "group"})
+
+
+def _blogs_kind(url: str) -> str:
+    """`"post"` — отдельная запись (`page=post`), `"listing"` — лента/
+    категория/календарь/история (несколько записей-эксцерптов на одной
+    странице — см. отчёт задачи 5, "Блоги: 2779 → 1272"). Решение лида:
+    ленты качаем, но ВТОРЫМ заходом после отдельных записей (см. порядок в
+    `build_list`) — если суточный прогон оборвётся, обрывается менее ценная
+    часть, а не наоборот.
+    """
+    qs = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+    return "post" if qs.get("page", [None])[0] == "post" else "listing"
 
 
 def _blogs_is_noise(url: str) -> bool:
@@ -138,9 +180,17 @@ _BLOGS_DROP_PARAMS = frozenset({"print", "sphrase_id", "commentId"})
 #     комментарии, а сами записи).
 
 
+# Приоритет внутри плана: элементы с kind из этого множества идут ПЕРВЫМИ
+# (устойчивая сортировка — порядок внутри каждой группы не меняется). Для
+# блогов это прямое решение лида ("сперва 498 записей, потом 774 ленты" —
+# если прогон оборвётся, теряется менее ценная часть); для FAQ применено по
+# аналогии (отдельные ответы раньше категорий) — план и так маленький (249),
+# но это не противоречит решению лида и ничего не стоит.
 _SECTIONS = {
-    "faq": {"prefix": FAQ_PREFIX, "is_noise": _faq_is_noise, "drop_params": _FAQ_DROP_PARAMS},
-    "blogs": {"prefix": BLOGS_PREFIX, "is_noise": _blogs_is_noise, "drop_params": _BLOGS_DROP_PARAMS},
+    "faq": {"prefix": FAQ_PREFIX, "is_noise": _faq_is_noise, "drop_params": _FAQ_DROP_PARAMS,
+            "kind_fn": _faq_kind, "priority_kinds": frozenset({"answer"})},
+    "blogs": {"prefix": BLOGS_PREFIX, "is_noise": _blogs_is_noise, "drop_params": _BLOGS_DROP_PARAMS,
+              "kind_fn": _blogs_kind, "priority_kinds": frozenset({"post"})},
 }
 
 
@@ -176,9 +226,16 @@ def build_list(section: str) -> list[dict]:
     метаданных на раздел (`fetcher.cdx_snapshots(..., match_type="prefix")`,
     страница/пагинация внутри — см. `fetcher.py`), тела снимков НЕ тянет.
 
-    Возвращает список словарей `{"section", "url", "ts", "local_path"}` —
-    уже без служебного мусора и без дублей одной и той же страницы под
-    разными query-параметрами отображения (см. докстринг модуля).
+    Возвращает список словарей `{"section", "url", "ts", "local_path",
+    "kind"}` — уже без служебного мусора и без дублей одной и той же
+    страницы под разными query-параметрами отображения (см. докстринг
+    модуля). `kind` — что именно за адрес (`_faq_kind`/`_blogs_kind`):
+    нужен и для честного отчёта (сколько в плане ОЖИДАЕТСЯ ответов/записей,
+    а не только "адресов"), и для порядка — список отсортирован СТАБИЛЬНО
+    так, что приоритетный `kind` (`_SECTIONS[section]["priority_kinds"]`)
+    идёт первым, а порядок внутри каждой группы не меняется. Для блогов это
+    прямое решение лида: сперва отдельные записи, потом ленты — обрыв
+    суточного прогона потеряет менее ценную часть.
     """
     cfg = _SECTIONS[section]
     rows = fetcher.cdx_snapshots(cfg["prefix"], match_type="prefix")
@@ -190,8 +247,10 @@ def build_list(section: str) -> list[dict]:
         if key in seen:
             continue
         seen[key] = {"section": section, "url": url, "ts": ts,
-                     "local_path": local_path(section, url)}
-    return list(seen.values())
+                     "local_path": local_path(section, url),
+                     "kind": cfg["kind_fn"](url)}
+    priority = cfg["priority_kinds"]
+    return sorted(seen.values(), key=lambda item: item["kind"] not in priority)
 
 
 def _plan_path(section: str, root: Path) -> Path:
@@ -255,6 +314,16 @@ def blogs_content_probe(data: bytes) -> bool:
     категория/календарь (`page=blog`) — по разу на КАЖДУЮ показанную запись
     (тоже "есть содержимое" — это не пустая листалка), а `page=user`/`page=
     group` (списки блогов без единой записи внутри) — ни разу.
+
+    Это булев признак ("есть хоть один блок записи"), а не классификатор —
+    он НЕ отличает одиночную запись от ленты из нескольких эксцерптов: на
+    образцах (`tests/fixtures/blog_post.html` — 1 блок, `blog_listing_home.
+    html` — 3 блока) probe возвращает `True` для обоих (см. `test_blogs_
+    content_probe_cannot_tell_a_single_post_from_a_listing_of_excerpts`).
+    Различать "это полная запись" от "это лента" — задача `_blogs_kind`
+    (`"post"`/`"listing"`, сохраняется в план и переживает на диске), не
+    этой функции: смешивать две ортогональные проверки в одной было бы
+    той самой путаницей, которой лид опасался.
     """
     return b'class="blog-post"' in data
 

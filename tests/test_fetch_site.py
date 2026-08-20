@@ -170,6 +170,52 @@ def test_build_list_local_path_is_stable_across_calls(monkeypatch):
     assert a == b
 
 
+# --- порядок и разметка плана: решение лида "записи раньше лент" ----------
+
+def test_build_list_blogs_orders_individual_posts_before_listings(monkeypatch):
+    # Решение лида: если суточный прогон блогов оборвётся, обрывается менее
+    # ценная часть (ленты), а не наоборот — план должен качать одной
+    # командой в правильном порядке, а не полагаться на внешнюю сортировку.
+    rows = [
+        _row("http://subaru-faq.ru/blogs/index.php?page=blog&blog=x"),
+        _row("http://subaru-faq.ru/blogs/index.php?page=post&blog=x&post_id=1"),
+        _row("http://subaru-faq.ru/blogs/index.php?page=history"),
+        _row("http://subaru-faq.ru/blogs/index.php?page=post&blog=x&post_id=2"),
+    ]
+    monkeypatch.setattr(fetch_site.fetcher, "cdx_snapshots", lambda url, **kw: rows)
+    plan = fetch_site.build_list("blogs")
+    kinds = [item["kind"] for item in plan]
+    assert kinds == ["post", "post", "listing", "listing"]
+    # порядок ВНУТРИ каждой группы не меняется (устойчивая сортировка)
+    posts = [item["url"] for item in plan if item["kind"] == "post"]
+    assert posts == ["http://subaru-faq.ru/blogs/index.php?page=post&blog=x&post_id=1",
+                      "http://subaru-faq.ru/blogs/index.php?page=post&blog=x&post_id=2"]
+
+
+def test_build_list_faq_marks_section_and_old_listing_pages_as_listing_kind(monkeypatch):
+    # Требование лида: 52 адреса категорий/старых списков остаются в плане,
+    # но помечены как ОЖИДАЕМЫЕ листинги, чтобы в отчёте не выглядело, будто
+    # мы потеряли полсотни ответов.
+    rows = [
+        _row("http://www.subaru-faq.ru:80/faq/index.php?ELEMENT_ID=10"),
+        _row("http://www.subaru-faq.ru:80/faq/index.php?SECTION_ID=6"),
+        _row("http://www.subaru-faq.ru/faq/faq.php?display=faq&nr=11&catnr=1&prog=COMMON&lang=ru"),
+        _row("http://www.subaru-faq.ru/faq/faq.php?lang=ru&list=category&nr=18&prog=DRIVE"),
+        _row("http://www.subaru-faq.ru/faq/proginfo.php?lang=ru&prog=3"),
+    ]
+    monkeypatch.setattr(fetch_site.fetcher, "cdx_snapshots", lambda url, **kw: rows)
+    plan = fetch_site.build_list("faq")
+    by_url = {item["url"]: item["kind"] for item in plan}
+    assert by_url["http://www.subaru-faq.ru:80/faq/index.php?ELEMENT_ID=10"] == "answer"
+    assert by_url["http://www.subaru-faq.ru:80/faq/index.php?SECTION_ID=6"] == "listing"
+    assert by_url["http://www.subaru-faq.ru/faq/faq.php?display=faq&nr=11&catnr=1&prog=COMMON&lang=ru"] == "answer"
+    assert by_url["http://www.subaru-faq.ru/faq/faq.php?lang=ru&list=category&nr=18&prog=DRIVE"] == "listing"
+    assert by_url["http://www.subaru-faq.ru/faq/proginfo.php?lang=ru&prog=3"] == "answer"
+    # answer-адреса тоже идут раньше listing-адресов (тот же приём, что и у блогов)
+    kinds = [item["kind"] for item in plan]
+    assert kinds.index("listing") > max(i for i, k in enumerate(kinds) if k == "answer")
+
+
 # --- признак содержимого: на реальной разметке (не на догадках) -----------
 
 def test_faq_content_probe_detects_bitrix_catalog_element():
@@ -206,6 +252,23 @@ def test_blogs_content_probe_detects_post_block():
     # записи лежит прямо внутри div.blog-post-content (тот же класс).
     data = (FIX / "blog_post.html").read_bytes()
     assert fetch_site.blogs_content_probe(data) is True
+
+
+def test_blogs_content_probe_cannot_tell_a_single_post_from_a_listing_of_excerpts():
+    # Прямая проверка опасения лида: признак содержимого — булев ("есть ли
+    # хоть один блок записи"), а не счётчик и не классификатор. Лента
+    # (page=blog) несёт НЕСКОЛЬКО блоков blog-post (эксцерпты нескольких
+    # записей — здесь их 3), одиночная запись (page=post) — ровно один и тот
+    # же класс. probe возвращает True для ОБОИХ — различать "это одна
+    # полная запись" от "это лента из нескольких выдержек" НЕ его работа;
+    # для этого при построении плана каждый адрес размечен `kind`
+    # ("post"/"listing" — см. `_blogs_kind`), а не полагается на probe.
+    post = (FIX / "blog_post.html").read_bytes()
+    listing = (FIX / "blog_listing_home.html").read_bytes()
+    assert post.count(b'class="blog-post"') == 1
+    assert listing.count(b'class="blog-post"') == 3
+    assert fetch_site.blogs_content_probe(post) is True
+    assert fetch_site.blogs_content_probe(listing) is True
 
 
 def test_blogs_content_probe_rejects_user_listing_without_post_block():
