@@ -116,6 +116,11 @@ _SETEXT_LINE = re.compile(r"^(\s{0,3}(?:>\s?)*)(-+|=+)\s*$")
 
 _NOTE_NAME = re.compile(r"^Тема (\d+)\.md$")
 
+#: Текст генератора, а не автора — единственное определение (задача 3 Ф3,
+#: ревью: `pipeline.notes.GENERATOR_PATTERNS` собирается ИЗ этой константы,
+#: а не дублирует её буквально). `%s` — адрес утраченного файла.
+IMAGE_LOST_TEMPLATE = "(изображение не сохранилось: %s)"
+
 # Куда добор Ф2 кладёт скачанные файлы (см. `pipeline/fetch_assets.py`,
 # `pipeline/run.py` DEFAULT_ASSETS_ROOT) — тот же путь по умолчанию, что и у
 # CLI-флага `--assets-root`, здесь только чтобы `write_all` можно было звать
@@ -275,7 +280,7 @@ def _missing_note(url: str) -> str:
     docstring модуля): держит формат и посреди предложения, и на своей
     строке, остаётся явной (фраза ищется grep'ом) и несёт адрес источника.
     """
-    return "(изображение не сохранилось: %s)" % (url or "")
+    return IMAGE_LOST_TEMPLATE % (url or "")
 
 
 def render_post_body(markdown: str, attachments_by_url: dict) -> str:

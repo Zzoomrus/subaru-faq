@@ -61,6 +61,14 @@ DEFAULT_ASSETS_ROOT = mirror_faq.DEFAULT_ASSETS_ROOT
 
 _NOTE_NAME = re.compile(r"^Блог (.+) (\d+)\.md$")
 
+#: Текст генератора, а не автора — единственное определение (задача 3 Ф3,
+#: ревью: перечень видов генераторного текста в `pipeline.notes` собирается
+#: ИЗ этих констант, а не дублирует их буквально, иначе он неизбежно
+#: отстаёт при правке шаблона здесь).
+EMPTY_COMMENT = "(пусто)"
+BODY_LOST = "(текст не сохранился)"
+REPLY_MARKER_TEMPLATE = "*(ответ на комментарий №%d)*"
+
 
 def _filename(blog: str, post_id: int) -> str:
     return "Блог %s %d.md" % (blog, post_id)
@@ -93,13 +101,13 @@ def _render_comments(conn, blog: str, post_id: int, images_by_comment: dict) -> 
         meta = " · ".join(x for x in (author or "аноним", posted_at or "") if x)
         out.append("*%s*" % meta)
         if parent_id is not None:
-            out.append("*(ответ на комментарий №%d)*" % parent_id)
+            out.append(REPLY_MARKER_TEMPLATE % parent_id)
         out.append("")
         # Картинки ЭТОГО комментария (M1 итогового ревью Ф2): раньше здесь
         # стоял пустой `{}`, из-за чего каждая картинка комментария давала
         # пометку об утрате, даже если файл лежал в архиве Ф0/Ф1.
         body = mirror.render_post_body(text_md or "", images_by_comment.get(comment_id, {}))
-        out.append(body if body else "(пусто)")
+        out.append(body if body else EMPTY_COMMENT)
         out.append("")
     return "\n".join(out).rstrip("\n") + "\n"
 
@@ -146,7 +154,7 @@ def render_entry(row: tuple, images_by_url: dict, comments_md: str) -> str:
     # test_anchor_contract.py`.
     out.append("## Запись")
     out.append("")
-    out.append(body if body else "(текст не сохранился)")
+    out.append(body if body else BODY_LOST)
     out.append("")
     if comments_md:
         out.append(comments_md)

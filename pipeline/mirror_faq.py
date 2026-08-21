@@ -66,6 +66,12 @@ DEFAULT_ASSETS_ROOT = archive_assets.DEFAULT_ROOT
 
 _NOTE_NAME = re.compile(r"^FAQ (?:старый )?(\d+)\.md$")
 
+#: Текст генератора, а не автора — единственное определение (задача 3 Ф3,
+#: ревью: `pipeline.notes.GENERATOR_PATTERNS` собирается ИЗ этих констант,
+#: а не дублирует их буквально).
+QUESTION_LOST = "(вопрос не сохранился)"
+ANSWER_LOST = "(ответ не сохранился)"
+
 _normalize_asset_path = archive_assets.normalize_path
 _load_asset_index = archive_assets.load_index
 _local_asset_name = attachments.asset_name
@@ -144,9 +150,9 @@ def render_entry(row: tuple, images_by_url: dict) -> str:
                 "> Ссылаться в статьях следует на каноническую запись: два указателя на одну мысль",
                 "> читаются как два независимых свидетельства.", ""]
     out += ["## Вопрос", "",
-           question_line or "(вопрос не сохранился)", "",
+           question_line or QUESTION_LOST, "",
            "## Ответ", ""]
-    out.append(body if body else "(ответ не сохранился)")
+    out.append(body if body else ANSWER_LOST)
     out.append("")
     return "\n".join(out)
 
