@@ -52,6 +52,10 @@ CREATE TABLE IF NOT EXISTS faq (
     engine TEXT, nr INTEGER, catnr INTEGER, prog TEXT, category TEXT,
     question TEXT, answer_md TEXT, source_url TEXT, snapshot_ts TEXT,
     title TEXT, answer_text TEXT,
+    -- Ф3, задача 1: запись, признанная дублем другой. NULL у канонических.
+    -- Без этого одна мысль получила бы две сноски как два независимых
+    -- свидетельства — ровно тот обман, против которого затеян проект.
+    duplicate_of_engine TEXT, duplicate_of_nr INTEGER,
     PRIMARY KEY (engine, nr));
 CREATE TABLE IF NOT EXISTS faq_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT, engine TEXT, nr INTEGER, url TEXT, local_path TEXT);
