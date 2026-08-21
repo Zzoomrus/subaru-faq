@@ -96,7 +96,7 @@
 import re
 from pathlib import Path
 
-from pipeline import attachments
+from pipeline import attachments, check_mirror
 
 # Markdown-картинка целиком: `![](url)`, URL — первая группа. URL может
 # содержать один уровень вложенных скобок (`page(1).jpg`) — наивный разбор
@@ -179,15 +179,52 @@ def _copy_forum_asset(url: str, local_path: str, assets_root: Path, dest_dir: Pa
     return copy_asset(url, src, dest_dir)
 
 
+def _referenced_asset_names(mirror_root: Path) -> set[str]:
+    """Имена файлов вложений (`assets/<имя>`), на которые ссылается хотя бы
+    одна заметка ГДЕ УГОДНО под `mirror_root` — форумные заметки прямо в
+    корне, `FAQ/`, `Блоги/`, будущие `Статьи/` (задача 2 Ф3, Ruling 37: три
+    раздела делят один каталог вложений `<корень>/assets`).
+
+    Сканирует то, что реально лежит на диске ПРЯМО СЕЙЧАС, а не то, что этот
+    конкретный прогон только что написал: точечный `faq mirror` не
+    перегенерирует заметки форума, но обязан видеть их вставки, иначе
+    «сирота» — это «файл, не нужный ЭТОМУ разделу», а не «не нужный никому»
+    (главный риск задачи: первый же прогон одного раздела снёс бы картинки
+    другого, следующая перегенерация тихо вернула бы их — вечная churn).
+
+    Разбор вставки — regex `check_mirror.EMBED`, а не своя копия (правило
+    фазы: ссылки резолвит `check_mirror`, свою цепочку резолва не писать).
+    Полное резолвление файла здесь не нужно — только префикс `assets/`.
+    """
+    mirror_root = Path(mirror_root)
+    names: set[str] = set()
+    if not mirror_root.exists():
+        return names
+    for path in sorted(mirror_root.rglob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        for target in check_mirror.EMBED.findall(text):
+            target = target.strip()
+            if target.startswith("assets/"):
+                names.add(target[len("assets/"):])
+    return names
+
+
 def prune_assets(dest_dir: Path, used: set[str], notes_written: int) -> int:
     """Убирает из `<dest_dir>` файлы вложений, на которые больше не
-    ссылается ни одна заметка этого раздела. Возвращает число удалённых.
+    ссылается ни одна заметка НИ ОДНОГО раздела. Возвращает число удалённых.
 
     Зачем: генераторы убирают осиротевшие ЗАМЕТКИ с самого начала, а
     осиротевшие файлы не убирал никто (M3 итогового ревью Ф2) — «git diff
     пуст» оставался верным только за счёт накопления. Правка имени файла
     (M4, эта же волна) разом осиротила бы 1859 старых бинарников, и они
     остались бы в репозитории навсегда.
+
+    `used` — то, что нашёл ЭТОТ прогон (обычно один раздел); он объединяется
+    с `_referenced_asset_names(dest_dir.parent)` — вставками, которые уже
+    лежат на диске у ВСЕХ разделов, включая те, что в этом прогоне не
+    трогали. Это и есть правка задачи 2 Ф3 (Ruling 37): при общем каталоге
+    `<корень>/assets` сирота — файл, не нужный никому, а не «не нужный
+    этому разделу», иначе прогон форума снёс бы картинки FAQ и наоборот.
 
     Удаляются ТОЛЬКО файлы, чьё имя выглядит как имя генератора
     (`attachments.ASSET_NAME_RE`, то есть `<16 hex><ext>`) — чужой файл,
@@ -201,6 +238,7 @@ def prune_assets(dest_dir: Path, used: set[str], notes_written: int) -> int:
     dest_dir = Path(dest_dir)
     if notes_written <= 0 or not dest_dir.exists():
         return 0
+    used = used | _referenced_asset_names(dest_dir.parent)
     removed = 0
     for path in sorted(dest_dir.iterdir()):
         if not path.is_file() or path.name in used:
@@ -459,7 +497,8 @@ def render_thread(conn, tid: int, assets_root: Path | None = None, dest_dir: Pat
     return "\n".join(out)
 
 
-def write_all(conn, out_dir: Path, assets_root: Path = DEFAULT_ASSETS_ROOT) -> int:
+def write_all(conn, out_dir: Path, assets_root: Path = DEFAULT_ASSETS_ROOT,
+              assets_dir: Path | None = None) -> int:
     """Пишет заметку на каждую тему базы и убирает заметки исчезнувших тем.
 
     Удаляются только файлы вида `Тема <TID>.md`, чей `tid` в базе больше не
@@ -468,12 +507,17 @@ def write_all(conn, out_dir: Path, assets_root: Path = DEFAULT_ASSETS_ROOT) -> i
     в каталоге не трогаются.
 
     `assets_root` — где искать уже скачанные добором файлы вложений (см.
-    docstring модуля); реально использованные копируются в `<out_dir>/
-    assets/`, остальные не трогаются (в вики попадают только файлы, на
-    которые ссылаются заметки — глобальное ограничение фазы). Файлы, на
-    которые не ссылается больше ни одна заметка, убираются (`prune_assets`)
-    — иначе переименование или исчезновение картинки оставляло бы мёртвый
-    бинарник в репозитории навсегда (M3 итогового ревью Ф2).
+    docstring модуля); реально использованные копируются в `assets_dir`
+    (по умолчанию `<out_dir>/assets/` — старое поведение для вызовов без
+    аргумента, юнитов и точечных прогонов одного раздела; `run.build_mirror`
+    передаёт сюда ОБЩИЙ каталог `<корень вики>/assets` — задача 2 Ф3,
+    Ruling 37: до этой правки FAQ и блоги копировали общие с форумом и друг
+    с другом картинки каждый себе, 108 лишних копий), остальные не
+    трогаются (в вики попадают только файлы, на которые ссылаются заметки —
+    глобальное ограничение фазы). Файлы, на которые не ссылается больше ни
+    одна заметка НИ ОДНОГО раздела, убираются (`prune_assets`) — иначе
+    переименование или исчезновение картинки оставляло бы мёртвый бинарник
+    в репозитории навсегда (M3 итогового ревью Ф2).
 
     ПРЕДОХРАНИТЕЛЬ: удалений не может быть больше, чем записей. Уборка
     мусора — это единицы файлов на фоне тысяч записанных; «удалить больше,
@@ -485,7 +529,7 @@ def write_all(conn, out_dir: Path, assets_root: Path = DEFAULT_ASSETS_ROOT) -> i
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    dest_dir = out_dir / "assets"
+    dest_dir = Path(assets_dir) if assets_dir is not None else out_dir / "assets"
     tids = set()
     used_assets: set[str] = set()
     n = 0

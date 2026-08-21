@@ -197,6 +197,39 @@ def _parser() -> argparse.ArgumentParser:
     return p
 
 
+def build_mirror(conn, mirror_path: Path, assets_root: Path = DEFAULT_ASSETS_ROOT,
+                  archive_assets_manifest: Path = archive_assets.DEFAULT_MANIFEST,
+                  archive_assets_root: Path = archive_assets.DEFAULT_ROOT) -> dict[str, int]:
+    """Собирает все три раздела зеркала (форум, FAQ, блоги) в дерево
+    `mirror_path`, все три — в ОДИН общий каталог вложений `<mirror_path>/
+    assets` (задача 2 Ф3, Ruling 37 Ф2: до этой правки FAQ и блоги копировали
+    друг с другом и с форумом общие картинки каждый себе — 90 картинок в
+    два-три каталога, 108 лишних копий, 7,68 МиБ; следующая фаза добавит
+    статьи, которые встраивают те же файлы, и без общего каталога один
+    адрес получил бы третью копию).
+
+    Точка сборки — ОДНА, не три раздельных вызова: путь общего каталога
+    вложений вычисляется здесь один раз и передаётся во все три генератора —
+    тот же урок, что и с `attachments.local_path` в Ф2 (два потребителя
+    одного знания обязаны ходить одной функцией, иначе расходятся молча).
+    Её зовут и `main()` (команды `mirror`/`all`, а также точечные `faq
+    mirror`/`blog mirror` — см. ниже), и тесты (`tests/test_asset_names.py`).
+
+    Возвращает число заметок по разделам (`forum`/`faq`/`blog`) — то же, что
+    печатает `main()`.
+    """
+    mirror_path = Path(mirror_path)
+    assets_dir = mirror_path / "assets"
+    faq_path = mirror_path / DEFAULT_FAQ_MIRROR_DIRNAME
+    blog_path = mirror_path / DEFAULT_BLOG_MIRROR_DIRNAME
+    n_forum = mirror.write_all(conn, mirror_path, assets_root=assets_root, assets_dir=assets_dir)
+    n_faq = mirror_faq.write_all(conn, faq_path, assets_manifest=archive_assets_manifest,
+                                  assets_root=archive_assets_root, assets_dir=assets_dir)
+    n_blog = mirror_blog.write_all(conn, blog_path, assets_manifest=archive_assets_manifest,
+                                    assets_root=archive_assets_root, assets_dir=assets_dir)
+    return {"forum": n_forum, "faq": n_faq, "blog": n_blog}
+
+
 def _drop_db(path: Path) -> None:
     """Удаляет базу вместе со спутниками WAL-режима: `-wal` без основного
     файла — это несогласованный хвост прошлого прогона.
@@ -297,10 +330,16 @@ def main(argv: list[str] | None = None) -> int:
             print("картинки в базе:", archive_assets.sync_local_paths(
                 conn, args.archive_assets_manifest, args.archive_assets_root))
         if args.sub_action in (None, "mirror"):
+            # Общий каталог вложений (задача 2 Ф3, Ruling 37) — тот же путь,
+            # что строит `build_mirror`: точечный `faq mirror` не должен
+            # заводить свой каталог `FAQ/assets`, иначе перегенерация всей
+            # вики (`all`) с общим каталогом снова разложит те же картинки
+            # по двум местам.
             try:
                 n = mirror_faq.write_all(conn, faq_mirror_path,
                                           assets_manifest=args.archive_assets_manifest,
-                                          assets_root=args.archive_assets_root)
+                                          assets_root=args.archive_assets_root,
+                                          assets_dir=args.wiki / args.mirror_dir / "assets")
             except RuntimeError as e:
                 print("ОШИБКА:", e)
                 return 2
@@ -323,10 +362,12 @@ def main(argv: list[str] | None = None) -> int:
             print("картинки в базе:", archive_assets.sync_local_paths(
                 conn, args.archive_assets_manifest, args.archive_assets_root))
         if args.sub_action in (None, "mirror"):
+            # Общий каталог вложений — см. тот же комментарий у `faq` выше.
             try:
                 n = mirror_blog.write_all(conn, blog_mirror_path,
                                            assets_manifest=args.archive_assets_manifest,
-                                           assets_root=args.archive_assets_root)
+                                           assets_root=args.archive_assets_root,
+                                           assets_dir=args.wiki / args.mirror_dir / "assets")
             except RuntimeError as e:
                 print("ОШИБКА:", e)
                 return 2
@@ -437,20 +478,23 @@ def main(argv: list[str] | None = None) -> int:
     if cmd in ("mirror", "all"):
         faq_mirror_path = mirror_path / DEFAULT_FAQ_MIRROR_DIRNAME
         blog_mirror_path = mirror_path / DEFAULT_BLOG_MIRROR_DIRNAME
+        # Три генератора зовутся через одну точку сборки (`build_mirror`) —
+        # она же считает путь ОБЩЕГО каталога вложений `<mirror_path>/assets`
+        # (задача 2 Ф3, Ruling 37) и передаёт его во все три, а не три раза
+        # подряд заново подразумевает то же самое.
         try:
-            print("заметок:", mirror.write_all(conn, mirror_path, assets_root=args.assets_root), "->", mirror_path)
-            print("faq заметок:", mirror_faq.write_all(
-                conn, faq_mirror_path, assets_manifest=args.archive_assets_manifest,
-                assets_root=args.archive_assets_root), "->", faq_mirror_path)
-            print("blog заметок:", mirror_blog.write_all(
-                conn, blog_mirror_path, assets_manifest=args.archive_assets_manifest,
-                assets_root=args.archive_assets_root), "->", blog_mirror_path)
+            counts = build_mirror(conn, mirror_path, assets_root=args.assets_root,
+                                   archive_assets_manifest=args.archive_assets_manifest,
+                                   archive_assets_root=args.archive_assets_root)
         except RuntimeError as e:
             # Предохранитель генератора (общий у mirror и mirror_faq): база
             # не описывает это зеркало. Печатаем причину без трейсбека и
             # уходим с ненулевым кодом.
             print("ОШИБКА:", e)
             return 2
+        print("заметок:", counts["forum"], "->", mirror_path)
+        print("faq заметок:", counts["faq"], "->", faq_mirror_path)
+        print("blog заметок:", counts["blog"], "->", blog_mirror_path)
 
     if cmd in ("check", "all"):
         found = check_mirror.check(args.wiki)

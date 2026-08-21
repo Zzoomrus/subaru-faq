@@ -162,14 +162,19 @@ def render_entry(row: tuple, images_by_url: dict, comments_md: str) -> str:
 
 
 def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFEST,
-              assets_root: Path = DEFAULT_ASSETS_ROOT) -> int:
+              assets_root: Path = DEFAULT_ASSETS_ROOT, assets_dir: Path | None = None) -> int:
     """Пишет заметку на каждую запись `blog_posts` и убирает заметки
     исчезнувших. Тот же предохранитель, что у `mirror.write_all`/`mirror_
     faq.write_all` (удалений не может быть больше, чем записанных заметок).
+
+    `assets_dir` — куда копировать реально использованные файлы; по
+    умолчанию `<out_dir>/assets/` (старое поведение — свой каталог раздела),
+    `run.build_mirror` передаёт сюда ОБЩИЙ каталог `<корень вики>/assets`
+    (задача 2 Ф3, Ruling 37 — см. `mirror.write_all`).
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    assets_dir = out_dir / "assets"
+    assets_dir = Path(assets_dir) if assets_dir is not None else out_dir / "assets"
     asset_index = mirror_faq._load_asset_index(assets_manifest)
 
     names: set[str] = set()

@@ -11,9 +11,16 @@ M4 + M3 + отложенный пункт 6 итогового ревью Ф2. �
 3. осиротевшие файлы убираются, но только свои и только когда заметки
    действительно записаны.
 """
+from pathlib import Path
+
 import pytest
 
-from pipeline import attachments, db, fetch_assets, mirror, mirror_faq
+from pipeline import attachments, db, fetch_assets, mirror, mirror_faq, run
+
+# Тот же фикстурный файл, что уже использует `test_mirror_faq`/`test_anchor_
+# contract` (URL `.../upload/blog/84b/x.jpg`) — не заводим новый бинарник
+# только для того, чтобы у FAQ и блога была общая картинка.
+FIX_ASSETS = Path(__file__).parent / "fixtures" / "faq_assets"
 
 
 def test_one_naming_rule_for_the_mirror_and_for_the_downloader():
@@ -162,3 +169,78 @@ def test_signature_knowledge_lives_in_one_place():
     webp = b"RIFF" + b"\x00" * 4 + b"WEBP" + b"\x00" * 20
     assert fetch_assets._looks_like_image(webp)
     assert attachments.sniff_extension(webp) == ".webp"
+
+
+def _db_with_faq_and_blog_sharing_one_image(tmp_path):
+    """FAQ и блог ссылаются на ОДНУ и ту же картинку архива Ф0/Ф1 (URL
+    фикстуры `FIX_ASSETS`) — сценарий, из-за которого до Ruling 37 90
+    картинок жили в вики дважды: 108 лишних копий, 7,68 МиБ.
+    """
+    conn = db.connect(tmp_path / "shared.sqlite")
+    db.init_schema(conn)
+    url = "http://subaru-faq.ru/upload/blog/84b/x.jpg"
+    conn.execute("INSERT INTO faq(engine, nr, question, answer_md) VALUES "
+                 "('bitrix', 1, 'вопрос', 'ответ ![](%s)')" % url)
+    conn.execute("INSERT INTO faq_images(engine, nr, url) VALUES ('bitrix', 1, ?)", (url,))
+    conn.execute("INSERT INTO blog_posts(blog, post_id, title, body_md, tags, is_excerpt, truncated) "
+                 "VALUES ('remont', 1, 'запись', 'тело ![](%s)', '[]', 0, 0)" % url)
+    conn.execute("INSERT INTO blog_images(blog, post_id, comment_id, url) VALUES ('remont', 1, NULL, ?)",
+                 (url,))
+    conn.commit()
+    return conn
+
+
+def test_all_sections_share_one_asset_directory(tmp_path):
+    """Один адрес — один файл на всю вики.
+
+    До этой правки FAQ и блоги копировали общие картинки каждый себе: 108
+    лишних копий на 7,68 МиБ. Хуже копий то, что статья Ф3 стала бы третьим
+    каталогом, и один адрес получил бы три файла с одним именем.
+
+    Бриф задачи предполагал точку сборки `run.build_mirror(conn, root)` без
+    путей к архиву картинок — на практике их пришлось передать явно
+    (дефолты `run.build_mirror` указывают на боевые `data/...`, а не на
+    `tmp_path`, и звать генератор с боевыми путями внутри теста нельзя).
+    """
+    conn = _db_with_faq_and_blog_sharing_one_image(tmp_path)
+
+    root = tmp_path / "Источники"
+    run.build_mirror(conn, root,
+                      archive_assets_manifest=FIX_ASSETS / "manifest-assets.jsonl",
+                      archive_assets_root=FIX_ASSETS / "assets")
+
+    assert (root / "assets").is_dir()
+    assert not (root / "FAQ" / "assets").exists()
+    assert not (root / "Блоги" / "assets").exists()
+
+    names = sorted(p.name for p in (root / "assets").iterdir())
+    assert len(names) == len(set(names))
+    assert len(names) == 1          # общая картинка лежит ровно одним файлом
+
+
+def test_prune_keeps_files_used_by_another_section(tmp_path):
+    """Сирота — файл, не нужный НИКОМУ, а не «не нужный этому разделу».
+
+    При общем каталоге прежнее правило снесло бы картинки FAQ на прогоне
+    форума и наоборот, а следующая перегенерация вернула бы их — вечная
+    churn с виду пустым результатом.
+    """
+    root = tmp_path / "Источники"
+    assets_dir = root / "assets"
+    assets_dir.mkdir(parents=True)
+    name = attachments.asset_name("http://h/shared.jpg")
+    (assets_dir / name).write_bytes(b"shared bytes")
+
+    # Заметка FAQ ссылается на файл; форумный прогон о нём ничего не знает
+    # (`used=set()`) — ровно так выглядит `used_assets` форума, когда
+    # картинка вообще не его, а FAQ.
+    faq_dir = root / "FAQ"
+    faq_dir.mkdir(parents=True)
+    (faq_dir / "FAQ 1.md").write_text("![[assets/%s]]" % name, encoding="utf-8")
+
+    # notes_written=1 — форумный прогон что-то написал (иначе уборка не
+    # запускается вовсе, это отдельный предохранитель).
+    removed = mirror.prune_assets(assets_dir, set(), 1)
+
+    assert removed == 0
+    assert (assets_dir / name).exists()
