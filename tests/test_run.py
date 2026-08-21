@@ -26,7 +26,12 @@ def _args(tmp_path, *cmd):
             "--db", str(tmp_path / "forum.sqlite"),
             "--csv", str(tmp_path / "coverage.csv"),
             "--wiki", str(tmp_path / "wiki"),
-            "--mirror-dir", "Источники"]
+            "--mirror-dir", "Источники",
+            # Изолируем от реального `data/assets/` репозитория (задача 8):
+            # без этого `ingest`/`all`/`mirror` подхватили бы дефолтный
+            # боевой манифест/каталог добора Ф2 относительно cwd теста.
+            "--assets-manifest", str(tmp_path / "assets-manifest.jsonl"),
+            "--assets-root", str(tmp_path / "assets")]
 
 
 def _faq_site(tmp_path):

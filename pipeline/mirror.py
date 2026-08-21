@@ -30,6 +30,25 @@
   пометка `(изображение не сохранилось: url)`; хром форума -> вырезается
   без следа. «Вот схема, смотри» и сама схема теперь стоят рядом, а не в
   разных концах поста.
+  - Копирование файла в вики (задача 8 фазы Ф2): `attachments.local_path`
+    в базе — путь ВНУТРИ `data/assets/files/` (добор кладёт туда, см.
+    `pipeline/fetch_assets.local_name` — `<host>/<hash16><ext>`), а не
+    внутри вики; `data/` целиком вне git (глобальное ограничение фазы).
+    Тот же приём, что и у `mirror_faq`/`mirror_blog`: `write_all` копирует
+    РЕАЛЬНО ИСПОЛЬЗОВАННЫЙ файл в `<out_dir>/assets/<basename>` (basename —
+    уже `<hash16><ext>`, хост в имени не нужен: хэш взят от ПОЛНОГО URL,
+    значит уникален и без хоста, коллизия между хостами потребовала бы
+    совпадения sha1 двух разных URL) и подставляет в заметку относительный
+    путь `assets/<basename>`, а не сырой `local_path` из базы. Копирование
+    включено, только когда `render_thread` вызван с `assets_root`/`dest_dir`
+    (так их вызывает `write_all`); вызов без них (юниты, не знающие про
+    файлы на диске) оставляет `local_path` как есть — старое поведение для
+    тестов, которые проверяют форматирование, а не копирование файлов.
+    Файл в базе указан, а на диске физически отсутствует (расхождение
+    манифеста добора и содержимого `data/assets/files/`) -> та же честная
+    пометка об утрате, что и при `local_path IS NULL` — глобальное
+    ограничение «ни одной битой вставки» соблюдается и в этом крайнем
+    случае, а не только в обычном.
   - Пометка о потере НЕ callout: `> [!missing]` — двухстрочный блок,
     который не может стоять посреди предложения (Markdown не распознает
     `>`-блок без начала строки), а пост с десятком мёртвых картинок
@@ -96,6 +115,31 @@ _ATX_LINE = re.compile(r"^(\s{0,3}(?:>\s?)*)(#{1,6})(\s|$)")
 _SETEXT_LINE = re.compile(r"^(\s{0,3}(?:>\s?)*)(-+|=+)\s*$")
 
 _NOTE_NAME = re.compile(r"^Тема (\d+)\.md$")
+
+# Куда добор Ф2 кладёт скачанные файлы (см. `pipeline/fetch_assets.py`,
+# `pipeline/run.py` DEFAULT_ASSETS_ROOT) — тот же путь по умолчанию, что и у
+# CLI-флага `--assets-root`, здесь только чтобы `write_all` можно было звать
+# без аргументов там, где это уместно (тесты, точечные скрипты).
+DEFAULT_ASSETS_ROOT = Path("data/assets/files")
+
+
+def _copy_forum_asset(local_path: str, assets_root: Path, dest_dir: Path) -> str | None:
+    """Копирует уже скачанный файл вложения форума в зеркало (см. docstring
+    модуля, раздел про копирование) и возвращает путь вставки `assets/
+    <basename>`. `None` — файл в базе указан, а физически на диске его нет
+    (расхождение манифеста добора и `data/assets/files/`): вызывающая
+    сторона обязана в этом случае показать честную пометку об утрате, а не
+    оставить сырой путь как есть (он ведёт вне вики и дал бы битую вставку).
+    """
+    src = Path(assets_root) / local_path
+    if not src.exists():
+        return None
+    name = Path(local_path).name
+    dst = Path(dest_dir) / name
+    if not dst.exists():
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(src.read_bytes())
+    return "assets/%s" % name
 
 
 def _ru_dt(iso: str) -> str:
@@ -270,7 +314,14 @@ def _yaml_dquote(s: str) -> str:
     return '"%s"' % s
 
 
-def render_thread(conn, tid: int) -> str:
+def render_thread(conn, tid: int, assets_root: Path | None = None, dest_dir: Path | None = None) -> str:
+    """`assets_root`/`dest_dir` — включают копирование файлов вложений в
+    вики (см. docstring модуля). Оба заданы -> `write_all`-режим: файл
+    реально копируется в `dest_dir`, в заметку идёт `assets/<basename>`.
+    Любой из них не задан (по умолчанию) -> прежнее поведение: сырой
+    `attachments.local_path` из базы вставляется как есть — так вызывают
+    юнит-тесты, которым копирование не нужно и не важно.
+    """
     row = conn.execute(
         "SELECT t.tid, t.fid, t.title, t.author, t.started_at, t.replies_expected, t.views, "
         "COALESCE(s.title, '') FROM threads t LEFT JOIN sections s ON s.fid = t.fid WHERE t.tid = ?",
@@ -321,8 +372,11 @@ def render_thread(conn, tid: int) -> str:
             if not attachments.is_content(a_kind):
                 continue
             key = a_url or ""
-            if key not in by_url or (a_local and not by_url[key]["local_path"]):
-                by_url[key] = {"local_path": a_local, "status": None}
+            resolved = a_local
+            if a_local and assets_root is not None and dest_dir is not None:
+                resolved = _copy_forum_asset(a_local, assets_root, dest_dir)
+            if key not in by_url or (resolved and not by_url[key]["local_path"]):
+                by_url[key] = {"local_path": resolved, "status": None}
 
         body = render_post_body(markdown, by_url)
         if body:
@@ -332,13 +386,18 @@ def render_thread(conn, tid: int) -> str:
     return "\n".join(out)
 
 
-def write_all(conn, out_dir: Path) -> int:
+def write_all(conn, out_dir: Path, assets_root: Path = DEFAULT_ASSETS_ROOT) -> int:
     """Пишет заметку на каждую тему базы и убирает заметки исчезнувших тем.
 
     Удаляются только файлы вида `Тема <TID>.md`, чей `tid` в базе больше не
     встречается: имя заметки детерминировано генератором, поэтому лишний
     файл виден точно. Чужие файлы (статьи следующей фазы, заметки Сергея)
     в каталоге не трогаются.
+
+    `assets_root` — где искать уже скачанные добором файлы вложений (см.
+    docstring модуля); реально использованные копируются в `<out_dir>/
+    assets/`, остальные не трогаются (в вики попадают только файлы, на
+    которые ссылаются заметки — глобальное ограничение фазы).
 
     ПРЕДОХРАНИТЕЛЬ: удалений не может быть больше, чем записей. Уборка
     мусора — это единицы файлов на фоне тысяч записанных; «удалить больше,
@@ -350,10 +409,12 @@ def write_all(conn, out_dir: Path) -> int:
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    dest_dir = out_dir / "assets"
     tids = set()
     n = 0
     for (tid,) in conn.execute("SELECT tid FROM threads ORDER BY tid"):
-        (out_dir / ("Тема %d.md" % tid)).write_text(render_thread(conn, tid), encoding="utf-8")
+        (out_dir / ("Тема %d.md" % tid)).write_text(
+            render_thread(conn, tid, assets_root=assets_root, dest_dir=dest_dir), encoding="utf-8")
         tids.add(tid)
         n += 1
     stale = [p for p in sorted(out_dir.glob("Тема *.md"))

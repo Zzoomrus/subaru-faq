@@ -8,7 +8,9 @@
 Команды:
 
     ingest        разобрать сырые страницы в SQLite (`--rebuild` — с нуля;
-                  включает форум, FAQ и блоги — см. `faq`/`blog` ниже)
+                  включает форум, FAQ и блоги — см. `faq`/`blog` ниже; после
+                  загрузки восстанавливает состояние добора Ф2 из манифеста
+                  `--assets-manifest`/`--assets-root` — см. задачу 8 ниже)
     coverage      отчёт покрытия в CSV + сводка в stdout
     mirror        сгенерировать зеркало `wiki/Источники` (форум + FAQ + блоги)
     check         проверка целостности всей вики (код возврата 1 при находках)
@@ -52,6 +54,19 @@
 с одинаковым текстом из одного места кода показываются один раз за процесс,
 и повторные вызовы `sync_to_db` в цикле создали бы у предупреждений о
 повреждённом манифесте ложное впечатление, что проблема исчезла.
+
+**Задача 8 (сведение концов фазы Ф2).** Само СКАЧИВАНИЕ (`assets index`/
+`download`) остаётся вне `all` по причине выше — это не меняется. Но
+ВОССТАНОВЛЕНИЕ уже скачанного состояния в `attachments.local_path` теперь
+живёт и внутри `ingest`/`all` (сразу после загрузки форума/FAQ/блогов,
+`assets_state.sync_to_db`), не только внутри `assets`: иначе `--rebuild`
+(«снёс базу и собрал заново») стирал бы весь добор в NULL при каждой
+пересборке — ровно тот сценарий, который проверяет главная гарантия фазы
+(`data/` вне git, состояние обязано быть пере-выводимым из манифеста +
+файлов на диске). `mirror`/`all` теперь также копируют реально
+использованные файлы вложений форума в `<wiki>/<mirror-dir>/assets/` (тот
+же приём, что уже был у `mirror_faq`/`mirror_blog`, см. `pipeline/mirror.py`)
+— оба шага читают один и тот же `--assets-root`.
 
 `site` — по той же причине вне `all` и разбита на `build`/`fetch`: `build`
 дешёвый (один запрос CDX на раздел) и сохраняет план на диск НАВСЕГДА, а не
@@ -281,6 +296,18 @@ def main(argv: list[str] | None = None) -> int:
         # ingest/all, а не только в отдельной команде `blog`, иначе
         # `all --rebuild` пересоздаёт схему без данных блогов.
         print("blog загрузка:", parse_blog.load_all(args.site_root, args.site_manifest, conn))
+        # Добор Ф2 (задача 8): состояние вложений (что скачалось и куда
+        # легло) живёт в манифесте `--assets-manifest` + файлах на диске
+        # (`pipeline/assets_state.py`), НЕ в базе — база пере-выводима из
+        # сырого HTML одной командой, а манифест — единственная память про
+        # добор. Без этого шага `ingest --rebuild`/`all --rebuild` стирали
+        # бы `attachments.local_path` в NULL при каждой пересборке, и
+        # "снёс — собрал — получил то же" было бы ложью именно для добора
+        # (глобальное ограничение фазы «состояние добора обязано быть
+        # пере-выводимым»). Отсутствующий манифест — не ошибка (`sync_to_db`
+        # молча ничего не находит через `load()`), а не повод падать: чистый
+        # чекаут без добора всё равно должен собираться.
+        print("синхронизация добора:", assets_state.sync_to_db(conn, args.assets_manifest, args.assets_root))
 
     if cmd in ("coverage", "all"):
         rows = coverage.report(conn)
@@ -291,7 +318,7 @@ def main(argv: list[str] | None = None) -> int:
         faq_mirror_path = mirror_path / DEFAULT_FAQ_MIRROR_DIRNAME
         blog_mirror_path = mirror_path / DEFAULT_BLOG_MIRROR_DIRNAME
         try:
-            print("заметок:", mirror.write_all(conn, mirror_path), "->", mirror_path)
+            print("заметок:", mirror.write_all(conn, mirror_path, assets_root=args.assets_root), "->", mirror_path)
             print("faq заметок:", mirror_faq.write_all(conn, faq_mirror_path), "->", faq_mirror_path)
             print("blog заметок:", mirror_blog.write_all(conn, blog_mirror_path), "->", blog_mirror_path)
         except RuntimeError as e:

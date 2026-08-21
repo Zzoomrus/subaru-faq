@@ -482,6 +482,99 @@ def test_write_all_refuses_when_deletions_outnumber_writes(tmp_path):
     assert all((out / ("Тема %d.md" % tid)).exists() for tid in (101, 102, 103, 104, 105))
 
 
+def test_write_all_copies_used_asset_file_and_embeds_relative_path(tmp_path):
+    # Задача 8 фазы Ф2: файл лежит вне вики (`data/assets/files/...`,
+    # `local_path` из базы — путь ВНУТРИ этого каталога), write_all обязан
+    # скопировать реально использованный файл внутрь зеркала и подставить
+    # `assets/<basename>`, а не сырой `local_path` (иначе вставка битая —
+    # ведёт за пределы вики, вне git).
+    conn = _seed(tmp_path)
+    conn.execute("INSERT INTO posts(mid, tid, page_no, author, posted_at, number, markdown, text) "
+                 "VALUES (53480, 10045, 1, 'Petr', '2007-04-11 10:00:00', '#9', "
+                 "'вот схема ![](http://gadanie.fun/x.jpg) готово', 'x')")
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (53480, 'external_image', 'http://gadanie.fun/x.jpg', "
+                 "'gadanie.fun/3b0c0a4497aa1ce0.jpg', 'ok')")
+    conn.commit()
+    assets_root = tmp_path / "assets_files"
+    src = assets_root / "gadanie.fun" / "3b0c0a4497aa1ce0.jpg"
+    src.parent.mkdir(parents=True)
+    src.write_bytes(b"fake-jpg-bytes")
+
+    out = tmp_path / "Источники"
+    mirror.write_all(conn, out, assets_root=assets_root)
+    md = (out / "Тема 10045.md").read_text(encoding="utf-8")
+    assert "![[assets/3b0c0a4497aa1ce0.jpg]]" in md
+    assert "gadanie.fun/3b0c0a4497aa1ce0.jpg" not in md  # сырой путь из базы не утёк в заметку
+
+    copied = out / "assets" / "3b0c0a4497aa1ce0.jpg"
+    assert copied.exists()
+    assert copied.read_bytes() == b"fake-jpg-bytes"
+
+
+def test_write_all_falls_back_to_loss_note_when_file_missing_on_disk(tmp_path):
+    # `local_path` в базе заполнен, но манифест добора и содержимое
+    # `data/assets/files/` разошлись (файла физически нет) — честная
+    # пометка об утрате, а не битая вставка `![[...]]` в пустоту.
+    conn = _seed(tmp_path)
+    conn.execute("INSERT INTO posts(mid, tid, page_no, author, posted_at, number, markdown, text) "
+                 "VALUES (53481, 10045, 1, 'Petr', '2007-04-12 10:00:00', '#10', "
+                 "'схема ![](http://h/gone.jpg) тут', 'x')")
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (53481, 'external_image', 'http://h/gone.jpg', 'h/gone123.jpg', 'ok')")
+    conn.commit()
+    out = tmp_path / "Источники"
+    mirror.write_all(conn, out, assets_root=tmp_path / "assets_files_empty")
+    md = (out / "Тема 10045.md").read_text(encoding="utf-8")
+    assert "![[" not in md
+    assert "изображение не сохранилось: http://h/gone.jpg" in md
+
+
+def test_same_file_used_in_two_threads_is_copied_once(tmp_path):
+    # Одна и та же картинка может быть вставлена в несколько тем — файл
+    # копируется, только если его ещё нет в `assets/` (без повторного I/O
+    # и без ошибки "файл существует").
+    conn = _seed(tmp_path)
+    conn.execute("INSERT INTO threads(tid, fid, title, author, started_at, replies_expected, views) "
+                 "VALUES (10046, 19, 'Вторая тема', 'DTR', '2007-04-02', 0, 1)")
+    conn.execute("INSERT INTO posts(mid, tid, page_no, author, posted_at, number, markdown, text) "
+                 "VALUES (53482, 10045, 1, 'Petr', '2007-04-13 10:00:00', '#11', "
+                 "'фото ![](http://h/shared.jpg) раз', 'x')")
+    conn.execute("INSERT INTO posts(mid, tid, page_no, author, posted_at, number, markdown, text) "
+                 "VALUES (53483, 10046, 1, 'Petr', '2007-04-13 10:00:01', '#1', "
+                 "'то же фото ![](http://h/shared.jpg) два', 'x')")
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (53482, 'external_image', 'http://h/shared.jpg', 'h/shared1.jpg', 'ok')")
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (53483, 'external_image', 'http://h/shared.jpg', 'h/shared1.jpg', 'ok')")
+    conn.commit()
+    assets_root = tmp_path / "assets_files"
+    src = assets_root / "h" / "shared1.jpg"
+    src.parent.mkdir(parents=True)
+    src.write_bytes(b"shared-bytes")
+
+    out = tmp_path / "Источники"
+    mirror.write_all(conn, out, assets_root=assets_root)
+    assert "![[assets/shared1.jpg]]" in (out / "Тема 10045.md").read_text(encoding="utf-8")
+    assert "![[assets/shared1.jpg]]" in (out / "Тема 10046.md").read_text(encoding="utf-8")
+    assert len(list((out / "assets").glob("*.jpg"))) == 1
+
+
+def test_render_thread_without_dest_dir_keeps_raw_local_path(tmp_path):
+    # Юнит-режим (без assets_root/dest_dir) не копирует ничего и не трогает
+    # `local_path` — прежнее поведение, на которое рассчитывают остальные
+    # тесты этого файла (фиктивные local_path, не существующие на диске).
+    conn = _seed(tmp_path)
+    conn.execute("INSERT INTO posts(mid, tid, page_no, author, posted_at, number, markdown, text) "
+                 "VALUES (53484, 10045, 1, 'Petr', '2007-04-14 10:00:00', '#12', "
+                 "'x ![](http://h/y.jpg) x', 'x')")
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (53484, 'external_image', 'http://h/y.jpg', 'h/y123.jpg', 'ok')")
+    conn.commit()
+    md = mirror.render_thread(conn, 10045)
+    assert "![[h/y123.jpg]]" in md
+
+
 def test_safeguard_does_not_block_normal_orphan_cleanup(tmp_path):
     # Предохранитель не должен убить полезное поведение: одна осиротевшая
     # заметка при 1 записанной — удаляется.
