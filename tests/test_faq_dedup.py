@@ -49,8 +49,11 @@ def test_old_engine_is_never_canonical(tmp_path):
 def test_finds_duplicate_by_answer_containment_when_question_differs(tmp_path):
     conn = db.connect(tmp_path / "d.sqlite")
     db.init_schema(conn)
-    _faq(conn, "bitrix", 42, "Про масло", "Лить полусинтетику 10W-40. И менять раз в 7000.")
-    _faq(conn, "old", 7, "Масло — что лить", "Лить полусинтетику 10W-40.")
+    _faq(conn, "bitrix", 42, "Про масло",
+         "Лить полусинтетику 10W-40 и менять раз в 7000 км. "
+         "Такой интервал прописан заводским регламентом.")
+    _faq(conn, "old", 7, "Масло — что лить",
+         "Лить полусинтетику 10W-40 и менять раз в 7000 км.")
     conn.commit()
 
     dupes = faq_dedup.find_duplicates(conn)
