@@ -24,6 +24,8 @@
     blog [load|mirror]  блоги (задача 7), тот же приём, что у `faq` — load в
                        таблицы `blog_posts`/`blog_images`/`blog_comments`,
                        mirror — заметки в `<--wiki>/<--mirror-dir>/Блоги/`
+    dedup         дедуп FAQ между движками (Ф3, задача 1) — точечный повтор
+                  без полного `ingest`; внутри `ingest`/`all` уже включён
     assets index    добор Ф2: индексация CDX (тела не тянет, ~40 мин на 6008 URL)
     assets sieve    просев уже скачанного: заглушки хостингов (1x1 пиксель и
                     прочее, что валидно как картинка, но картинкой поста быть
@@ -103,8 +105,8 @@ import logging
 import sys
 from pathlib import Path
 
-from pipeline import (archive_assets, assets_state, attachments, check_mirror, coverage, db, fetch_assets,
-                      fetch_site, ingest, mirror, mirror_blog, mirror_faq, parse_blog, parse_faq)
+from pipeline import (archive_assets, assets_state, attachments, check_mirror, coverage, db, faq_dedup,
+                      fetch_assets, fetch_site, ingest, mirror, mirror_blog, mirror_faq, parse_blog, parse_faq)
 
 DEFAULT_PAGES = Path("data/raw/archive/pages")
 DEFAULT_MANIFEST = Path("data/raw/archive/manifest.jsonl")
@@ -130,7 +132,7 @@ def _parser() -> argparse.ArgumentParser:
         prog="python -m pipeline.run",
         description="Конвейер subaru-faq: сырой HTML архива -> SQLite -> зеркало Obsidian.")
     p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all", "assets", "site",
-                                        "faq", "blog"])
+                                        "faq", "blog", "dedup"])
     p.add_argument("sub_action", nargs="?",
                    choices=["index", "download", "sieve", "build", "fetch", "load", "mirror"],
                    default=None,
@@ -331,6 +333,18 @@ def main(argv: list[str] | None = None) -> int:
             print("blog заметок:", n, "->", blog_mirror_path)
         return 0
 
+    if cmd == "dedup":
+        # FAQ (Ф3, задача 1): раздел архивирован двумя движками разом, и
+        # часть записей повторяется. Отдельная команда — для точечного
+        # повторного прогона дедупа без полного `ingest` (тот же приём,
+        # что у `faq`/`blog` выше). Внутри `ingest`/`all` тот же вызов
+        # живёт безусловно (см. ниже) — иначе `--rebuild` вернул бы базу
+        # без указателей на дубли.
+        conn = db.connect(args.db)
+        db.init_schema(conn)
+        print("дедуп faq:", faq_dedup.apply(conn))
+        return 0
+
     if cmd == "site":
         if args.sub_action not in ("build", "fetch") or args.site_section is None:
             print("укажи действие и раздел: site build faq|blogs | site fetch faq|blogs")
@@ -381,6 +395,15 @@ def main(argv: list[str] | None = None) -> int:
         # молча даёт 0 записей), а не повод падать: чистый чекаут без
         # добора FAQ должен всё равно собираться.
         print("faq загрузка:", parse_faq.load_all(args.site_root, args.site_manifest, conn))
+        # Дедуп FAQ (Ф3, задача 1): раздел архивирован двумя движками
+        # разом (см. `pipeline/faq_dedup.py`) — сразу после загрузки, а не
+        # только через отдельную команду `dedup`: иначе `--rebuild` («снёс
+        # базу и собрал заново») вернул бы записи БЕЗ указателей на дубли,
+        # и следующий прогон статей молча дал бы старой записи вторую
+        # сноску (тот же класс ошибки, что чинили `sync_to_db`/`local_path`
+        # в Ф2). `apply` идемпотентен — сбрасывает указатели перед
+        # пересчётом, повторный вызов не копит мусор.
+        print("дедуп faq:", faq_dedup.apply(conn))
         # Блоги (задача 7) — тот же приём, что и FAQ выше: живёт внутри
         # ingest/all, а не только в отдельной команде `blog`, иначе
         # `all --rebuild` пересоздаёт схему без данных блогов.
