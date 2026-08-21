@@ -15,7 +15,9 @@
 неоднозначный (байт-идентичность у трёх и более адресов) только
 перечисляется человеку.
 """
+import hashlib
 import struct
+from pathlib import Path
 
 from pipeline import assets_state, attachments, db, fetch_assets
 
@@ -134,3 +136,63 @@ def test_mark_empty_makes_the_address_terminal_and_lost(tmp_path):
 
     # И повторный прогон её не перекачает: `empty` терминален без явного флага.
     assert fetch_assets._targets(conn, manifest, "download", None) == []
+
+
+DECIDED_SHA256 = "ec872606e266d9774a98276ab0d9e19a1155304c8180a879fedb7189ffde59f1"
+
+
+def test_side_rule_does_not_depend_on_size_or_hash_of_a_particular_tracker():
+    """Условие лида: правило по стороне — САМОСТОЯТЕЛЬНОЕ.
+
+    Найденный трекер был 43-байтным GIF, но 43 байта и его хэш — приметы
+    ОДНОГО хостинга, а сторона — признак класса. Добор Ф3 принесёт другой
+    трекер: другой формат, другой размер файла, другой хэш.
+    """
+    other_tracker = (b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR"
+                     + (1).to_bytes(4, "big") + (1).to_bytes(4, "big") + b"\x00" * 900)
+    assert len(other_tracker) != 43
+    assert attachments.looks_like_placeholder(other_tracker)
+    assert attachments.decided_placeholder(other_tracker) is None    # хэш ни при чём
+    assert not fetch_assets._is_real_image(other_tracker)
+
+
+def test_byte_identity_is_diagnostics_and_the_verdict_is_a_human_decision(tmp_path):
+    """Условие лида: байт-идентичность НЕ становится автоматическим правилом.
+
+    Иначе первая же настоящая фотография, выложенная на трёх шардах
+    фотохостинга, тихо исчезла бы из вики. В коде помечены конкретные
+    решённые файлы (по sha256 — тут он уместен, это приговор одному файлу),
+    а не «три и более адресов → заглушка».
+    """
+    photo = GIF_600 + "настоящая фотография с трёх шардов".encode()
+    conn, manifest, root = _seeded(tmp_path, {
+        "http://s1.host/p.gif": photo,
+        "http://s2.host/p.gif": photo,
+        "http://s3.host/p.gif": photo,
+    })
+    report = fetch_assets.sieve_report(conn, manifest, root)
+    # Три адреса, одни байты — но приговора нет, значит и пометки нет.
+    assert report["placeholders"] == []
+    assert len(report["identical_groups"]) == 1 and report["identical_groups"][0]["urls"] == 3
+    assert not attachments.is_placeholder(photo)
+    # И проверка содержимого при скачивании такую фотографию принимает.
+    assert fetch_assets._is_real_image(photo)
+
+
+def test_a_decided_verdict_marks_the_file_and_names_the_ground(tmp_path):
+    # Приговор из `DECIDED_PLACEHOLDER_SHA256` работает и в просеве, и в
+    # проверке содержимого при скачивании — с указанием основания, а не
+    # безымянно.
+    assert DECIDED_SHA256 in attachments.DECIDED_PLACEHOLDER_SHA256
+    assert attachments.decided_placeholder("не заглушка".encode()) is None
+    # Проверяем механику приговора на своём хэше, не завися от корпуса.
+    data = GIF_600 + "решённая глазами заглушка".encode()
+    digest = hashlib.sha256(data).hexdigest()
+    attachments.DECIDED_PLACEHOLDER_SHA256[digest] = "проба"
+    try:
+        assert attachments.decided_placeholder(data) == "проба"
+        assert attachments.is_placeholder(data)
+        assert not attachments.looks_like_placeholder(data)   # правило класса тут молчит
+        assert not fetch_assets._is_real_image(data)
+    finally:
+        del attachments.DECIDED_PLACEHOLDER_SHA256[digest]

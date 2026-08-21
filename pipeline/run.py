@@ -229,14 +229,21 @@ def main(argv: list[str] | None = None) -> int:
             # файлов у трёх и более адресов — вторые НЕ метятся сами никогда,
             # по ним решает человек, глядя на картинку.
             report = fetch_assets.sieve_report(conn, args.assets_manifest, args.assets_root)
-            print("заглушки (сторона <= %d px): %d"
-                  % (attachments.PLACEHOLDER_MAX_SIDE, len(report["placeholders"])))
+            by_reason: dict[str, int] = {}
+            for item in report["placeholders"]:
+                by_reason[item["reason"]] = by_reason.get(item["reason"], 0) + 1
+            print("заглушки: %d" % len(report["placeholders"]))
+            for reason, count in sorted(by_reason.items(), key=lambda kv: -kv[1]):
+                print("  по основанию «%s»: %d" % (reason, count))
             for item in report["placeholders"][:20]:
-                print("  %s  %d байт %s" % (item["url"], item["bytes"], item["size"]))
+                print("  %s  %d байт %s — %s"
+                      % (item["url"], item["bytes"], item["size"], item["reason"]))
             if len(report["placeholders"]) > 20:
                 print("  … ещё %d" % (len(report["placeholders"]) - 20))
-            print("группы байт-идентичных файлов у >= 3 адресов: %d "
-                  "(САМИ НЕ МЕТЯТСЯ — решение человека)" % len(report["identical_groups"]))
+            print("НЕРЕШЁННЫЕ группы байт-идентичных файлов у >= 3 адресов: %d "
+                  "(САМИ НЕ МЕТЯТСЯ никогда — открой образец глазами и, если это "
+                  "заглушка, впиши её sha256 в attachments.DECIDED_PLACEHOLDER_SHA256)"
+                  % len(report["identical_groups"]))
             for g in report["identical_groups"]:
                 print("  %d байт, %s, адресов %d, образец %s"
                       % (g["bytes"], g["size"], g["urls"], g["sample"]))
