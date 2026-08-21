@@ -97,6 +97,8 @@ _SANDBOXED_DEFAULTS = (
     ("pipeline.mirror_faq", "DEFAULT_ASSETS_ROOT"),
     ("pipeline.mirror_blog", "DEFAULT_ASSETS_MANIFEST"),
     ("pipeline.mirror_blog", "DEFAULT_ASSETS_ROOT"),
+    ("pipeline.archive_assets", "DEFAULT_MANIFEST"),
+    ("pipeline.archive_assets", "DEFAULT_ROOT"),
 )
 
 

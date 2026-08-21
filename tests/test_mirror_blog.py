@@ -310,14 +310,22 @@ def test_images_stay_inside_their_own_scope(tmp_path):
     комментария и восемь картинок), у 2 записей картинки есть и в теле, и в
     комментариях.
 
-    Поэтому проверяются все три области разом и каждая — на своё и только
-    своё: тело записи, комментарий 7, комментарий 9.
+    Форма теста взята с ЖИВОЙ записи корпуса — `Блог Hello 65`, самой
+    насыщенной: четыре комментария с картинками, у одного из них две, у
+    другого четыре, у тела записи ни одной (замер лида). Она же и худший
+    случай: именно на ней ловушка дала бы больше всего ложных вставок.
+    Проверяются все области разом и каждая — на своё и только своё, включая
+    комментарий с ДВУМЯ картинками (внутри одной области обе обязаны стоять)
+    и комментарий без картинок вовсе.
     """
     manifest, root = _local_archive(
-        tmp_path, "upload/blog/aaa/entry.jpg", "upload/blog/bbb/c7.jpg", "upload/blog/ccc/c9.jpg")
+        tmp_path, "upload/blog/aaa/entry.jpg", "upload/blog/bbb/c7.jpg",
+        "upload/blog/ccc/c9a.jpg", "upload/blog/ccc/c9b.jpg", "upload/blog/ddd/c13.jpg")
     entry_url = "http://subaru-faq.ru/upload/blog/aaa/entry.jpg"
     c7_url = "http://subaru-faq.ru/upload/blog/bbb/c7.jpg"
-    c9_url = "http://subaru-faq.ru/upload/blog/ccc/c9.jpg"
+    c9a_url = "http://subaru-faq.ru/upload/blog/ccc/c9a.jpg"
+    c9b_url = "http://subaru-faq.ru/upload/blog/ccc/c9b.jpg"
+    c13_url = "http://subaru-faq.ru/upload/blog/ddd/c13.jpg"
 
     conn = db.connect(tmp_path / "scope.sqlite")
     db.init_schema(conn)
@@ -325,13 +333,18 @@ def test_images_stay_inside_their_own_scope(tmp_path):
                   "Тело с ![](%s) картинкой." % entry_url, [],
                   "http://www.subaru-faq.ru/blogs/index.php?page=post&blog=remont&post_id=901",
                   "20150101100000")
-    for comment_id, url, text in ((7, c7_url, "у меня вот так ![](%s) вышло" % c7_url),
-                                   (9, c9_url, "а у меня иначе ![](%s)" % c9_url),
-                                   (11, None, "комментарий вообще без картинок")):
+    comments = (
+        (7, [c7_url], "у меня вот так ![](%s) вышло" % c7_url),
+        # Комментарий с ДВУМЯ картинками — как 225-й и 235-й у `Hello 65`.
+        (9, [c9a_url, c9b_url], "было ![](%s) стало ![](%s)" % (c9a_url, c9b_url)),
+        (11, [], "комментарий вообще без картинок"),
+        (13, [c13_url], "и ещё вот ![](%s)" % c13_url),
+    )
+    for comment_id, urls, text in comments:
         conn.execute("INSERT INTO blog_comments(blog, post_id, comment_id, parent_id, depth, author, "
                      "posted_at, text_md) VALUES ('remont', 901, ?, NULL, 0, 'scilla', "
                      "'11.08.2011 10:38:01', ?)", (comment_id, text))
-        if url:
+        for url in urls:
             conn.execute("INSERT INTO blog_images(blog, post_id, comment_id, url, local_path) "
                          "VALUES ('remont', 901, ?, ?, NULL)", (comment_id, url))
     conn.execute("INSERT INTO blog_images(blog, post_id, comment_id, url, local_path) "
@@ -342,24 +355,24 @@ def test_images_stay_inside_their_own_scope(tmp_path):
     mirror_blog.write_all(conn, out, assets_manifest=manifest, assets_root=root)
     md = (out / "Блог remont 901.md").read_text(encoding="utf-8")
 
-    names = {"запись": attachments.asset_name(entry_url, b"\xff\xd8\xff"),
-             "к7": attachments.asset_name(c7_url, b"\xff\xd8\xff"),
-             "к9": attachments.asset_name(c9_url, b"\xff\xd8\xff")}
-    assert len(set(names.values())) == 3            # три разных файла, иначе тест ничего не различает
+    name = lambda url: attachments.asset_name(url, b"\xff\xd8\xff")
+    expected = {"тело": {name(entry_url)}, "к7": {name(c7_url)},
+                "к9": {name(c9a_url), name(c9b_url)}, "к11": set(), "к13": {name(c13_url)}}
+    # Пять разных файлов, иначе тест не различает области.
+    assert len({n for names in expected.values() for n in names}) == 5
 
     # Разрезаем заметку на области ровно по её якорям.
-    body, comments = md.split("## Комментарии", 1)
-    _, c7, c9, c11 = re.split(r"##### Комментарий \d+", comments)
-    scopes = {"тело": body, "к7": c7, "к9": c9, "к11": c11}
+    body, comments_md = md.split("## Комментарии", 1)
+    _, c7, c9, c11, c13 = re.split(r"##### Комментарий \d+", comments_md)
+    scopes = {"тело": body, "к7": c7, "к9": c9, "к11": c11, "к13": c13}
 
     # Каждая картинка стоит РОВНО в своей области и ровно один раз.
-    expected = {"тело": {names["запись"]}, "к7": {names["к7"]}, "к9": {names["к9"]}, "к11": set()}
     for scope, text in scopes.items():
         found = set(re.findall(r"!\[\[assets/([^\]]+)\]\]", text))
         assert found == expected[scope], "область %s: %s" % (scope, sorted(found))
         assert text.count("![[assets/") == len(expected[scope]), scope
 
-    # И ни одной пометки об утрате: все три файла в архиве есть.
+    # И ни одной пометки об утрате: все пять файлов в архиве есть.
     assert "изображение не сохранилось" not in md
-    # Всего вставок ровно три — ни одного хвоста ни в одной области.
-    assert md.count("![[assets/") == 3
+    # Всего вставок ровно пять — ни одного хвоста ни в одной области.
+    assert md.count("![[assets/") == 5

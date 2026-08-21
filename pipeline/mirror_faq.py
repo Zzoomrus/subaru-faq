@@ -51,69 +51,42 @@ _file_exists`. Если однажды окажется, что реальный
 Obsidian визуально, но `check_mirror` всё равно не даст ложной "битой
 вставки" (см. отчёт задачи 6, раздел "сомнения").
 """
-import json
 import re
-import urllib.parse
 from pathlib import Path
 
-from pipeline import attachments, mirror
+from pipeline import archive_assets, attachments, mirror
 
-DEFAULT_ASSETS_MANIFEST = Path("data/raw/archive/manifest-assets.jsonl")
-DEFAULT_ASSETS_ROOT = Path("data/raw/archive/assets")
+# Индекс и поиск файла в архиве Ф0/Ф1 переехали в `pipeline.archive_assets`
+# (у логики стало два потребителя: зеркало и отражение в базе — `sync_local_
+# paths`, и оба обязаны ходить одним кодом, иначе ответ базы «уцелела ли
+# картинка» и содержимое вики разойдутся). Здесь — псевдонимы: на эти имена
+# ссылается докстринг модуля, `mirror_blog` и тесты.
+DEFAULT_ASSETS_MANIFEST = archive_assets.DEFAULT_MANIFEST
+DEFAULT_ASSETS_ROOT = archive_assets.DEFAULT_ROOT
 
 _NOTE_NAME = re.compile(r"^FAQ (?:старый )?(\d+)\.md$")
+
+_normalize_asset_path = archive_assets.normalize_path
+_load_asset_index = archive_assets.load_index
+_local_asset_name = attachments.asset_name
 
 
 def _filename(engine: str, nr: int) -> str:
     return "FAQ %d.md" % nr if engine == "bitrix" else "FAQ старый %d.md" % nr
 
 
-def _normalize_asset_path(url: str) -> str:
-    """Путь файла независимо от хоста/регистра/percent-encoding/задвоенных
-    слэшей — так же, как реально лежит `path` в `manifest-assets.jsonl`
-    (см. task-6-report.md: `.../bcc//p1000089.jpg` в URL, `.../bcc/
-    p1000089.jpg` на диске — двойной слэш там коллапсирует).
-    """
-    path = urllib.parse.unquote(urllib.parse.urlsplit(url).path).lstrip("/")
-    return re.sub(r"/+", "/", path)
-
-
-def _load_asset_index(manifest_path: Path) -> set[str]:
-    idx: set[str] = set()
-    p = Path(manifest_path)
-    if not p.exists():
-        return idx
-    for line in p.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        rec = json.loads(line)
-        path = rec.get("path")
-        if path:
-            idx.add(re.sub(r"/+", "/", path))
-    return idx
-
-
-# Имя файла в зеркале — общая функция на все три раздела (`attachments.
-# asset_name`, дефект M4 итогового ревью Ф2). Прежняя локальная версия
-# считала хэш от ПОЛНОГО URL, из-за чего одна и та же картинка, вставленная
-# и в FAQ, и в блог, получала два разных имени: 90 таких файлов лежали в
-# двух каталогах дважды. Псевдоним оставлен потому, что на него ссылается
-# докстринг модуля и `mirror_blog` (он берёт помощники картинок отсюда).
-_local_asset_name = attachments.asset_name
-
-
 def _resolve_image(url: str, asset_index: set[str], assets_root: Path, dest_dir: Path) -> str | None:
     """Копирует картинку в зеркало, если файл уже есть в архиве Ф0/Ф1, и
     возвращает путь вставки (`assets/<hash><ext>`, см. docstring модуля).
     `None` — файла нет ни в манифесте, ни на диске: честная утрата.
+
+    Поиск — `archive_assets.find`, то есть ровно та же функция, которой
+    `archive_assets.sync_local_paths` заполняет `local_path` в базе.
     """
-    rel = _normalize_asset_path(url)
-    if rel not in asset_index:
+    rel = archive_assets.find(url, asset_index, assets_root)
+    if rel is None:
         return None
-    src = Path(assets_root) / rel
-    if not src.exists():
-        return None
-    return mirror.copy_asset(url, src, dest_dir)
+    return mirror.copy_asset(url, Path(assets_root) / rel, dest_dir)
 
 
 def render_entry(row: tuple, images_by_url: dict) -> str:

@@ -98,8 +98,8 @@ import logging
 import sys
 from pathlib import Path
 
-from pipeline import (assets_state, check_mirror, coverage, db, fetch_assets, fetch_site, ingest, mirror,
-                      mirror_blog, mirror_faq, parse_blog, parse_faq)
+from pipeline import (archive_assets, assets_state, check_mirror, coverage, db, fetch_assets, fetch_site,
+                      ingest, mirror, mirror_blog, mirror_faq, parse_blog, parse_faq)
 
 DEFAULT_PAGES = Path("data/raw/archive/pages")
 DEFAULT_MANIFEST = Path("data/raw/archive/manifest.jsonl")
@@ -156,6 +156,19 @@ def _parser() -> argparse.ArgumentParser:
                         "(по умолчанию %s)" % DEFAULT_SITE_ROOT)
     p.add_argument("--site-manifest", type=Path, default=DEFAULT_SITE_MANIFEST,
                    help="манифест добора сайта (по умолчанию %s)" % DEFAULT_SITE_MANIFEST)
+    # Архив картинок Ф0/Ф1 — ДРУГОЙ манифест, чем `--assets-manifest` (тот про
+    # добор Ф2). Из него берутся картинки FAQ и блогов: они никогда не
+    # качались отдельно, но часть адресов — свой хост, и файл уже лежал в
+    # архиве прошлой фазы. До этой правки путь был неявным (значения по
+    # умолчанию внутри `mirror_faq`), а теперь один и тот же флаг кормит и
+    # генератор зеркала, и отражение в базе (`archive_assets.sync_local_
+    # paths`) — иначе они могли бы смотреть в разные каталоги.
+    p.add_argument("--archive-assets-manifest", type=Path,
+                   default=archive_assets.DEFAULT_MANIFEST,
+                   help="манифест картинок архива Ф0/Ф1 (по умолчанию %s)"
+                        % archive_assets.DEFAULT_MANIFEST)
+    p.add_argument("--archive-assets-root", type=Path, default=archive_assets.DEFAULT_ROOT,
+                   help="каталог файлов архива Ф0/Ф1 (по умолчанию %s)" % archive_assets.DEFAULT_ROOT)
     p.add_argument("--limit", type=int, default=None,
                    help="ограничить число URL за прогон (для проб/тестов)")
     # Терминальные статусы добора (`no_snapshot` 5007, `empty` 99) по
@@ -235,9 +248,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.sub_action in (None, "load"):
             stats = parse_faq.load_all(args.site_root, args.site_manifest, conn)
             print("faq загрузка:", stats)
+            print("картинки в базе:", archive_assets.sync_local_paths(
+                conn, args.archive_assets_manifest, args.archive_assets_root))
         if args.sub_action in (None, "mirror"):
             try:
-                n = mirror_faq.write_all(conn, faq_mirror_path)
+                n = mirror_faq.write_all(conn, faq_mirror_path,
+                                          assets_manifest=args.archive_assets_manifest,
+                                          assets_root=args.archive_assets_root)
             except RuntimeError as e:
                 print("ОШИБКА:", e)
                 return 2
@@ -257,9 +274,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.sub_action in (None, "load"):
             stats = parse_blog.load_all(args.site_root, args.site_manifest, conn)
             print("blog загрузка:", stats)
+            print("картинки в базе:", archive_assets.sync_local_paths(
+                conn, args.archive_assets_manifest, args.archive_assets_root))
         if args.sub_action in (None, "mirror"):
             try:
-                n = mirror_blog.write_all(conn, blog_mirror_path)
+                n = mirror_blog.write_all(conn, blog_mirror_path,
+                                           assets_manifest=args.archive_assets_manifest,
+                                           assets_root=args.archive_assets_root)
             except RuntimeError as e:
                 print("ОШИБКА:", e)
                 return 2
@@ -332,6 +353,14 @@ def main(argv: list[str] | None = None) -> int:
         # молча ничего не находит через `load()`), а не повод падать: чистый
         # чекаут без добора всё равно должен собираться.
         print("синхронизация добора:", assets_state.sync_to_db(conn, args.assets_manifest, args.assets_root))
+        # То же самое для картинок FAQ и блогов, только источник другой —
+        # архив Ф0/Ф1 (находка ре-ревью: `local_path` был NULL у ВСЕХ 669
+        # строк, хотя в вики стояли 401 настоящая вставка; база отвечала
+        # «ни одна картинка не уцелела» при 401 уцелевшей). Как и выше,
+        # шаг обязан жить внутри `ingest`/`all`: загрузчики пересоздают
+        # строки картинок, и без него `--rebuild` возвращал бы NULL.
+        print("картинки в базе:", archive_assets.sync_local_paths(
+            conn, args.archive_assets_manifest, args.archive_assets_root))
 
     if cmd in ("coverage", "all"):
         rows = coverage.report(conn)
@@ -343,8 +372,12 @@ def main(argv: list[str] | None = None) -> int:
         blog_mirror_path = mirror_path / DEFAULT_BLOG_MIRROR_DIRNAME
         try:
             print("заметок:", mirror.write_all(conn, mirror_path, assets_root=args.assets_root), "->", mirror_path)
-            print("faq заметок:", mirror_faq.write_all(conn, faq_mirror_path), "->", faq_mirror_path)
-            print("blog заметок:", mirror_blog.write_all(conn, blog_mirror_path), "->", blog_mirror_path)
+            print("faq заметок:", mirror_faq.write_all(
+                conn, faq_mirror_path, assets_manifest=args.archive_assets_manifest,
+                assets_root=args.archive_assets_root), "->", faq_mirror_path)
+            print("blog заметок:", mirror_blog.write_all(
+                conn, blog_mirror_path, assets_manifest=args.archive_assets_manifest,
+                assets_root=args.archive_assets_root), "->", blog_mirror_path)
         except RuntimeError as e:
             # Предохранитель генератора (общий у mirror и mirror_faq): база
             # не описывает это зеркало. Печатаем причину без трейсбека и
