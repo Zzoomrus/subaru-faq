@@ -56,7 +56,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup, Tag
 
-from pipeline import assets_state, attachments, fetch_site, html_text
+from pipeline import assets_state, attachments, db, fetch_site, html_text
 
 _LOG = logging.getLogger(__name__)
 
@@ -456,18 +456,22 @@ def load_all(site_root: Path, site_manifest: Path, conn) -> dict[str, int]:
     for (blog, post_id), entry in final.items():
         if not entry.body_md.strip():
             stats["empty_body"] += 1
+        # `body_text` — плоский текст записи для поиска (`blog_fts`), см.
+        # `parse_faq.load_all` и комментарий к колонке в `db.SCHEMA`.
+        body_text = html_text.plain_text_from_markdown(entry.body_md or "")
         conn.execute(
             "INSERT INTO blog_posts(blog, post_id, title, author, posted_at, body_md, tags, "
-            "source_url, snapshot_ts, is_excerpt, truncated, declared_comments) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?) "
+            "source_url, snapshot_ts, is_excerpt, truncated, declared_comments, body_text) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) "
             "ON CONFLICT(blog, post_id) DO UPDATE SET title=excluded.title, author=excluded.author, "
             "posted_at=excluded.posted_at, body_md=excluded.body_md, tags=excluded.tags, "
             "source_url=excluded.source_url, snapshot_ts=excluded.snapshot_ts, "
             "is_excerpt=excluded.is_excerpt, truncated=excluded.truncated, "
-            "declared_comments=excluded.declared_comments",
+            "declared_comments=excluded.declared_comments, body_text=excluded.body_text",
             (blog, post_id, entry.title, entry.author, entry.posted_at, entry.body_md,
              json.dumps(entry.tags, ensure_ascii=False), entry.source_url,
-             entry.snapshot_ts, int(entry.is_excerpt), int(entry.truncated), entry.declared_comments))
+             entry.snapshot_ts, int(entry.is_excerpt), int(entry.truncated), entry.declared_comments,
+             body_text))
 
         conn.execute("DELETE FROM blog_images WHERE blog = ? AND post_id = ?", (blog, post_id))
         for img_url in entry.images:
@@ -484,4 +488,5 @@ def load_all(site_root: Path, site_manifest: Path, conn) -> dict[str, int]:
             stats["comments"] += 1
 
     conn.commit()
+    stats.update(db.rebuild_search_index(conn))
     return stats

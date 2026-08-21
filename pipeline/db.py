@@ -39,10 +39,19 @@ CREATE TABLE IF NOT EXISTS pages (
 -- ответа под собственной меткой "Вопрос:" — см. `parse_faq._split_embedded_
 -- qa`); NULL — заголовок и есть вопрос (старый движок всегда, Bitrix — где
 -- дублирования не было или заголовок совпал с вопросом из тела).
+-- `answer_text` — плоский текст ответа (`html_text.plain_text_from_markdown`
+-- от `answer_md`), ровно тот же смысл, что у `posts.text`: по нему строится
+-- поиск (`faq_fts`). До этой правки (дефект I1 итогового ревью Ф2) плоского
+-- текста и полнотекстового индекса не было ни у FAQ, ни у блогов — главная
+-- механика следующей фазы (найти фразу -> сослаться -> сверить дословность)
+-- была применима к одному источнику из трёх. Каноном ДОСЛОВНОЙ сверки при
+-- этом остаётся тело заметки, а не это поле (Ruling 30, `docs/
+-- контракт-зеркала.md`): у постов форума `text` и `markdown` расходятся у
+-- 56% записей, и у FAQ/блогов разойдутся тем же способом.
 CREATE TABLE IF NOT EXISTS faq (
     engine TEXT, nr INTEGER, catnr INTEGER, prog TEXT, category TEXT,
     question TEXT, answer_md TEXT, source_url TEXT, snapshot_ts TEXT,
-    title TEXT,
+    title TEXT, answer_text TEXT,
     PRIMARY KEY (engine, nr));
 CREATE TABLE IF NOT EXISTS faq_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT, engine TEXT, nr INTEGER, url TEXT, local_path TEXT);
@@ -63,10 +72,13 @@ CREATE INDEX IF NOT EXISTS idx_faq_images_entry ON faq_images(engine, nr);
 -- ненадёжным (расходится с реально распарсенным числом на 17 из 468
 -- нераспагинированных записей, см. task-7-report.md) — хранится только
 -- для диагностики будущих доборов, ничего не решает и нигде не считается.
+-- `body_text` — плоский текст записи для поиска (`blog_fts`), см. комментарий
+-- к `faq.answer_text` выше.
 CREATE TABLE IF NOT EXISTS blog_posts (
     blog TEXT, post_id INTEGER, title TEXT, author TEXT, posted_at TEXT,
     body_md TEXT, tags TEXT, source_url TEXT, snapshot_ts TEXT,
     is_excerpt INTEGER DEFAULT 0, truncated INTEGER DEFAULT 0, declared_comments INTEGER,
+    body_text TEXT,
     PRIMARY KEY (blog, post_id));
 -- Картинки записи (только содержательные — `attachments.classify` уже
 -- отсеял хром движка на этапе разбора, см. `parse_blog.py`), тот же
@@ -99,6 +111,26 @@ CREATE TRIGGER IF NOT EXISTS posts_au AFTER UPDATE ON posts BEGIN
     INSERT INTO posts_fts(posts_fts, rowid, text) VALUES('delete', old.mid, old.text);
     INSERT INTO posts_fts(rowid, text) VALUES (new.mid, new.text);
 END;
+-- Поиск по FAQ и блогам (дефект I1 итогового ревью Ф2). Устройство ДРУГОЕ,
+-- чем у `posts_fts`, и сознательно: там внешнее содержимое (`content='posts'`
+-- + `content_rowid`) плюс три триггера — это оправдано на 48 689 постах,
+-- где дублировать текст в индексе значит удвоить базу. Здесь 174 записи FAQ
+-- и 528 записей блогов: обычная (не внешняя) fts5-таблица, наполняемая
+-- целиком в конце загрузки (`rebuild_search_index`). Причина не только в
+-- размере — у обеих таблиц СОСТАВНОЙ ключ (`engine, nr` и `blog, post_id`),
+-- а внешнее содержимое fts5 требует одного INTEGER rowid, то есть пришлось
+-- бы выдумывать искусственный (и следить, чтобы он не менялся между
+-- пересборками базы). Ключ записи лежит в самой FTS-таблице колонками
+-- UNINDEXED — по нему находится и заметка зеркала, и строка исходной
+-- таблицы.
+-- Вопрос FAQ и название записи блога проиндексированы вместе с телом
+-- отдельными колонками: искать по формулировке вопроса Ф3 будет не реже,
+-- чем по тексту ответа (`SELECT ... FROM faq_fts WHERE faq_fts MATCH
+-- 'question: тормоза'`).
+CREATE VIRTUAL TABLE IF NOT EXISTS faq_fts USING fts5(
+    question, answer, engine UNINDEXED, nr UNINDEXED);
+CREATE VIRTUAL TABLE IF NOT EXISTS blog_fts USING fts5(
+    title, body, blog UNINDEXED, post_id UNINDEXED);
 """
 
 def connect(path: Path) -> sqlite3.Connection:
@@ -110,3 +142,29 @@ def connect(path: Path) -> sqlite3.Connection:
 def init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
     conn.commit()
+
+
+def rebuild_search_index(conn: sqlite3.Connection) -> dict[str, int]:
+    """Пере-наполняет `faq_fts`/`blog_fts` из таблиц-источников целиком.
+
+    Полная пересборка, а не триггеры (см. комментарий в SCHEMA): на 174 + 528
+    записях она занимает миллисекунды, идемпотентна по определению и не может
+    разойтись с источником — а разошедшийся индекс, который никто не
+    заметил, это ровно тот класс ошибки, из-за которого поиск отдаёт «фразы
+    нет» на тексте, где она есть. Зовётся в конце `parse_faq.load_all`/
+    `parse_blog.load_all`, то есть каждый раз, когда содержимое таблиц могло
+    измениться.
+
+    `posts_fts` здесь не трогается: у него внешнее содержимое и триггеры,
+    он поддерживается сам (и пересборка 48 689 постов стоила бы заметно
+    дороже нуля).
+    """
+    conn.execute("DELETE FROM faq_fts")
+    conn.execute("INSERT INTO faq_fts(question, answer, engine, nr) "
+                 "SELECT COALESCE(question, ''), COALESCE(answer_text, ''), engine, nr FROM faq")
+    conn.execute("DELETE FROM blog_fts")
+    conn.execute("INSERT INTO blog_fts(title, body, blog, post_id) "
+                 "SELECT COALESCE(title, ''), COALESCE(body_text, ''), blog, post_id FROM blog_posts")
+    conn.commit()
+    return {"faq_fts": conn.execute("SELECT count(*) FROM faq_fts").fetchone()[0],
+            "blog_fts": conn.execute("SELECT count(*) FROM blog_fts").fetchone()[0]}

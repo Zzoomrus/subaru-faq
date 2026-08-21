@@ -32,7 +32,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
-from pipeline import assets_state, fetch_site, html_text
+from pipeline import assets_state, db, fetch_site, html_text
 
 _LOG = logging.getLogger(__name__)
 
@@ -343,14 +343,24 @@ def load_all(site_root: Path, site_manifest: Path, conn) -> dict[str, int]:
             stats["duplicates"] += 1
         seen_keys.add(key)
 
+        # `answer_text` — плоский текст ответа для поиска (`faq_fts`), тот же
+        # смысл и та же функция, что у `posts.text` (дефект I1 итогового
+        # ревью Ф2). Считается ЗДЕСЬ, а не в `parse`: разбор страницы отдаёт
+        # markdown, плоский текст — производная от него, и разбирать HTML
+        # второй раз незачем (тот же довод, что в докстринге
+        # `html_text.plain_text_from_markdown`).
+        answer_text = html_text.plain_text_from_markdown(entry.answer_md or "")
         conn.execute(
-            "INSERT INTO faq(engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts, title) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(engine, nr) DO UPDATE SET "
+            "INSERT INTO faq(engine, nr, catnr, prog, category, question, answer_md, source_url, "
+            "snapshot_ts, title, answer_text) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(engine, nr) DO UPDATE SET "
             "catnr=excluded.catnr, prog=excluded.prog, category=excluded.category, "
             "question=excluded.question, answer_md=excluded.answer_md, "
-            "source_url=excluded.source_url, snapshot_ts=excluded.snapshot_ts, title=excluded.title",
+            "source_url=excluded.source_url, snapshot_ts=excluded.snapshot_ts, title=excluded.title, "
+            "answer_text=excluded.answer_text",
             (entry.engine, entry.nr, entry.catnr, entry.prog, entry.category,
-             entry.question, entry.answer_md, url, ts_by_url.get(url, ""), entry.title))
+             entry.question, entry.answer_md, url, ts_by_url.get(url, ""), entry.title,
+             answer_text))
         # Картинки этой записи — полностью пересчитываем при каждой загрузке
         # (см. `upsert_post`/`ingest_all` для прецедента "чужого" паттерна;
         # здесь он не нужен — записей мало, полный пересчёт дешевле, чем
@@ -363,4 +373,5 @@ def load_all(site_root: Path, site_manifest: Path, conn) -> dict[str, int]:
         stats["parsed"] += 1
 
     conn.commit()
+    stats.update(db.rebuild_search_index(conn))
     return stats
