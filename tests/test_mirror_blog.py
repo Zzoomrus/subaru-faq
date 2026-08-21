@@ -203,3 +203,102 @@ def test_write_all_removes_stale_notes_but_not_foreign_files(tmp_path):
     assert n == 6
     assert not (out / "Блог устаревший 1.md").exists()
     assert (out / "не наша заметка.md").exists()
+
+
+def test_comment_images_are_rendered_not_marked_lost(tmp_path):
+    # M1 итогового ревью Ф2: `_render_comments` звал `render_post_body` с
+    # ПУСТЫМ словарём картинок, поэтому любая картинка в комментарии
+    # становилась пометкой «не сохранилось» даже когда файл лежал в архиве
+    # Ф0/Ф1. Теперь словарь один на запись и её комментарии.
+    conn = db.connect(tmp_path / "c.sqlite")
+    db.init_schema(conn)
+    _insert_post(conn, "remont", 900, "Запись с комментариями", "Пётр", "01.01.2015 10:00:00",
+                  "Тело без картинок.", [],
+                  "http://www.subaru-faq.ru/blogs/index.php?page=post&blog=remont&post_id=900",
+                  "20150101100000")
+    have = "http://subaru-faq.ru/upload/blog/84b/x.jpg"
+    gone = "http://subaru-faq.ru/upload/blog/dead/gone.jpg"
+    conn.execute("INSERT INTO blog_comments(blog, post_id, comment_id, parent_id, depth, author, "
+                 "posted_at, text_md) VALUES ('remont', 900, 5, NULL, 0, 'scilla', "
+                 "'11.08.2011 10:38:01', 'смотри ![](%s) и ![](%s)')" % (have, gone))
+    conn.execute("INSERT INTO blog_images(blog, post_id, comment_id, url, local_path) "
+                 "VALUES ('remont', 900, 5, ?, NULL)", (have,))
+    conn.execute("INSERT INTO blog_images(blog, post_id, comment_id, url, local_path) "
+                 "VALUES ('remont', 900, 5, ?, NULL)", (gone,))
+    conn.commit()
+
+    out = tmp_path / "Блоги"
+    mirror_blog.write_all(conn, out, assets_manifest=FIX_ASSETS / "manifest-assets.jsonl",
+                           assets_root=FIX_ASSETS / "assets")
+    md = (out / "Блог remont 900.md").read_text(encoding="utf-8")
+    assert "![[assets/" in md                              # найденная картинка вставлена
+    assert "изображение не сохранилось: %s" % gone in md    # утраченная — честная пометка
+    assert "изображение не сохранилось: %s" % have not in md
+
+
+def test_parser_collects_comment_image_urls_and_skips_engine_smileys():
+    """Вторая половина M1: адреса картинок комментариев вообще не писались в
+    базу, то есть будущий добор их бы не нашёл.
+
+    Реальная страница корпуса, в комментарий которой добавлены две картинки:
+    содержательная и смайл движка. В самом корпусе комментариев С картинками
+    среди сохранившихся страниц нет ни одного (все 16 пометок об утрате
+    пришли из тел записей), поэтому вставка в разметку — единственный
+    способ проверить путь на настоящем HTML, а не на синтетике целиком.
+    """
+    from pipeline import parse_blog
+    html = (Path(__file__).parent / "fixtures" / "blog_post_with_comments.html").read_bytes().decode(
+        "cp1251", "replace")
+    marker = '<div class="blog-comment-content">'
+    assert html.count(marker) >= 1
+    injected = html.replace(
+        marker,
+        marker + '<img src="/upload/blog/84b/x.jpg" />'
+                 '<img src="/bitrix/images/blog/smile/smile.gif" />', 1)
+    post = parse_blog.parse_post(injected, "http://www.subaru-faq.ru/blogs/index.php?page=post&"
+                                            "blog=remont&post_id=184")
+    assert post is not None
+    with_images = [c for c in post.comments if c.images]
+    assert len(with_images) == 1
+    # Абсолютный адрес — как у картинок записи; смайл движка отфильтрован тем
+    # же правилом `attachments.classify`, что у форума и FAQ.
+    assert with_images[0].images == ["http://subaru-faq.ru/upload/blog/84b/x.jpg"]
+    # Смайл остаётся в `text_md` и вырезается ПОЗЖЕ, на рендере заметки
+    # (`mirror.render_post_body` по тому же правилу) — намеренное решение
+    # задачи 7, см. докстринг `parse_blog`: на этапе разбора текст не
+    # редактируется.
+    assert with_images[0].text_md.count("![](") == 2
+    assert "bitrix/images/blog/smile" in with_images[0].text_md
+
+
+def test_entry_images_do_not_leak_into_comments(tmp_path):
+    """Первая попытка исправить M1 была неверной, и вот её след.
+
+    `mirror.render_post_body` выводит адреса из словаря, не встретившиеся в
+    тексте, отдельным блоком в КОНЕЦ тела (осознанный фолбэк задачи 4 против
+    молчаливой потери пометки). Поэтому общий словарь картинок на всю запись
+    дал каждому комментарию хвост из чужих картинок: на боевом корпусе
+    +1316 ложных вставок в 49 заметках. Словарь обязан быть по области
+    видимости — этот тест ловит возврат к общему.
+    """
+    conn = db.connect(tmp_path / "leak.sqlite")
+    db.init_schema(conn)
+    _insert_post(conn, "remont", 901, "Запись с картинкой", "Пётр", "01.01.2015 10:00:00",
+                  "Тело с ![](http://subaru-faq.ru/upload/blog/84b/x.jpg) картинкой.", [],
+                  "http://www.subaru-faq.ru/blogs/index.php?page=post&blog=remont&post_id=901",
+                  "20150101100000")
+    conn.execute("INSERT INTO blog_images(blog, post_id, comment_id, url, local_path) "
+                 "VALUES ('remont', 901, NULL, 'http://subaru-faq.ru/upload/blog/84b/x.jpg', NULL)")
+    conn.execute("INSERT INTO blog_comments(blog, post_id, comment_id, parent_id, depth, author, "
+                 "posted_at, text_md) VALUES ('remont', 901, 7, NULL, 0, 'scilla', "
+                 "'11.08.2011 10:38:01', 'комментарий вообще без картинок')")
+    conn.commit()
+
+    out = tmp_path / "Блоги"
+    mirror_blog.write_all(conn, out, assets_manifest=FIX_ASSETS / "manifest-assets.jsonl",
+                           assets_root=FIX_ASSETS / "assets")
+    md = (out / "Блог remont 901.md").read_text(encoding="utf-8")
+    body, comments = md.split("## Комментарии", 1)
+    assert "![[assets/" in body            # картинка записи на своём месте в теле
+    assert "![[assets/" not in comments    # и её нет в комментарии, где её не было
+    assert "изображение не сохранилось" not in comments

@@ -7,6 +7,11 @@
 
 - тело записи и текст каждого комментария идут через `mirror.
   render_post_body` — картинки на своё место, честная пометка об утрате,
+  причём словарь картинок ОДИН на запись вместе с её комментариями
+  (`blog_images`, где `comment_id IS NULL` — картинки записи, непустой —
+  картинки комментария): до правки по находке M1 итогового ревью Ф2
+  комментарии рендерились с пустым словарём, и каждая картинка в
+  комментарии становилась пометкой об утрате даже когда файл был в архиве,
   СМАЙЛЫ ДВИЖКА (`bitrix/images/blog/smile/...`) молча вырезаются тем же
   правилом `attachments.classify`, что и у форума/FAQ (см. `pipeline.
   parse_blog`, докстринг про то, что смайлы намеренно НЕ отфильтрованы на
@@ -61,7 +66,21 @@ def _filename(blog: str, post_id: int) -> str:
     return "Блог %s %d.md" % (blog, post_id)
 
 
-def _render_comments(conn, blog: str, post_id: int) -> str:
+def _render_comments(conn, blog: str, post_id: int, images_by_comment: dict) -> str:
+    """`images_by_comment` — словарь `comment_id -> {url: {"local_path": …}}`,
+    СВОЙ у каждого комментария, не общий на запись.
+
+    Почему именно так (и почему первая попытка исправления M1 была неверной):
+    `mirror.render_post_body` подставляет картинки позиционно, но у него есть
+    редкий фолбэк — адреса из словаря, НЕ встретившиеся в тексте ни разу, он
+    выводит отдельным блоком в конец тела (осознанное решение задачи 4: иначе
+    молча терялась бы пометка об утрате для картинки, обёрнутой в ссылку с
+    текстом). Если передать всем комментариям один словарь на запись, каждый
+    комментарий получит в конец ХВОСТ из всех картинок записи и соседних
+    комментариев — на боевом корпусе это дало +1316 ложных вставок в 49
+    заметках, пока не поймал диффом. Словарь обязан быть ровно по области
+    видимости текста, который рендерится.
+    """
     rows = conn.execute(
         "SELECT comment_id, parent_id, author, posted_at, text_md FROM blog_comments "
         "WHERE blog = ? AND post_id = ? ORDER BY comment_id", (blog, post_id)).fetchall()
@@ -76,7 +95,10 @@ def _render_comments(conn, blog: str, post_id: int) -> str:
         if parent_id is not None:
             out.append("*(ответ на комментарий №%d)*" % parent_id)
         out.append("")
-        body = mirror.render_post_body(text_md or "", {})
+        # Картинки ЭТОГО комментария (M1 итогового ревью Ф2): раньше здесь
+        # стоял пустой `{}`, из-за чего каждая картинка комментария давала
+        # пометку об утрате, даже если файл лежал в архиве Ф0/Ф1.
+        body = mirror.render_post_body(text_md or "", images_by_comment.get(comment_id, {}))
         out.append(body if body else "(пусто)")
         out.append("")
     return "\n".join(out).rstrip("\n") + "\n"
@@ -150,14 +172,27 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
         "snapshot_ts, is_excerpt, truncated FROM blog_posts ORDER BY blog, post_id").fetchall()
     for row in rows:
         blog, post_id = row[0], row[1]
-        images_by_url = {}
-        for (url,) in conn.execute(
-                "SELECT url FROM blog_images WHERE blog = ? AND post_id = ?", (blog, post_id)):
-            local = mirror_faq._resolve_image(url, asset_index, assets_root, assets_dir)
-            if local:
-                used_assets.add(local.rsplit("/", 1)[-1])
-            images_by_url[url] = {"local_path": local}
-        comments_md = _render_comments(conn, blog, post_id)
+        # Картинки записи и её комментариев лежат в одной таблице и
+        # различаются `comment_id` (NULL — картинка самой записи). Файл
+        # ищется и копируется ОДИН раз на адрес, а словари собираются по
+        # области видимости: свой у тела записи, свой у каждого комментария
+        # (см. докстринг `_render_comments` про хвост `render_post_body`).
+        resolved: dict[str, dict] = {}
+        images_by_url: dict[str, dict] = {}
+        images_by_comment: dict[int, dict] = {}
+        for url, comment_id in conn.execute(
+                "SELECT DISTINCT url, comment_id FROM blog_images WHERE blog = ? AND post_id = ?",
+                (blog, post_id)):
+            if url not in resolved:
+                local = mirror_faq._resolve_image(url, asset_index, assets_root, assets_dir)
+                if local:
+                    used_assets.add(local.rsplit("/", 1)[-1])
+                resolved[url] = {"local_path": local}
+            if comment_id is None:
+                images_by_url[url] = resolved[url]
+            else:
+                images_by_comment.setdefault(comment_id, {})[url] = resolved[url]
+        comments_md = _render_comments(conn, blog, post_id, images_by_comment)
         name = _filename(blog, post_id)
         (out_dir / name).write_text(render_entry(row, images_by_url, comments_md), encoding="utf-8")
         names.add(name)

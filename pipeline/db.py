@@ -80,11 +80,18 @@ CREATE TABLE IF NOT EXISTS blog_posts (
     is_excerpt INTEGER DEFAULT 0, truncated INTEGER DEFAULT 0, declared_comments INTEGER,
     body_text TEXT,
     PRIMARY KEY (blog, post_id));
--- Картинки записи (только содержательные — `attachments.classify` уже
--- отсеял хром движка на этапе разбора, см. `parse_blog.py`), тот же
--- паттерн, что и `faq_images`.
+-- Картинки записи и её КОММЕНТАРИЕВ (только содержательные —
+-- `attachments.classify` уже отсеял хром движка на этапе разбора, см.
+-- `parse_blog.py`), тот же паттерн, что и `faq_images`. `comment_id` — NULL
+-- у картинок самой записи, номер комментария у картинок комментария
+-- (находка M1 итогового ревью Ф2: раньше картинки комментариев не
+-- собирались вовсе — генератор звал `render_post_body(text_md, {})` с пустым
+-- словарём, и любая картинка комментария становилась пометкой «не
+-- сохранилось» даже когда файл лежал в архиве Ф0/Ф1; хуже того, её адрес
+-- никуда не писался, то есть будущий добор о нём не узнал бы).
 CREATE TABLE IF NOT EXISTS blog_images (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, blog TEXT, post_id INTEGER, url TEXT, local_path TEXT);
+    id INTEGER PRIMARY KEY AUTOINCREMENT, blog TEXT, post_id INTEGER, url TEXT, local_path TEXT,
+    comment_id INTEGER);
 CREATE INDEX IF NOT EXISTS idx_blog_images_entry ON blog_images(blog, post_id);
 -- Комментарии — только у записей, сохранившихся отдельной страницей
 -- (лента комментариев не показывает вовсе, см. task-7-report.md). `depth`

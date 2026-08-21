@@ -36,7 +36,7 @@ aliases: ["Изготовление клубных стикеров (сбор з
 
 Вот то что я хотел.
 
-(изображение не сохранилось: http://www.subaru-faq.ru/upload/blog/559/stiker-noofficial%202col%20site%20.jpg)
+![[assets/16fc95609cd9b777.jpg]]
 
 Главный вопрос - стоимость?
 

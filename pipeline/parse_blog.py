@@ -158,6 +158,13 @@ class BlogComment:
     author: str
     posted_at: str
     text_md: str
+    # Картинки комментария — тем же правилом, что и картинки записи
+    # (`_content_images`). До правки по находке M1 итогового ревью Ф2 они не
+    # собирались вовсе: генератор заметки звал `render_post_body(text_md,
+    # {})` с ПУСТЫМ словарём, поэтому любая картинка в комментарии
+    # становилась пометкой «не сохранилось» даже когда файл лежал в архиве
+    # Ф0/Ф1, а её адрес нигде не хранился — будущий добор о нём и не узнал бы.
+    images: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -202,16 +209,19 @@ def _parse_comment(anchor: Tag, comment_div: Tag) -> BlogComment | None:
             parent_id = int(href[1:])
 
     text_md = ""
+    images: list[str] = []
     content = comment_div.select_one("div.blog-comment-content")
     if content is not None:
         meta = content.select_one("div.blog-comment-meta")
         if meta is not None:
             meta.extract()
         _strip_avatars(content)
-        text_md = _absolutize_images(html_text.to_markdown(content.decode_contents()))
+        inner = content.decode_contents()
+        text_md = _absolutize_images(html_text.to_markdown(inner))
+        images = _content_images(inner)
 
     return BlogComment(comment_id=comment_id, parent_id=parent_id, depth=depth,
-                        author=author, posted_at=posted_at, text_md=text_md)
+                        author=author, posted_at=posted_at, text_md=text_md, images=images)
 
 
 def _parse_comments(soup: BeautifulSoup) -> list[BlogComment]:
@@ -388,7 +398,7 @@ def load_all(site_root: Path, site_manifest: Path, conn) -> dict[str, int]:
     stats = {"pages_post": 0, "pages_listing": 0, "posts_parsed": 0, "pagen_groups": 0,
               "pagen_pages_merged": 0, "excerpt_candidates": 0, "excerpt_only": 0,
               "excerpt_used": 0, "excerpt_truncated": 0, "empty_body": 0, "images": 0,
-              "comments": 0, "unparsed": 0}
+              "comment_images": 0, "comments": 0, "unparsed": 0}
     known = assets_state.load(site_manifest)
     plan_by_url = _plan_by_url(site_root)
 
@@ -475,8 +485,8 @@ def load_all(site_root: Path, site_manifest: Path, conn) -> dict[str, int]:
 
         conn.execute("DELETE FROM blog_images WHERE blog = ? AND post_id = ?", (blog, post_id))
         for img_url in entry.images:
-            conn.execute("INSERT INTO blog_images(blog, post_id, url, local_path) VALUES (?,?,?,NULL)",
-                         (blog, post_id, img_url))
+            conn.execute("INSERT INTO blog_images(blog, post_id, comment_id, url, local_path) "
+                         "VALUES (?,?,NULL,?,NULL)", (blog, post_id, img_url))
             stats["images"] += 1
 
         conn.execute("DELETE FROM blog_comments WHERE blog = ? AND post_id = ?", (blog, post_id))
@@ -486,6 +496,13 @@ def load_all(site_root: Path, site_manifest: Path, conn) -> dict[str, int]:
                 "posted_at, text_md) VALUES (?,?,?,?,?,?,?,?)",
                 (blog, post_id, c.comment_id, c.parent_id, c.depth, c.author, c.posted_at, c.text_md))
             stats["comments"] += 1
+            # Картинки комментария — в ту же таблицу с непустым `comment_id`
+            # (M1 итогового ревью Ф2): и генератор заметки их найдёт, и
+            # будущий добор увидит адрес, которого раньше нигде не было.
+            for img_url in c.images:
+                conn.execute("INSERT INTO blog_images(blog, post_id, comment_id, url, local_path) "
+                             "VALUES (?,?,?,?,NULL)", (blog, post_id, c.comment_id, img_url))
+                stats["comment_images"] += 1
 
     conn.commit()
     stats.update(db.rebuild_search_index(conn))
