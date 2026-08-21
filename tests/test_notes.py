@@ -1,5 +1,7 @@
 import ast
+import importlib.util
 import re
+import types
 from pathlib import Path
 
 from pipeline import mirror, mirror_blog, mirror_faq, notes
@@ -265,6 +267,30 @@ def test_every_generator_placeholder_constant_value_is_scrubbed_by_citable():
 #: но `\0` не должен зависеть от этой тонкости.
 _PLACEHOLDER_SKELETON_SHAPE = re.compile(r"^\(.*\)$|^\*\(.*\)\*$", re.S)
 
+#: Комментарий-отвод для строк, которые ПОХОЖИ на плейсхолдер по форме, но
+#: физически не попадают в тело заметки (отладочная печать и т.п.) — скан
+#: смотрит только на форму строки, а не на то, куда она течёт, и не умеет
+#: (и не должен уметь — разбор потока данных того не стоит) отличить одно
+#: от другого сам. Действует ТОЛЬКО в третьем рубеже (`_line_has_skip_
+#: marker`); рубежи 1 и 2 его не читают — см. docstring той функции.
+_SKIP_COMMENT_MARKER = "notes: не текст заметки"
+
+
+def _line_has_skip_marker(source_lines: list[str], lineno: int) -> bool:
+    """Строка `lineno` (1-based) несёт комментарий-отвод
+    `_SKIP_COMMENT_MARKER`. Отвод действует ТОЛЬКО в этом, третьем рубеже:
+    рубежи 1 (`test_every_generator_placeholder_literal_is_scrubbed_by_
+    citable`) и 2 (`test_every_generator_placeholder_constant_value_is_
+    scrubbed_by_citable`) его не читают вовсе — значит промаркировать так
+    настоящий плейсхолдер, поднятый в модульную константу, и спрятать его
+    от очистки не получится: рубеж 2 проверяет ЗНАЧЕНИЕ константы
+    независимо от того, что написано в комментарии на её строке."""
+    if not (0 < lineno <= len(source_lines)):
+        return False
+    line = source_lines[lineno - 1]
+    hash_pos = line.find("#")
+    return hash_pos != -1 and _SKIP_COMMENT_MARKER in line[hash_pos:]
+
 
 def _string_literal_skeleton(node) -> str | None:
     """Силуэт строкового ВЫРАЖЕНИЯ — если оно целиком составлено из
@@ -313,6 +339,30 @@ def _module_level_constant_value_ids(tree: ast.Module) -> set[int]:
     return ids
 
 
+def _placeholder_violations_in_module(module) -> list[str]:
+    """Ядро третьего рубежа для ОДНОГО модуля — читает только `module.
+    __file__` как путь к исходнику, сам модуль импортировать не обязан.
+    Общий код и для боевой проверки трёх генераторов, и для тестов на
+    комментарий-отвод ниже (там модуль — синтетический временный файл)."""
+    source = Path(module.__file__).read_text(encoding="utf-8")
+    source_lines = source.splitlines()
+    tree = ast.parse(source, filename=module.__file__)
+    whitelisted = _module_level_constant_value_ids(tree)
+    violations = []
+    for node in ast.walk(tree):
+        is_add = isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add)
+        if not (isinstance(node, ast.JoinedStr) or is_add):
+            continue
+        if id(node) in whitelisted:
+            continue
+        if _line_has_skip_marker(source_lines, node.lineno):
+            continue
+        skeleton = _string_literal_skeleton(node)
+        if skeleton is not None and _PLACEHOLDER_SKELETON_SHAPE.match(skeleton.strip()):
+            violations.append("%s:%d — силуэт %r" % (module.__file__, node.lineno, skeleton))
+    return violations
+
+
 def test_dynamic_placeholder_shaped_strings_must_be_module_constants():
     """Третий рубеж (доделка ревью №2 — четвёртая проверенная форма):
     плейсхолдер, собранный f-строкой или конкатенацией ПРЯМО в месте
@@ -343,22 +393,86 @@ def test_dynamic_placeholder_shaped_strings_must_be_module_constants():
     не имеет формы `(...)`/`*(...)*`, не совпадает с `_PLACEHOLDER_
     SKELETON_SHAPE` и проходит — проверено инъекцией такой строки в
     ревью (форма 5: `f"Комментарий {comment_id}"`).
+
+    ГРАНИЦА способа (доделка ревью №3): скан смотрит на ФОРМУ строки, а
+    не на то, куда она реально течёт после сборки — он не разбирает поток
+    данных (дороже пользы). Значит ложный отказ возможен: строка похожа
+    на плейсхолдер по форме, но физически не попадает в тело заметки
+    (пример ревьюера — отладочная печать `print(f"(пропущено: {tid})")`).
+    Выход — комментарий-отвод `_SKIP_COMMENT_MARKER` на той же строке (см.
+    `_line_has_skip_marker`); он назван прямо в тексте ошибки ниже, чтобы
+    не лезть в исходник теста. Отвод НЕ открывает лазейку для настоящего
+    плейсхолдера: он читается только здесь и не освобождает от рубежа 2,
+    если строку всё-таки поднять в модульную константу (доказано тестом
+    `test_line_marker_does_not_exempt_a_real_module_constant_placeholder`
+    ниже).
     """
     violations = []
     for module in (mirror, mirror_faq, mirror_blog):
-        source = Path(module.__file__).read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=module.__file__)
-        whitelisted = _module_level_constant_value_ids(tree)
-        for node in ast.walk(tree):
-            is_add = isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add)
-            if not (isinstance(node, ast.JoinedStr) or is_add):
-                continue
-            if id(node) in whitelisted:
-                continue
-            skeleton = _string_literal_skeleton(node)
-            if skeleton is not None and _PLACEHOLDER_SKELETON_SHAPE.match(skeleton.strip()):
-                violations.append("%s:%d — силуэт %r" % (module.__file__, node.lineno, skeleton))
+        violations.extend(_placeholder_violations_in_module(module))
     assert not violations, (
-        "плейсхолдер записан динамической строкой прямо в месте использования, "
-        "не поднят в модульную константу — очистка `pipeline.notes` его не увидит: "
-        + "; ".join(violations))
+        "плейсхолдер записан динамической строкой прямо в месте использования, не "
+        "поднят в модульную константу — очистка `pipeline.notes` его не увидит. Два "
+        "выхода: (1) если строка ДОЛЖНА идти в текст заметки — поднять в модульную "
+        "константу генератора (`IMAGE_LOST_TEMPLATE`-как); (2) если строка НЕ идёт в "
+        "текст заметки (например, отладочная печать) — пометить её в конце строки "
+        "комментарием `# %s` (скан его уважает). Нарушения: %s"
+        % (_SKIP_COMMENT_MARKER, "; ".join(violations)))
+
+
+def test_line_marker_opts_out_debug_prints_from_dynamic_placeholder_scan(tmp_path):
+    """Боевой ложный отказ ревью (доделка №3): отладочная печать
+    `print(f"(пропущено: {tid})")` похожа на плейсхолдер по форме, но в
+    тело заметки не попадает вовсе — скан смотрит только на форму и не
+    разбирает поток данных, значит без отвода это ложный отказ. Без
+    пометки — тест обязан упасть (воспроизводит находку буквально); с
+    пометкой `# notes: не текст заметки` — обязан пройти.
+    """
+    without_marker = 'def f(tid):\n    print(f"(пропущено: {tid})")\n'
+    p1 = tmp_path / "fake_debug_print.py"
+    p1.write_text(without_marker, encoding="utf-8")
+    violations = _placeholder_violations_in_module(types.SimpleNamespace(__file__=str(p1)))
+    assert violations, "отладочная печать без пометки обязана быть найдена — иначе ложный отказ не воспроизведён"
+
+    with_marker = 'def f(tid):\n    print(f"(пропущено: {tid})")  # notes: не текст заметки\n'
+    p2 = tmp_path / "fake_debug_print_marked.py"
+    p2.write_text(with_marker, encoding="utf-8")
+    violations2 = _placeholder_violations_in_module(types.SimpleNamespace(__file__=str(p2)))
+    assert not violations2, "пометка обязана снимать ложный отказ, а не снимает: %r" % violations2
+
+
+def test_line_marker_does_not_exempt_a_real_module_constant_placeholder(tmp_path):
+    """Отвод не открывает лазейку. Комментарий-отвод читает только рубеж 3
+    (AST исходника) — рубеж 2 (`test_every_generator_placeholder_constant_
+    value_is_scrubbed_by_citable`) работает через `vars(module)` УЖЕ
+    ИМПОРТИРОВАННОГО модуля, где комментариев не остаётся вовсе. Значит
+    пометить пометкой РЕАЛЬНЫЙ плейсхолдер, поднятый в модульную
+    константу, и спрятать его от очистки нельзя физически.
+
+    Строим синтетический модуль с плейсхолдером-константой, помеченной
+    той же пометкой, что использует предыдущий тест, — и показываем: (1)
+    рубеж 3 её не флагует (правильно — она ПОДНЯТА в константу, это не
+    обход, а ровно предписанный способ); (2) при этом константа
+    прекрасно видна через `vars()` реально импортированного модуля и не
+    вычищается `citable()` — то есть у настоящего генератора рубеж 2
+    поймал бы её независимо от пометки в комментарии.
+    """
+    source = 'LEAK = "(вложение удалено модератором)"  # notes: не текст заметки\n'
+    p = tmp_path / "fake_leak_module.py"
+    p.write_text(source, encoding="utf-8")
+
+    assert _placeholder_violations_in_module(types.SimpleNamespace(__file__=str(p))) == [], (
+        "константу, поднятую по всем правилам, рубеж 3 не должен флагать — "
+        "это не обход, а её и не должно тут ловить")
+
+    spec = importlib.util.spec_from_file_location("fake_leak_module", p)
+    real_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(real_module)
+
+    constants = _module_uppercase_string_constants(real_module)
+    assert constants.get("LEAK") == "(вложение удалено модератором)", (
+        "комментарий в исходнике не должен влиять на то, что видит `vars(module)` "
+        "после импорта — а он не влияет, потому что комментарии не переживают импорт")
+    assert "(вложение удалено модератором)" in notes.citable(constants["LEAK"]), (
+        "рубеж 2 обязан был бы поймать эту константу как невычищенную независимо "
+        "от пометки — у настоящего генератора без паттерна под неё это и произошло бы")
