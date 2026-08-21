@@ -12,6 +12,8 @@ aliases: ["Любителям Vocal Trance )))"]
 
 # Любителям Vocal Trance )))
 
+## Запись
+
 Вот интересный ресурс для бесплатного скачивания:
 
 [http://www.vocal-trance.ru/](http://www.vocal-trance.ru/)

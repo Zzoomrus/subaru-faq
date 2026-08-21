@@ -12,4 +12,6 @@ aliases: ["Автовыкуп"]
 
 # Автовыкуп
 
+## Запись
+
 Сегодня нашел классный сайт [автовыкуп](http://skup-auto.com/) автомобилей. [http://skup-auto.com/](http://skup-auto.com/)

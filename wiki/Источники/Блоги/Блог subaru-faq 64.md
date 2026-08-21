@@ -12,6 +12,8 @@ aliases: ["Яндекс Кошелек Subaru-FAQ - как перечислят�
 
 # Яндекс Кошелек Subaru-FAQ - как перечислять деньги
 
+## Запись
+
 Для перечисления денег [за заказанные стикеры](http://www.subaru-faq.ru/blogs/index.php?page=post&blog=pechat_stikerov&post_id=53)
 
 Был заведен кошелек Yandex денег - 41001536616523

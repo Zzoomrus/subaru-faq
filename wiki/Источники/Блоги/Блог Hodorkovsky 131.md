@@ -12,6 +12,8 @@ aliases: ["vasco07 Дунаев (Немножко убрался на легас
 
 # vasco07 Дунаев (Немножко убрался на легасе)
 
+## Запись
+
 самые первые фотки (оценка масштаба трагедии...)
 
 [http://www.drive2.ru/cars/subaru/lega...5712/#post](http://www.drive2.ru/cars/subaru/legacy/legacy_1st_generation/hodor/journal/288230376152045712/#post)

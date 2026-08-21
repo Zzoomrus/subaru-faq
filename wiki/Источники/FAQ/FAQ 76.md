@@ -8,6 +8,8 @@ prog: "Субару в общем"
 aliases: ["Чем отличаются Legacy и Outback ?", "Отличие Legacy Outback (Lancaster) от просто Legacy."]
 ---
 
+# Чем отличаются Legacy и Outback ?
+
 ## Вопрос
 
 Чем отличаются Legacy и Outback ?

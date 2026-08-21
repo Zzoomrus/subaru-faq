@@ -12,6 +12,8 @@ aliases: ["Черный ворон"]
 
 # Черный ворон
 
+## Запись
+
 (изображение не сохранилось: http://photofile.ru/photo/vlasiha/3806831/large/88395530.jpg)
 
 (изображение не сохранилось: http://photofile.ru/photo/vlasiha/3806831/large/88395531.jpg)

@@ -8,6 +8,8 @@ prog: "Субару в общем"
 aliases: ["VIN (Vehicle Identification Number) и его расшифровка."]
 ---
 
+# VIN (Vehicle Identification Number) и его расшифровка.
+
 ## Вопрос
 
 VIN (Vehicle Identification Number) и его расшифровка.

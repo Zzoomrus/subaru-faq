@@ -12,6 +12,8 @@ aliases: ["Honda фото"]
 
 # Honda фото
 
+## Запись
+
 Hondaforum.lv — это интернет-издание про автомобили марки Honda в Латвии.
 
 (изображение не сохранилось: http://hondaforum.lv/uploads/posts/2017-04/medium/1492224059_type-r-rt-2015-ac-0011.jpg)

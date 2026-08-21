@@ -12,6 +12,8 @@ aliases: ["Хочу такую!!!!"]
 
 # Хочу такую!!!!
 
+## Запись
+
 куплю такую машину!!!!
 
 [http://1subaru.ru/forum/index.php?PAG...sage220208](http://1subaru.ru/forum/index.php?PAGE_NAME=message&FID=15&TID=28963&MID=220208&result=new#message220208)

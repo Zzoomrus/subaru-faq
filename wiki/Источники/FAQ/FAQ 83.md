@@ -8,6 +8,8 @@ prog: "Субару в общем"
 aliases: ["Памятка для сравнения с автомобилями QUATTRO, SYNCRO и 4MOTION"]
 ---
 
+# Памятка для сравнения с автомобилями QUATTRO, SYNCRO и 4MOTION
+
 ## Вопрос
 
 Памятка для сравнения с автомобилями QUATTRO, SYNCRO и 4MOTION

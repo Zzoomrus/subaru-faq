@@ -12,6 +12,8 @@ aliases: ["Как получить Клубную карту 2010"]
 
 # Как получить Клубную карту 2010
 
+## Запись
+
 Получить [Клубную карту Subaru-FAQ](http://1subaru.ru/blogs/index.php?page=post&blog=subaru-faq&post_id=51) можно двумя основными способами.
 
 1. Получив Дополнительные Баллы на сайте, выполнив доброе дело на его развитие  [Подробная информация тут.](http://www.subaru-faq.ru/blogs/index.php?page=post&blog=subaru-faq&post_id=83#comment)

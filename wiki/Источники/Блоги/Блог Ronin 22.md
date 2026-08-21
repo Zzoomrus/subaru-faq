@@ -12,6 +12,8 @@ aliases: ["OUTBACK"]
 
 # OUTBACK
 
+## Запись
+
 ![[assets/15253ef63ae72cac.jpg]]
 
 ## Комментарии

@@ -12,6 +12,8 @@ aliases: ["Красиво летит Subaru..."]
 
 # Красиво летит Subaru...
 
+## Запись
+
 [Супер полет на Субару](http://www.youtube.com/watch?v=E2irY0P8QZU)
 
 ## Комментарии

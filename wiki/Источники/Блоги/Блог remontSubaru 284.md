@@ -12,6 +12,8 @@ aliases: ["Дворники FILMER"]
 
 # Дворники FILMER
 
+## Запись
+
 На замену подистершимся дворникам купил по случаю в Германии набор [FILMER](http://irecommend.ru/content/sdelano-v-germanii-kachestvo-uborki-na-urovne-no-dorabotat-prishlos). Соблазнила цена (3,5 евро) и производитель из Германии. Но в наборе обе щетки по 53 см. А на моем [Форе](http://irecommend.ru/content/yaponskii-uazik) одна щетка короче. Полгода набор лежал в гараже - все не доходили руки укоротить одну щетку. Наконец-то все срослось и теперь [FILMER](http://irecommend.ru/content/sdelano-v-germanii-kachestvo-uborki-na-urovne-no-dorabotat-prishlos) метет на лобовом стекле. Качество на уровне! Мокрых разводов не оставляет!
 
 ![[assets/67214caf07cacabf.jpg]]

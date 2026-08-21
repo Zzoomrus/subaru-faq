@@ -8,6 +8,8 @@ prog: "COMMON"
 aliases: ["Чем отличаются Legacy и Outback ?"]
 ---
 
+# Чем отличаются Legacy и Outback ?
+
 ## Вопрос
 
 Чем отличаются Legacy и Outback ?

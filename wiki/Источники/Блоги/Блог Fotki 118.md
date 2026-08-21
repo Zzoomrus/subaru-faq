@@ -12,6 +12,8 @@ aliases: ["Овосч валит"]
 
 # Овосч валит
 
+## Запись
+
 ![[assets/5c6f376bbb86d44f.jpg]]
 
 (изображение не сохранилось: http://subaru-faq.ru/upload/blog/fe7/945923.jpg)

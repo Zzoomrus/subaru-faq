@@ -12,6 +12,8 @@ aliases: ["моя красавица"]
 
 # моя красавица
 
+## Запись
+
 Вот она со стикером [http://fotki.yandex.ru/users/tol9lmbr...713?page=0](http://fotki.yandex.ru/users/tol9lmbra/view/217713?page=0)
 
 [http://fotki.yandex.ru/users/tol9lmbr...14/?page=0](http://fotki.yandex.ru/users/tol9lmbra/view/217714/?page=0)

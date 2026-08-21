@@ -12,6 +12,8 @@ aliases: ["Где ты, профит?)"]
 
 # Где ты, профит?)
 
+## Запись
+
 Сайт о форекс: investment-school.ru
 
 (изображение не сохранилось: http://subaru-faq.ru/upload/resize_cache/blog/aff/800_800_1/6787aa2fd4[1].png)

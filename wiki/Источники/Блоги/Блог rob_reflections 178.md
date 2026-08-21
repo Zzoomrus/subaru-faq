@@ -12,6 +12,8 @@ aliases: ["поездил с прицепом"]
 
 # поездил с прицепом
 
+## Запись
+
 [http://www.drive2.ru/cars/subaru/impreza/impreza_gc_gf/georob/journal/28823037 ­6152881229/#post](http://www.drive2.ru/cars/subaru/impreza/impreza_gc_gf/georob/journal/288230376152881229/#post)
 
 ## Комментарии
