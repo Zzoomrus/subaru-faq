@@ -16,18 +16,18 @@ aliases: ["Немного зимы..."]
 
 (изображение не сохранилось: http://subaru-faq.ru/upload/blog/366/02.jpg)
 
-![[assets/7c99fd130a725ed1.jpg]]
+![[assets/937798ad6416fa55.jpg]]
 
-![[assets/2b95fc79a00a180e.jpg]]
+![[assets/684a2504f8a0f5e0.jpg]]
 
-![[assets/99362311f35c16d9.jpg]]
+![[assets/3541e338ab2154e0.jpg]]
 
-![[assets/ecbe38cf0895381b.jpg]]
+![[assets/323b05e68543d742.jpg]]
 
-![[assets/12111bbd06b9e2f5.jpg]]
+![[assets/0e28a53ddd649519.jpg]]
 
-![[assets/471e413ca38e5356.jpg]]
+![[assets/4fd3075e3c46e878.jpg]]
 
-![[assets/be577d0f5376354f.jpg]]
+![[assets/87938965e79f42ac.jpg]]
 
-![[assets/f19eca8a1275081e.jpg]]
+![[assets/721c24981a821d74.jpg]]

@@ -48,19 +48,19 @@ aliases: ["Замена EJ201 на EJ25D"]
 
 Картиночки для разнообразия
 
-![[assets/7dfce9ee14354841.png]]
+![[assets/a90d980bd7fcacd2.png]]
 
 EJ25D
 
-![[assets/3281b60111e9784a.png]]
+![[assets/3bc3b5bad19e5a22.png]]
 
 Регулятор давления топлива Tomei (китайская подделка, но работает)
 
-![[assets/aca74a16217c04bd.png]]
+![[assets/002e72d04eedd88d.png]]
 
 МАП (давление) вместо штатного для EJ25D МАФа (расход воздуха)
 
-![[assets/6d3d9fc3172aec57.png]]
+![[assets/391fa3242d20fd40.png]]
 
 Штатный регулятор давления топлива
 

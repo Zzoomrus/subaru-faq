@@ -14,4 +14,4 @@ aliases: ["4-ступый коробас"]
 
 ## Запись
 
-![[assets/9e28e20525956e8c.jpg]]
+![[assets/850d1cdaad0c68c0.jpg]]

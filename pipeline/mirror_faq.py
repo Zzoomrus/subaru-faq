@@ -51,13 +51,12 @@ _file_exists`. Если однажды окажется, что реальный
 Obsidian визуально, но `check_mirror` всё равно не даст ложной "битой
 вставки" (см. отчёт задачи 6, раздел "сомнения").
 """
-import hashlib
 import json
 import re
 import urllib.parse
 from pathlib import Path
 
-from pipeline import mirror
+from pipeline import attachments, mirror
 
 DEFAULT_ASSETS_MANIFEST = Path("data/raw/archive/manifest-assets.jsonl")
 DEFAULT_ASSETS_ROOT = Path("data/raw/archive/assets")
@@ -94,12 +93,13 @@ def _load_asset_index(manifest_path: Path) -> set[str]:
     return idx
 
 
-def _local_asset_name(url: str) -> str:
-    parts = urllib.parse.urlsplit(url)
-    ext = Path(urllib.parse.unquote(parts.path)).suffix.lower()
-    if not re.fullmatch(r"\.[a-z0-9]{1,5}", ext or ""):
-        ext = ".bin"
-    return hashlib.sha1(url.encode("utf-8")).hexdigest()[:16] + ext
+# Имя файла в зеркале — общая функция на все три раздела (`attachments.
+# asset_name`, дефект M4 итогового ревью Ф2). Прежняя локальная версия
+# считала хэш от ПОЛНОГО URL, из-за чего одна и та же картинка, вставленная
+# и в FAQ, и в блог, получала два разных имени: 90 таких файлов лежали в
+# двух каталогах дважды. Псевдоним оставлен потому, что на него ссылается
+# докстринг модуля и `mirror_blog` (он берёт помощники картинок отсюда).
+_local_asset_name = attachments.asset_name
 
 
 def _resolve_image(url: str, asset_index: set[str], assets_root: Path, dest_dir: Path) -> str | None:
@@ -113,12 +113,7 @@ def _resolve_image(url: str, asset_index: set[str], assets_root: Path, dest_dir:
     src = Path(assets_root) / rel
     if not src.exists():
         return None
-    name = _local_asset_name(url)
-    dst = dest_dir / name
-    if not dst.exists():
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_bytes(src.read_bytes())
-    return "assets/%s" % name
+    return mirror.copy_asset(url, src, dest_dir)
 
 
 def render_entry(row: tuple, images_by_url: dict) -> str:
@@ -179,6 +174,7 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
     asset_index = _load_asset_index(assets_manifest)
 
     names: set[str] = set()
+    used_assets: set[str] = set()
     n = 0
     rows = conn.execute(
         "SELECT engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts, title "
@@ -189,6 +185,8 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
         for (url,) in conn.execute(
                 "SELECT url FROM faq_images WHERE engine = ? AND nr = ?", (engine, nr)):
             local = _resolve_image(url, asset_index, assets_root, assets_dir)
+            if local:
+                used_assets.add(local.rsplit("/", 1)[-1])
             images_by_url[url] = {"local_path": local}
         name = _filename(engine, nr)
         (out_dir / name).write_text(render_entry(row, images_by_url), encoding="utf-8")
@@ -203,4 +201,5 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
             % (n, len(stale), out_dir))
     for path in stale:
         path.unlink()
+    mirror.prune_assets(assets_dir, used_assets, n)
     return n

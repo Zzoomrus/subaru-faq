@@ -35,6 +35,8 @@ import urllib.parse
 import urllib.request
 from http.client import HTTPException
 
+from pipeline import attachments
+
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 NETWORK_ERRORS = (urllib.error.HTTPError, urllib.error.URLError, TimeoutError,
@@ -135,8 +137,11 @@ def cdx_snapshots(url: str, retries: int = 6, match_type: str | None = None) -> 
 
 
 def _canonical_key(url: str) -> str:
-    """Ключ "это тот же ресурс?" — без схемы, без порта, без `www.`, хост в
-    нижнем регистре, путь/запрос раскодированы (percent-decoding).
+    """Тонкая обёртка над `attachments.canonical_key` — сам ключ переехал
+    туда (вопрос про АДРЕС, а не про сеть; тем же ключом теперь считается
+    имя файла вложения в зеркале, `attachments.asset_name`). Обёртка
+    оставлена потому, что на `fetcher._canonical_key` ссылаются докстринги
+    этого модуля и тесты.
 
     Нужен ТОЛЬКО как проверочный фильтр над уже найденными CDX кандидатами
     (`cdx_find_snapshot`), не как основной механизм поиска: сам CDX уже
@@ -149,16 +154,7 @@ def _canonical_key(url: str) -> str:
     гипотетического `.../02.jpg2`) — сравнение на РАВЕНСТВО (не `startswith`)
     отбрасывает такие ложные совпадения.
     """
-    parts = urllib.parse.urlsplit(url)
-    host = (parts.hostname or "").lower()
-    if host.startswith("www."):
-        host = host[4:]
-    path = urllib.parse.unquote(parts.path or "")
-    query = urllib.parse.unquote(parts.query or "")
-    key = host + path
-    if query:
-        key += "?" + query
-    return key
+    return attachments.canonical_key(url)
 
 
 def _cdx_page(query_url: str, retries: int) -> tuple[list[tuple[str, str]], str | None]:

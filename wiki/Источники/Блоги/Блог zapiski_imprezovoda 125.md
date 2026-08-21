@@ -14,8 +14,8 @@ aliases: ["Покатушки с фориками по солнышку:)"]
 
 ## Запись
 
-![[assets/934da938dec15708.jpg]]
+![[assets/d79662b7d8d276bb.jpg]]
 
-![[assets/e5e9f878cf380bbc.jpg]]
+![[assets/fd0c9d061a1af850.jpg]]
 
 оригинал у автора: [http://foto.mail.ru/mail/alexkapkan/2580](http://foto.mail.ru/mail/alexkapkan/2580)

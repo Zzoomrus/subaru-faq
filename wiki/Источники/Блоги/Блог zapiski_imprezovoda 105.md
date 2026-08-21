@@ -14,4 +14,4 @@ aliases: ["Майские покатушки на Кавказе"]
 
 ## Запись
 
-![[assets/eefa090b75e6579d.png]]
+![[assets/ceecbc4f22e60039.png]]

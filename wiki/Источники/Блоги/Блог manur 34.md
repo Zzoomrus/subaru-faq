@@ -18,17 +18,17 @@ aliases: ["страшные фото"]
 
 Люди, берегите свои машинки и обслуживайте вовремя
 
-![[assets/95d801d4296018d2.jpg]]
+![[assets/f98fa67f1f4b0977.jpg]]
 
-![[assets/a6463eb799aa8d9d.jpg]]
+![[assets/244930ff86710940.jpg]]
 
-![[assets/cf102d59b6141a8a.jpg]]
+![[assets/0a2bf38114e6e6ae.jpg]]
 
 продолжение следует
 
-![[assets/69b598222e6f234c.jpg]]
+![[assets/318fd2cfc096cfec.jpg]]
 
-![[assets/7da5216dbb6ed660.jpg]]
+![[assets/87bab37a68de151b.jpg]]
 
 ## Комментарии
 

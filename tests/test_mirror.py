@@ -1,6 +1,6 @@
 import yaml
 
-from pipeline import db, mirror
+from pipeline import attachments, db, mirror
 
 
 def _frontmatter(md: str) -> dict:
@@ -504,10 +504,15 @@ def test_write_all_copies_used_asset_file_and_embeds_relative_path(tmp_path):
     out = tmp_path / "Источники"
     mirror.write_all(conn, out, assets_root=assets_root)
     md = (out / "Тема 10045.md").read_text(encoding="utf-8")
-    assert "![[assets/3b0c0a4497aa1ce0.jpg]]" in md
+    # Имя в вики считается от АДРЕСА (`attachments.asset_name`), а не от
+    # basename `local_path`: одно правило имени на все три раздела зеркала
+    # (M4 итогового ревью Ф2). Раскладка на диске (`<хост>/<имя>`) при этом
+    # своя и в заметку не попадает.
+    name = attachments.asset_name("http://gadanie.fun/x.jpg")
+    assert "![[assets/%s]]" % name in md
     assert "gadanie.fun/3b0c0a4497aa1ce0.jpg" not in md  # сырой путь из базы не утёк в заметку
 
-    copied = out / "assets" / "3b0c0a4497aa1ce0.jpg"
+    copied = out / "assets" / name
     assert copied.exists()
     assert copied.read_bytes() == b"fake-jpg-bytes"
 
@@ -555,8 +560,9 @@ def test_same_file_used_in_two_threads_is_copied_once(tmp_path):
 
     out = tmp_path / "Источники"
     mirror.write_all(conn, out, assets_root=assets_root)
-    assert "![[assets/shared1.jpg]]" in (out / "Тема 10045.md").read_text(encoding="utf-8")
-    assert "![[assets/shared1.jpg]]" in (out / "Тема 10046.md").read_text(encoding="utf-8")
+    name = attachments.asset_name("http://h/shared.jpg")
+    assert "![[assets/%s]]" % name in (out / "Тема 10045.md").read_text(encoding="utf-8")
+    assert "![[assets/%s]]" % name in (out / "Тема 10046.md").read_text(encoding="utf-8")
     assert len(list((out / "assets").glob("*.jpg"))) == 1
 
 

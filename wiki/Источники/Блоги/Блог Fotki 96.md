@@ -14,13 +14,13 @@ aliases: ["Вот мой овосч со стикером и с рамками )
 
 ## Запись
 
-![[assets/e476271b863c2c2a.jpg]]
+![[assets/a6428b4e3fe06470.jpg]]
 
-![[assets/aed7a3172eb547c4.jpg]]
+![[assets/51df5874cd4d8851.jpg]]
 
-![[assets/7cde2149461e0293.jpg]]
+![[assets/8b582669d56f2785.jpg]]
 
-![[assets/6118bb3fe10a4fa4.jpg]]
+![[assets/91dc37dcaee220ab.jpg]]
 
 ## Комментарии
 

@@ -30,6 +30,10 @@
 добора `WHERE status='pending'` молча пропустит все 348 своих вложений —
 дефект I4 итогового ревью.
 """
+import hashlib
+import re
+import urllib.parse
+from pathlib import Path
 from urllib.parse import urlparse
 
 KIND_CHROME = "chrome"
@@ -76,3 +80,62 @@ def is_content(kind: str) -> bool:
     или пометкой об утрате) и его добирает фаза 2. False — хром движка.
     """
     return kind != KIND_CHROME
+
+
+def canonical_key(url: str) -> str:
+    """Ключ «это тот же ресурс?» — без схемы, без порта, без `www.`, хост в
+    нижнем регистре, путь И ЗАПРОС раскодированы (percent-decoding).
+
+    Живёт здесь, а не в `fetcher`, потому что отвечает на вопрос про АДРЕС, а
+    не про сеть, и нужен обоим: `fetcher.cdx_find_snapshot` сверяет им
+    кандидатов CDX с нашим URL, `asset_name` строит по нему имя файла.
+    `fetcher._canonical_key` оставлен псевдонимом — на него ссылаются
+    докстринги и тесты.
+
+    ЗАПРОС ВХОДИТ В КЛЮЧ ОБЯЗАТЕЛЬНО. Вложения форума раздаются адресами
+    вида `.../forum.interface/show_file.php?fid=N` и `index.php?t=getfile&
+    id=N`: путь у них ОДИН И ТОТ ЖЕ, различает файлы только номер в запросе.
+    Замер на боевой базе: 49 разных скачанных файлов делят один путь
+    `bitrix/components/bitrix/forum.interface/show_file.php` — ключ без
+    запроса схлопнул бы их в один и подставил одну картинку вместо
+    сорока девяти разных, молча (см. отчёт волны правок, пункт 5).
+    """
+    parts = urllib.parse.urlsplit(url or "")
+    host = (parts.hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    path = urllib.parse.unquote(parts.path or "")
+    query = urllib.parse.unquote(parts.query or "")
+    key = host + path
+    if query:
+        key += "?" + query
+    return key
+
+
+def asset_name(url: str) -> str:
+    """Имя файла вложения в зеркале: `<sha1(canonical_key)[:16]><ext>`.
+
+    ОДНА функция на все три раздела зеркала (форум, FAQ, блоги) — до этой
+    правки их было две с одинаковым видом имени, но считавшихся от ПОЛНОГО
+    URL (`fetch_assets.local_name` и `mirror_faq._local_asset_name`, дефект
+    M4 и отложенный пункт 6 итогового ревью Ф2). Из-за хоста и
+    percent-encoding в хэше один и тот же файл получал разные имена в
+    разных разделах: 90 картинок, вставленных и в FAQ, и в блоги, лежали в
+    двух каталогах под двумя именами, а при доборе недостающих 248 картинок
+    через `fetch_assets` тот же файл получил бы третье имя.
+
+    Расширение берётся из пути (не из запроса) и только если похоже на
+    расширение; иначе `.bin` — у раздачи вложений (`show_file.php?fid=N`)
+    расширения в адресе нет вовсе, тип известен только по байтам файла.
+    """
+    parts = urllib.parse.urlsplit(url or "")
+    ext = Path(urllib.parse.unquote(parts.path or "")).suffix.lower()
+    if not re.fullmatch(r"\.[a-z0-9]{1,5}", ext or ""):
+        ext = ".bin"
+    return hashlib.sha1(canonical_key(url).encode("utf-8")).hexdigest()[:16] + ext
+
+
+# Имя, которое даёт `asset_name`, и только оно: по этому виду `write_all`
+# отличает файлы, которые положил сам, от чужих файлов в каталоге `assets/`
+# (уборка сирот удаляет только свои — см. `mirror.prune_assets`).
+ASSET_NAME_RE = re.compile(r"^[0-9a-f]{16}\.[a-z0-9]{1,5}$")

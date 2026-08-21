@@ -20,7 +20,7 @@ aliases: ["Клубные Стикеры (наклейки на стекло)"]
 
 1
 
-![[assets/556f0b63534db346.jpg]]
+![[assets/c07ea5f4b6164b29.jpg]]
 
 [Скачать в векторе для самостоятельного изготовления.](http://www.subaru-faq.ru/work/stikers/Stiker-1.eps)
 
@@ -28,13 +28,13 @@ aliases: ["Клубные Стикеры (наклейки на стекло)"]
 
 2
 
-![[assets/292c53647e6a4755.jpg]]
+![[assets/a5e8fd6decf43f80.jpg]]
 
 [Скачать в векторе для самостоятельного изготовления.](http://www.subaru-faq.ru/work/stikers/Stiker-2-EJ.eps)
 
 3
 
-![[assets/220365553c5a3538.jpg]]
+![[assets/85a91588756895fa.jpg]]
 
 [Скачать в векторе для самостоятельного изготовления.](http://www.subaru-faq.ru/work/stikers/Stiker-2-FAQ.eps)
 
@@ -42,13 +42,13 @@ aliases: ["Клубные Стикеры (наклейки на стекло)"]
 
 4
 
-![[assets/57f1da89522f3307.jpg]]
+![[assets/76ba96df72b48fef.jpg]]
 
 [Скачать в векторе для самостоятельного изготовления.](http://www.subaru-faq.ru/work/stikers/Stiker-3-EJ.eps)
 
 5
 
-![[assets/13322206cd0357bb.jpg]]
+![[assets/f48832afdf3875c2.jpg]]
 
 [Скачать в векторе для самостоятельного изготовления.](http://www.subaru-faq.ru/work/stikers/Stiker-3-Pig.eps)
 

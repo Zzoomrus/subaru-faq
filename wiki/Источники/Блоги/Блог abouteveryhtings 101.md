@@ -14,17 +14,17 @@ aliases: ["Фотге)))"]
 
 ## Запись
 
-![[assets/2ea675b45c4d222d.jpg]]
+![[assets/25a5b7664da0fde3.jpg]]
 
-![[assets/2c2f76463454b096.jpg]]
+![[assets/dffb45d127bef909.jpg]]
 
-![[assets/0b83662fa8e9ec5c.jpg]]
+![[assets/b97acfe0958f7bcf.jpg]]
 
-![[assets/a4b7bf6f49db345e.jpg]]
+![[assets/9175f7e4b69457d5.jpg]]
 
-![[assets/f7ce26f7ccc2d0b2.jpg]]
+![[assets/c4ed51863d37e789.jpg]]
 
-![[assets/ec539d2d77add710.jpg]]
+![[assets/643f324c9d75c6b2.jpg]]
 
 Тоже решил запостить немного фоток своего вырика, стикер,рамки(точнее рамка...одна) и шильд наличествуют на данном агрегате  , сорри за качество большие не грузятся
 

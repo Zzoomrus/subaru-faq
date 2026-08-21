@@ -16,15 +16,15 @@ aliases: ["Дворники FILMER"]
 
 На замену подистершимся дворникам купил по случаю в Германии набор [FILMER](http://irecommend.ru/content/sdelano-v-germanii-kachestvo-uborki-na-urovne-no-dorabotat-prishlos). Соблазнила цена (3,5 евро) и производитель из Германии. Но в наборе обе щетки по 53 см. А на моем [Форе](http://irecommend.ru/content/yaponskii-uazik) одна щетка короче. Полгода набор лежал в гараже - все не доходили руки укоротить одну щетку. Наконец-то все срослось и теперь [FILMER](http://irecommend.ru/content/sdelano-v-germanii-kachestvo-uborki-na-urovne-no-dorabotat-prishlos) метет на лобовом стекле. Качество на уровне! Мокрых разводов не оставляет!
 
-![[assets/67214caf07cacabf.jpg]]
+![[assets/fb2daa02a7e40af2.jpg]]
 
 Это общий вид упаковки
 
-![[assets/e3a996b4bc715d81.jpg]]
+![[assets/c4dc57bd15552657.jpg]]
 
 Комплект поставки: две щетки + 3 вида адаптеров для крепления
 
-![[assets/65d202eec4a0b01f.jpg]]
+![[assets/34a392602ff9e8a8.jpg]]
 
 На верхней щетке - доработанное место. Укорочено плечо. Получилось чуть короче (где-то на 1 см), чем хотелось. Но все равно метет зачОтно.
 

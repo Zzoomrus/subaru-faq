@@ -24,7 +24,7 @@ P.S.
 
 Фото Subaru WRX:
 
-![[assets/bc71ddf4b50196ce.jpg]]
+![[assets/a01557ae202544d8.jpg]]
 
 ## Комментарии
 

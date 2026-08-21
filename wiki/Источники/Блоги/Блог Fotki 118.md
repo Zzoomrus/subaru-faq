@@ -14,7 +14,7 @@ aliases: ["Овосч валит"]
 
 ## Запись
 
-![[assets/5c6f376bbb86d44f.jpg]]
+![[assets/d307942b1c34a5f7.jpg]]
 
 (изображение не сохранилось: http://subaru-faq.ru/upload/blog/fe7/945923.jpg)
 
@@ -22,11 +22,11 @@ aliases: ["Овосч валит"]
 
 (изображение не сохранилось: http://subaru-faq.ru/upload/blog/545/945968.jpg)
 
-![[assets/5b66936041afc54b.jpeg]]
+![[assets/e9f21e6fc7c0ab72.jpeg]]
 
-![[assets/de39246a28c1ecaa.jpeg]]
+![[assets/dc4aa3bedd849cc9.jpeg]]
 
-![[assets/b7aa72f9ebc62f1b.jpg]]
+![[assets/d80435bb9bd35eb7.jpg]]
 
 Эх зима, зима.....
 

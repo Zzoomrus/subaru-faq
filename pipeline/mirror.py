@@ -123,23 +123,84 @@ _NOTE_NAME = re.compile(r"^Тема (\d+)\.md$")
 DEFAULT_ASSETS_ROOT = Path("data/assets/files")
 
 
-def _copy_forum_asset(local_path: str, assets_root: Path, dest_dir: Path) -> str | None:
+def copy_asset(url: str, src: Path, dest_dir: Path) -> str:
+    """Копирует файл вложения в `<dest_dir>/<attachments.asset_name(url)>` и
+    возвращает путь вставки `assets/<имя>`.
+
+    Имя считает ОДНА общая функция на все три раздела зеркала (дефект M4
+    итогового ревью Ф2): раньше их было две, обе от ПОЛНОГО URL, и один и тот
+    же файл получал разные имена в разных разделах — 90 картинок, вставленных
+    и в FAQ, и в блоги, лежали в двух каталогах под двумя именами.
+
+    ПРЕДОХРАНИТЕЛЬ: если файл с этим именем уже есть и его байты ОТЛИЧАЮТСЯ —
+    `RuntimeError`, а не «первый победил». Совпадение имени при разном
+    содержимом означает либо коллизию ключа адреса, либо ошибку в самом
+    ключе (так, ключ без строки запроса схлопнул бы 49 разных вложений
+    `show_file.php?fid=N` в одно имя — измерено на боевой базе). Оба случая
+    обязаны быть громкими: молча подставленная чужая картинка в заметке не
+    ловится ни проверкой целостности, ни диффом.
+    """
+    name = attachments.asset_name(url)
+    dst = Path(dest_dir) / name
+    data = Path(src).read_bytes()
+    if dst.exists():
+        if dst.read_bytes() != data:
+            raise RuntimeError(
+                "коллизия имени файла вложения: %s уже существует с другим содержимым "
+                "(адрес %s, источник %s). Имя считается от `attachments.canonical_key` — "
+                "значит либо два разных файла дали один ключ, либо ключ потерял "
+                "различающую часть адреса. Зеркало не тронуто." % (dst, url, src))
+    else:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(data)
+    return "assets/%s" % name
+
+
+def _copy_forum_asset(url: str, local_path: str, assets_root: Path, dest_dir: Path) -> str | None:
     """Копирует уже скачанный файл вложения форума в зеркало (см. docstring
-    модуля, раздел про копирование) и возвращает путь вставки `assets/
-    <basename>`. `None` — файл в базе указан, а физически на диске его нет
-    (расхождение манифеста добора и `data/assets/files/`): вызывающая
-    сторона обязана в этом случае показать честную пометку об утрате, а не
-    оставить сырой путь как есть (он ведёт вне вики и дал бы битую вставку).
+    модуля, раздел про копирование) и возвращает путь вставки `assets/<имя>`.
+    `None` — файл в базе указан, а физически на диске его нет (расхождение
+    манифеста добора и `data/assets/files/`): вызывающая сторона обязана в
+    этом случае показать честную пометку об утрате, а не оставить сырой путь
+    как есть (он ведёт вне вики и дал бы битую вставку).
     """
     src = Path(assets_root) / local_path
     if not src.exists():
         return None
-    name = Path(local_path).name
-    dst = Path(dest_dir) / name
-    if not dst.exists():
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_bytes(src.read_bytes())
-    return "assets/%s" % name
+    return copy_asset(url, src, dest_dir)
+
+
+def prune_assets(dest_dir: Path, used: set[str], notes_written: int) -> int:
+    """Убирает из `<dest_dir>` файлы вложений, на которые больше не
+    ссылается ни одна заметка этого раздела. Возвращает число удалённых.
+
+    Зачем: генераторы убирают осиротевшие ЗАМЕТКИ с самого начала, а
+    осиротевшие файлы не убирал никто (M3 итогового ревью Ф2) — «git diff
+    пуст» оставался верным только за счёт накопления. Правка имени файла
+    (M4, эта же волна) разом осиротила бы 1859 старых бинарников, и они
+    остались бы в репозитории навсегда.
+
+    Удаляются ТОЛЬКО файлы, чьё имя выглядит как имя генератора
+    (`attachments.ASSET_NAME_RE`, то есть `<16 hex><ext>`) — чужой файл,
+    положенный человеком в тот же каталог, не тронут. Предохранитель здесь
+    другой, чем у заметок («удалений не больше, чем записей»): при
+    переименовании удалений заведомо БОЛЬШЕ, чем вставок, и такой
+    предохранитель заблокировал бы ровно нужный прогон. Условие проще и
+    надёжнее: если заметок не записано ни одной, каталог не трогается вовсе
+    (пустая или чужая база — см. предохранитель в `write_all`).
+    """
+    dest_dir = Path(dest_dir)
+    if notes_written <= 0 or not dest_dir.exists():
+        return 0
+    removed = 0
+    for path in sorted(dest_dir.iterdir()):
+        if not path.is_file() or path.name in used:
+            continue
+        if not attachments.ASSET_NAME_RE.match(path.name):
+            continue
+        path.unlink()
+        removed += 1
+    return removed
 
 
 def _ru_dt(iso: str) -> str:
@@ -314,7 +375,8 @@ def _yaml_dquote(s: str) -> str:
     return '"%s"' % s
 
 
-def render_thread(conn, tid: int, assets_root: Path | None = None, dest_dir: Path | None = None) -> str:
+def render_thread(conn, tid: int, assets_root: Path | None = None, dest_dir: Path | None = None,
+                   used_assets: set[str] | None = None) -> str:
     """`assets_root`/`dest_dir` — включают копирование файлов вложений в
     вики (см. docstring модуля). Оба заданы -> `write_all`-режим: файл
     реально копируется в `dest_dir`, в заметку идёт `assets/<basename>`.
@@ -374,7 +436,9 @@ def render_thread(conn, tid: int, assets_root: Path | None = None, dest_dir: Pat
             key = a_url or ""
             resolved = a_local
             if a_local and assets_root is not None and dest_dir is not None:
-                resolved = _copy_forum_asset(a_local, assets_root, dest_dir)
+                resolved = _copy_forum_asset(a_url, a_local, assets_root, dest_dir)
+                if resolved is not None and used_assets is not None:
+                    used_assets.add(resolved.rsplit("/", 1)[-1])
             if key not in by_url or (resolved and not by_url[key]["local_path"]):
                 by_url[key] = {"local_path": resolved, "status": None}
 
@@ -397,7 +461,10 @@ def write_all(conn, out_dir: Path, assets_root: Path = DEFAULT_ASSETS_ROOT) -> i
     `assets_root` — где искать уже скачанные добором файлы вложений (см.
     docstring модуля); реально использованные копируются в `<out_dir>/
     assets/`, остальные не трогаются (в вики попадают только файлы, на
-    которые ссылаются заметки — глобальное ограничение фазы).
+    которые ссылаются заметки — глобальное ограничение фазы). Файлы, на
+    которые не ссылается больше ни одна заметка, убираются (`prune_assets`)
+    — иначе переименование или исчезновение картинки оставляло бы мёртвый
+    бинарник в репозитории навсегда (M3 итогового ревью Ф2).
 
     ПРЕДОХРАНИТЕЛЬ: удалений не может быть больше, чем записей. Уборка
     мусора — это единицы файлов на фоне тысяч записанных; «удалить больше,
@@ -411,10 +478,12 @@ def write_all(conn, out_dir: Path, assets_root: Path = DEFAULT_ASSETS_ROOT) -> i
     out_dir.mkdir(parents=True, exist_ok=True)
     dest_dir = out_dir / "assets"
     tids = set()
+    used_assets: set[str] = set()
     n = 0
     for (tid,) in conn.execute("SELECT tid FROM threads ORDER BY tid"):
         (out_dir / ("Тема %d.md" % tid)).write_text(
-            render_thread(conn, tid, assets_root=assets_root, dest_dir=dest_dir), encoding="utf-8")
+            render_thread(conn, tid, assets_root=assets_root, dest_dir=dest_dir,
+                           used_assets=used_assets), encoding="utf-8")
         tids.add(tid)
         n += 1
     stale = [p for p in sorted(out_dir.glob("Тема *.md"))
@@ -427,4 +496,5 @@ def write_all(conn, out_dir: Path, assets_root: Path = DEFAULT_ASSETS_ROOT) -> i
             % (n, len(stale), out_dir))
     for path in stale:
         path.unlink()
+    prune_assets(dest_dir, used_assets, n)
     return n

@@ -63,7 +63,6 @@ zip, старый OLE2 — doc/xls, RAR, 7z, gzip). Если сигнатура 
 то есть в спорном случае лучше явная пометка потери, чем непроверенный блоб
 на диске.
 """
-import hashlib
 import logging
 import re
 import urllib.parse
@@ -82,17 +81,6 @@ _PROGRESS_EVERY = 50
 # файла в архиве нет (см. `attachments.py`): чужие картинки и свои вложения
 # форума без сырого файла. `chrome` сюда не входит — качать нечего.
 CONTENT_KINDS = (attachments.KIND_EXTERNAL, attachments.KIND_LOCAL)
-
-# Сигнатуры (magic bytes) графических форматов, встречающихся в контенте
-# форума (см. распределение расширений `external_image`: jpg/gif/png/jpeg).
-_IMAGE_SIGS = (
-    b"\xff\xd8\xff",              # JPEG
-    b"\x89PNG\r\n\x1a\n",         # PNG
-    b"GIF87a",
-    b"GIF89a",
-    b"BM",                        # BMP
-)
-
 
 def _looks_like_image(data: bytes) -> bool:
     """Валидная сигнатура известного графического формата в начале данных."""
@@ -137,14 +125,26 @@ def _content_probe(kind: str):
 
 
 def local_name(url: str) -> str:
-    """Путь внутри assets/: хост + хэш пути + исходное расширение."""
+    """Путь внутри assets/: каталог по хосту + `attachments.asset_name`.
+
+    Имя файла считает ОДНА общая функция на весь проект (`attachments.
+    asset_name` — хэш канонического ключа адреса, дефект M4 итогового ревью
+    Ф2): один и тот же файл обязан называться одинаково и здесь, и в трёх
+    каталогах `assets/` зеркала, иначе при доборе недостающих картинок FAQ и
+    блогов тот же файл получил бы третье имя.
+
+    Каталог по хосту остаётся — он про раскладку на диске (`data/assets/
+    files/`), а не про имя: несколько тысяч файлов в одном каталоге
+    неудобно смотреть глазами, а хост сразу говорит, откуда файл. В зеркало
+    копируется только имя (`assets/<имя>`), см. `mirror._copy_forum_asset`.
+
+    Уже скачанные файлы НЕ переименовываются: истина про добор — манифест
+    (`assets_state`), в нём лежат старые пути, и они продолжают работать.
+    Новая формула действует на то, что скачивается впредь.
+    """
     parts = urllib.parse.urlsplit(url)
     host = re.sub(r"[^a-z0-9.-]", "_", parts.netloc.lower()) or "nohost"
-    digest = hashlib.sha1(url.encode("utf-8")).hexdigest()[:16]
-    ext = Path(urllib.parse.unquote(parts.path)).suffix.lower()
-    if not re.fullmatch(r"\.[a-z0-9]{1,5}", ext or ""):
-        ext = ".bin"
-    return "%s/%s%s" % (host, digest, ext)
+    return "%s/%s" % (host, attachments.asset_name(url))
 
 
 # Статусы манифеста, которые повторный прогон `download` ПЕРЕзапрашивает, и

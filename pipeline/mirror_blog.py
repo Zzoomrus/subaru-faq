@@ -143,6 +143,7 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
     asset_index = mirror_faq._load_asset_index(assets_manifest)
 
     names: set[str] = set()
+    used_assets: set[str] = set()
     n = 0
     rows = conn.execute(
         "SELECT blog, post_id, title, author, posted_at, body_md, tags, source_url, "
@@ -153,6 +154,8 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
         for (url,) in conn.execute(
                 "SELECT url FROM blog_images WHERE blog = ? AND post_id = ?", (blog, post_id)):
             local = mirror_faq._resolve_image(url, asset_index, assets_root, assets_dir)
+            if local:
+                used_assets.add(local.rsplit("/", 1)[-1])
             images_by_url[url] = {"local_path": local}
         comments_md = _render_comments(conn, blog, post_id)
         name = _filename(blog, post_id)
@@ -168,4 +171,5 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
             % (n, len(stale), out_dir))
     for path in stale:
         path.unlink()
+    mirror.prune_assets(assets_dir, used_assets, n)
     return n

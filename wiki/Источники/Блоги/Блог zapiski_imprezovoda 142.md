@@ -16,19 +16,19 @@ aliases: ["Фотки с Кавказа 11 (Адыгея)"]
 
 Пара фоток с родео-тура по р.Белая-р.Киша в Адыгее
 
-![[assets/1a8a4cd69aed6d91.png]]
+![[assets/52747060e869f1f9.png]]
 
-![[assets/14c1564fdf7fd0e2.png]]
+![[assets/d6db585d862eee51.png]]
 
-![[assets/90683ef903fcc703.png]]
+![[assets/f1329bd9c69226e9.png]]
 
-![[assets/ff5215df7996745f.png]]
+![[assets/d8b05acf5412bb6c.png]]
 
-![[assets/8501408ab9c6a145.png]]
+![[assets/6b4e9389a98f97a4.png]]
 
-![[assets/b435a0c442790d71.png]]
+![[assets/9434ca3009bf575d.png]]
 
-![[assets/02634cce905842ad.png]]
+![[assets/2fa17b1d18c3b302.png]]
 
 ## Комментарии
 
