@@ -87,7 +87,16 @@ def _strip_frontmatter(text: str) -> str:
     return text
 
 
-def check(directory: Path) -> dict[str, list[str]]:
+def build_notes_index(directory: Path) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """Индекс заметок поддерева вики: `notes` (ключ без расширения -> текст) и
+    `by_name` (имя файла без пути -> список ключей с таким именем в разных
+    папках). Тот же индекс, которым `check()` резолвит цель ссылки — второй
+    потребитель (`pipeline.facts`, задача 4 Ф3) обязан брать его отсюда, а
+    не строить свой обход `rglob`: Global Constraint №3 фазы («ссылки
+    резолвит check_mirror, своей цепочки резолва не писать») существует
+    ровно на случай второго потребителя одного знания — иначе он разойдётся
+    с этим молча, как разошлись `sync_to_db`/`local_path` в Ф2.
+    """
     directory = Path(directory)
     notes: dict[str, str] = {}
     for path in sorted(directory.rglob("*.md")):
@@ -97,6 +106,33 @@ def check(directory: Path) -> dict[str, list[str]]:
     by_name: dict[str, list[str]] = {}
     for key in notes:
         by_name.setdefault(key.rsplit("/", 1)[-1], []).append(key)
+    return notes, by_name
+
+
+def resolve_note(target: str, notes: dict[str, str], by_name: dict[str, list[str]]) -> list[str] | None:
+    """Резолвит ИМЯ заметки (без якоря, `target` — то, что стоит до `#` в
+    `[[Цель#Якорь]]`) в список ключей — Obsidian сначала ищет точный
+    относительный путь, потом по имени файла. Несколько заметок с
+    одинаковым именем в разных папках — все совпадения разом, вызывающий
+    код сам решает, что делать с неоднозначностью (`check()` сверяет якорь
+    с ОБЪЕДИНЕНИЕМ их якорей, `pipeline.facts` — отказывает факту явной
+    причиной).
+
+    Пустая цель (`[[#Заголовок]]`, ссылка внутри той же заметки) сюда не
+    относится — это забота вызывающего кода (`check()._resolve` подставляет
+    исходную заметку сама, до вызова этой функции).
+    """
+    target = target.strip()
+    if target.endswith(".md"):
+        target = target[:-3]
+    if target in notes:
+        return [target]
+    return by_name.get(target.rsplit("/", 1)[-1])
+
+
+def check(directory: Path) -> dict[str, list[str]]:
+    directory = Path(directory)
+    notes, by_name = build_notes_index(directory)
 
     # Индекс ФАЙЛОВ (не только заметок) — цель вставки `![[путь]]` резолвится
     # среди них, а не среди заметок (см. docstring модуля). Ключ — путь с
@@ -126,12 +162,7 @@ def check(directory: Path) -> dict[str, list[str]]:
         target = target.strip()
         if not target:
             return [source]
-        if target.endswith(".md"):
-            target = target[:-3]
-        if target in notes:
-            return [target]
-        hits = by_name.get(target.rsplit("/", 1)[-1])
-        return hits or None
+        return resolve_note(target, notes, by_name) or None
 
     def _file_exists(target: str) -> bool:
         target = target.strip()
