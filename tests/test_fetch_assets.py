@@ -266,3 +266,78 @@ def test_download_does_slow_the_pacer_down_on_a_real_network_failure(tmp_path, m
     stats = fetch_assets.download(conn, m, tmp_path / "assets")
     assert stats["failed"] == 1
     assert notes == [False]
+
+
+def _seeded(tmp_path, *urls):
+    conn = db.connect(tmp_path / "t.sqlite"); db.init_schema(conn)
+    for i, url in enumerate(urls, 1):
+        conn.execute("INSERT INTO attachments(mid, kind, url, status) "
+                     "VALUES (?, 'external_image', ?, 'pending')", (i, url))
+    conn.commit()
+    return conn
+
+
+def test_failed_is_retried_on_the_next_download_run(tmp_path, monkeypatch):
+    # C1 итогового ревью Ф2 (Ruling 33): `failed` — утверждение о ПРОГОНЕ
+    # («сеть не отдала ни одного тела»), а не об архиве. Пока он был
+    # терминальным, 10 адресов боевого манифеста не пробовали больше никогда,
+    # а повторный прогон печатал `{'ok': 0, ...}` и выглядел как успех.
+    # Добор страниц сайта (`fetch_site.fetch_all`) всё это время
+    # ПЕРЕзапрашивал failed штатно — два модуля решали одно противоположно.
+    conn = _seeded(tmp_path, "http://h/x.jpg")
+    m = tmp_path / "m.jsonl"
+    assets_state.record(m, "http://h/x.jpg", None, "failed")
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots", lambda url, **kw: [("20150101", url)])
+    monkeypatch.setattr(fetch_assets.fetcher, "fetch_snapshot", lambda ts, url, **kw: PNG_SIG)
+    stats = fetch_assets.download(conn, m, tmp_path / "assets")
+    assert stats == {"ok": 1, "empty": 0, "failed": 0}
+    assert assets_state.load(m)["http://h/x.jpg"]["status"] == "ok"
+
+
+def test_no_snapshot_and_empty_stay_terminal_on_download(tmp_path, monkeypatch):
+    # Обратная сторона того же решения, и она тоже сознательная: `no_snapshot`
+    # — честный ответ CDX «снимков нет», `empty` — тело есть, но содержимым
+    # не является. Оба перестают быть верными только со временем, а не при
+    # повторе того же прогона, и оба стоят CDX-запросов: 5106 бессмысленных
+    # обращений за прогон — это ровно то, за что банят. Пере-запрос этих
+    # статусов — отдельная осознанная операция, не поведение по умолчанию.
+    conn = _seeded(tmp_path, "http://h/no.jpg", "http://h/empty.jpg", "http://h/ok.jpg")
+    m = tmp_path / "m.jsonl"
+    assets_state.record(m, "http://h/no.jpg", None, "no_snapshot")
+    assets_state.record(m, "http://h/empty.jpg", None, "empty")
+    assets_state.record(m, "http://h/ok.jpg", "host/abc.jpg", "ok")
+    calls = []
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots", lambda url, **kw: calls.append(url) or [])
+    monkeypatch.setattr(fetch_assets.fetcher, "fetch_snapshot",
+                         lambda ts, url, **kw: calls.append(url) or PNG_SIG)
+    stats = fetch_assets.download(conn, m, tmp_path / "assets")
+    assert stats == {"ok": 0, "empty": 0, "failed": 0}
+    assert calls == []          # ни одного обращения: целей нет вовсе
+    statuses = {u: r["status"] for u, r in assets_state.load(m).items()}
+    assert statuses == {"http://h/no.jpg": "no_snapshot", "http://h/empty.jpg": "empty",
+                         "http://h/ok.jpg": "ok"}
+
+
+def test_index_asks_cdx_once_per_url_and_never_again(tmp_path, monkeypatch):
+    # Цель `index` — только адреса, о которых манифест не знает ВООБЩЕ.
+    # Повторная индексация уже размеченного адреса (в т.ч. `no_snapshot`) не
+    # ходит в CDX: иначе каждый прогон стоил бы 5007 запросов метаданных.
+    conn = _seeded(tmp_path, "http://h/x.jpg")
+    m = tmp_path / "m.jsonl"
+    calls = []
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_find_snapshot",
+                         lambda url, **kw: calls.append(url) or None)
+    assert fetch_assets.index_pending(conn, m) == {"pending": 0, "no_snapshot": 1}
+    assert fetch_assets.index_pending(conn, m) == {"pending": 0, "no_snapshot": 0}
+    assert calls == ["http://h/x.jpg"]
+
+
+def test_the_two_downloaders_agree_on_which_statuses_are_terminal():
+    # Прямое расхождение C1: `fetch_site` перезапрашивает `failed`, а
+    # `fetch_assets` его не перезапрашивал. Утверждение стоит на обоих
+    # модулях разом, чтобы следующая правка одного из них не развела их
+    # снова молча.
+    from pipeline import fetch_site
+    assert "failed" in fetch_assets.RETRY_ON_DOWNLOAD
+    assert fetch_assets.TERMINAL_STATUSES == ("ok", "no_snapshot", "empty")
+    assert fetch_site.TERMINAL_STATUSES == ("ok", "empty")

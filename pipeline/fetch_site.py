@@ -338,6 +338,12 @@ def blogs_content_probe(data: bytes) -> bool:
     return b'class="blog-post"' in data
 
 
+# Статусы, при которых адрес НЕ запрашивается повторно. `failed` сюда не
+# входит сознательно: это утверждение о прогоне («сеть не отдала тела»), а не
+# об архиве. То же правило у добора картинок — `fetch_assets.
+# TERMINAL_STATUSES`/`RETRY_ON_DOWNLOAD` (дефект C1 итогового ревью Ф2).
+TERMINAL_STATUSES = ("ok", "empty")
+
 _CONTENT_PROBES = {"faq": faq_content_probe, "blogs": blogs_content_probe}
 
 
@@ -370,9 +376,12 @@ def fetch_all(plan: list[dict], dest: Path, manifest: Path, limit: int | None = 
     диске (манифест + сами файлы), а не в памяти процесса, поэтому обрыв
     суточного прогона теряет самое большее одну незаписанную страницу.
 
-    Уже отмеченные `ok`/`empty` адреса НЕ запрашиваются повторно (см.
-    `test_fetch_all_is_idempotent_and_skips_already_done_urls`) — только
-    `failed` (или вовсе не встречавшиеся ранее) считаются целью прогона.
+    Уже отмеченные `ok`/`empty` адреса НЕ запрашиваются повторно
+    (`TERMINAL_STATUSES`, см. `test_fetch_all_is_idempotent_and_skips_already_
+    done_urls`) — только `failed` (или вовсе не встречавшиеся ранее)
+    считаются целью прогона. То же правило теперь и у добора картинок
+    (`fetch_assets.RETRY_ON_DOWNLOAD`, дефект C1 итогового ревью Ф2): до
+    правки два модуля решали этот вопрос противоположно.
     Признак содержимого свой для каждого элемента плана — `item["section"]`
     выбирает FAQ- или блоговый `content_probe` (см. `_CONTENT_PROBES`), один
     прогон может смешивать обе секции разом.
@@ -392,7 +401,8 @@ def fetch_all(plan: list[dict], dest: Path, manifest: Path, limit: int | None = 
     stats = {"ok": 0, "empty": 0, "failed": 0}
     pacer = fetcher.TokenBucketPacer()
     known = assets_state.load(manifest)
-    targets = [item for item in plan if known.get(item["url"], {}).get("status") not in ("ok", "empty")]
+    targets = [item for item in plan
+               if known.get(item["url"], {}).get("status") not in TERMINAL_STATUSES]
     if limit is not None:
         targets = targets[:limit]
     total = len(targets)

@@ -147,6 +147,29 @@ def local_name(url: str) -> str:
     return "%s/%s%s" % (host, digest, ext)
 
 
+# Статусы манифеста, которые повторный прогон `download` ПЕРЕзапрашивает, и
+# те, которые для него терминальны (дефект C1 итогового ревью Ф2, Ruling 33).
+#
+# `failed` — «сеть не отдала ни одного тела»: это утверждение о ПРОГОНЕ, а не
+# об архиве, и повторять его правильно. Ровно так уже устроен добор страниц
+# сайта (`fetch_site.fetch_all` фильтрует `status not in ("ok", "empty")`) —
+# два модуля решали одну задачу противоположно, и ни один отчёт этого не
+# отмечал. До правки `failed` был терминальным, то есть 10 адресов боевого
+# манифеста не пробовали больше НИКОГДА, а повторный прогон возвращал
+# `{'ok': 0, ...}` и выглядел как успех.
+#
+# `no_snapshot` (5007 адресов) и `empty` (99) остаются терминальными
+# СОЗНАТЕЛЬНО: первое — честный ответ CDX «снимков нет», второе — тело
+# скачалось, но содержимым не является. Оба перестают быть верными только со
+# временем (архив набирает новые снимки), а не при повторе того же прогона
+# через час, и оба стоят по одному-двум CDX-запросам на адрес: 5106
+# бессмысленных запросов на каждый прогон — это ровно то, за что банят.
+# Пере-запрос этих двух — отдельная осознанная операция «а не появилось ли в
+# архиве нового», её вводить вместе с явным флагом, а не по умолчанию.
+RETRY_ON_DOWNLOAD = ("pending", "failed")
+TERMINAL_STATUSES = ("ok", "no_snapshot", "empty")
+
+
 def _targets(conn, manifest: Path, want: str, limit: int | None):
     """URL-адреса и их kind, ожидающие данного шага (index/download).
 
@@ -154,6 +177,11 @@ def _targets(conn, manifest: Path, want: str, limit: int | None):
     `attachments.status`: она не трогается до самого конца прогона (см.
     `sync_to_db`, вызываемый run.py один раз по завершении), поэтому её
     значение здесь ничего не скажет о том, что уже сделано на этом прогоне.
+
+    Цель шага `index` — только адреса, о которых манифест не знает ВООБЩЕ
+    (`state is None`): один раз спросили CDX, получили ответ, записали. Цель
+    шага `download` — `RETRY_ON_DOWNLOAD` (`pending` + `failed`), терминальны
+    `TERMINAL_STATUSES`; какие именно и почему — в комментарии выше.
     """
     known = assets_state.load(manifest)
     sql = ("SELECT DISTINCT url, kind FROM attachments WHERE kind IN (%s) AND status <> 'skip'"
@@ -164,7 +192,7 @@ def _targets(conn, manifest: Path, want: str, limit: int | None):
         state = known.get(url, {}).get("status")
         if want == "index" and state is None:
             out.append((url, kind))
-        elif want == "download" and state == "pending":
+        elif want == "download" and state in RETRY_ON_DOWNLOAD:
             out.append((url, kind))
     return out[:limit] if limit else out
 
@@ -242,6 +270,14 @@ def download(conn, manifest: Path, assets_root: Path, limit: int | None = None) 
     альтернатив (`fetcher.cdx_snapshots`, дорогой `matchType=exact`) — и то
     ОДИН раз (см. docstring модуля). На бóльшей части адресов, где
     сохранённый снимок и так рабочий, CDX не вызывается вовсе.
+
+    Повторный прогон берёт `pending` и `failed`, не берёт `ok`,
+    `no_snapshot` и `empty` (`RETRY_ON_DOWNLOAD`/`TERMINAL_STATUSES` — там же
+    и обоснование). Отсюда прямое следствие, которое НЕЛЬЗЯ читать как факт
+    об архиве: «повторный прогон нашёл ноль» на манифесте, где всё уже
+    размечено, означает только «целей не осталось», а не «в Wayback этого
+    нет». Проверять, не появилось ли в архиве новых снимков для 5106
+    терминальных адресов, придётся отдельной осознанной операцией.
     """
     stats = {"ok": 0, "empty": 0, "failed": 0}
     pacer = fetcher.TokenBucketPacer()
