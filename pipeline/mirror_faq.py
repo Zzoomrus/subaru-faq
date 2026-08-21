@@ -90,7 +90,8 @@ def _resolve_image(url: str, asset_index: set[str], assets_root: Path, dest_dir:
 
 
 def render_entry(row: tuple, images_by_url: dict) -> str:
-    engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts, title = row
+    (engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts, title,
+     duplicate_of_engine, duplicate_of_nr) = row
     question = question or ""
     body = mirror.render_post_body(answer_md or "", images_by_url)
 
@@ -108,6 +109,16 @@ def render_entry(row: tuple, images_by_url: dict) -> str:
         aliases.append(title)
     aliases_line = ", ".join(mirror._yaml_dquote(a) for a in aliases)
 
+    # Ф3, задача 1: запись — дубль другой, найденной `faq_dedup` (вопрос
+    # совпал или ответ дословно вошёл в канонический). Пометка ставится и во
+    # фронтматтере (`дубль_чего`, машиночитаемо — по нему легко отфильтровать
+    # дубли скриптом), и коллаутом под H1 (человеку, читающему заметку
+    # глазами, иначе ничего не заметно). Без этого исполнитель следующей
+    # задачи Ф3, сославшись на старую запись, дал бы мысли вторую сноску.
+    canonical_name = None
+    if duplicate_of_engine is not None and duplicate_of_nr is not None:
+        canonical_name = _filename(duplicate_of_engine, duplicate_of_nr)[:-len(".md")]
+
     out = ["---",
            "номер: %d" % nr,
            "движок: %s" % ("bitrix" if engine == "bitrix" else "старый"),
@@ -115,8 +126,10 @@ def render_entry(row: tuple, images_by_url: dict) -> str:
            "категория: %s" % mirror._yaml_dquote(category or ""),
            "адрес: %s" % mirror._yaml_dquote(source_url or ""),
            "снимок: %s" % mirror._yaml_dquote(snapshot_ts or ""),
-           "aliases: [%s]" % aliases_line,
-           "---", "",
+           "aliases: [%s]" % aliases_line]
+    if canonical_name is not None:
+        out.append("дубль_чего: \"[[%s]]\"" % canonical_name)
+    out += ["---", "",
            # H1 — то же, что у форума («# <название темы>») и блогов
            # («# <название записи>»): единственное расхождение структуры
            # трёх генераторов без обоснования (M6 итогового ревью Ф2).
@@ -124,8 +137,13 @@ def render_entry(row: tuple, images_by_url: dict) -> str:
            # и в графе связей человеку было не видно, о чём она.
            # `## Вопрос`/`## Ответ` остаются на месте: это АДРЕСА для
            # сносок Ф3 (`[[FAQ 502#Ответ]]`), H1 их не заменяет.
-           "# %s" % (question_line or "FAQ %d" % nr), "",
-           "## Вопрос", "",
+           "# %s" % (question_line or "FAQ %d" % nr), ""]
+    if canonical_name is not None:
+        out += ["> [!warning] Дубль",
+                "> Эта запись — тот же материал, что [[%s]], сохранённый вторым движком сайта." % canonical_name,
+                "> Ссылаться в статьях следует на каноническую запись: два указателя на одну мысль",
+                "> читаются как два независимых свидетельства.", ""]
+    out += ["## Вопрос", "",
            question_line or "(вопрос не сохранился)", "",
            "## Ответ", ""]
     out.append(body if body else "(ответ не сохранился)")
@@ -150,7 +168,8 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
     used_assets: set[str] = set()
     n = 0
     rows = conn.execute(
-        "SELECT engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts, title "
+        "SELECT engine, nr, catnr, prog, category, question, answer_md, source_url, snapshot_ts, title, "
+        "duplicate_of_engine, duplicate_of_nr "
         "FROM faq ORDER BY engine, nr").fetchall()
     for row in rows:
         engine, nr = row[0], row[1]

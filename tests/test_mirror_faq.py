@@ -133,3 +133,31 @@ def test_write_all_removes_stale_notes_but_not_foreign_files(tmp_path):
     assert n == 3
     assert not (out / "FAQ 999.md").exists()
     assert (out / "не наша заметка.md").exists()
+
+
+def test_duplicate_entry_is_marked_and_points_to_canonical(tmp_path):
+    """Дубль обязан быть виден в заметке, а не только в базе.
+
+    Иначе исполнитель Ф3, читающий вики глазами, сошлётся на старую запись
+    как на самостоятельный источник.
+    """
+    conn = db.connect(tmp_path / "m.sqlite")
+    db.init_schema(conn)
+    conn.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text) "
+                 "VALUES ('bitrix', 42, 'Про масло', 'Полусинтетика.', 'Полусинтетика.')")
+    conn.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text, "
+                 "duplicate_of_engine, duplicate_of_nr) "
+                 "VALUES ('old', 7, 'Про масло', 'Полусинтетика.', 'Полусинтетика.', 'bitrix', 42)")
+    conn.commit()
+
+    out = tmp_path / "FAQ"
+    mirror_faq.write_all(conn, out)
+
+    dup = (out / "FAQ старый 7.md").read_text(encoding="utf-8")
+    assert "дубль_чего: \"[[FAQ 42]]\"" in dup
+    assert "> [!warning] Дубль" in dup
+    assert "[[FAQ 42]]" in dup
+
+    canon = (out / "FAQ 42.md").read_text(encoding="utf-8")
+    assert "дубль_чего" not in canon
+    assert "[!warning]" not in canon
