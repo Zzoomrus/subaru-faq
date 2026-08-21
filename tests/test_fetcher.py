@@ -165,6 +165,31 @@ def test_cdx_snapshots_requests_freshest_snapshots_not_oldest():
     query = urllib.parse.parse_qs(urllib.parse.urlparse(captured["url"]).query)
     assert query["limit"] == ["-50"]
 
+def test_prefix_queries_keep_the_positive_limit_on_purpose():
+    # Ruling 32 фазы Ф2: в префиксных путях `limit` ПОЛОЖИТЕЛЬНЫЙ, и это
+    # несущее поведение, а не забытая правка. `collapse=urlkey` оставляет
+    # первую из соседних строк, CDX отдаёт их от старых к новым — значит
+    # берётся САМЫЙ РАННИЙ снимок. Именно он спас добор FAQ: у страниц 503 и
+    # 176 свежайшие снимки 2022 года не разбираются вовсе (сайт к тому
+    # времени отдавал другую разметку), а снимки 2010 года разобрались.
+    # Тест стоит здесь ради того, кто придёт "починить очевидную опечатку"
+    # по аналогии с тестом выше: правка на -50 обязана падать, а не молча
+    # ломать раздел.
+    captured = []
+
+    def fake_urlopen(req, timeout=90):
+        captured.append(req.full_url)
+        return _cdx_response([])
+
+    with patch("pipeline.fetcher.urllib.request.urlopen", side_effect=fake_urlopen):
+        fetcher.cdx_snapshots("http://x/faq/", match_type="prefix")
+        fetcher.cdx_find_snapshot("http://x/pic.jpg")
+    queries = [urllib.parse.parse_qs(urllib.parse.urlparse(u).query) for u in captured]
+    assert [q["limit"] for q in queries] == [["10000"], ["50"]]
+    assert all(q["collapse"] == ["urlkey"] for q in queries)
+    assert all(q["matchType"] == ["prefix"] for q in queries)
+
+
 def test_cdx_snapshots_empty_when_no_rows():
     with patch("pipeline.fetcher.urllib.request.urlopen", return_value=_cdx_response([])):
         assert fetcher.cdx_snapshots("http://x/") == []
