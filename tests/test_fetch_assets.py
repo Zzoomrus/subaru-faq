@@ -378,6 +378,26 @@ def test_retry_flag_rejects_an_unknown_status(tmp_path):
         fetch_assets.index_pending(conn, m, retry=("нет-такого",))
 
 
+def test_retry_flag_rejects_a_status_that_means_nothing_for_this_step(tmp_path, monkeypatch):
+    # A6 ре-ревью (Ruling 44): `download --retry no_snapshot` давал те же 10
+    # целей, что и без флага, и молчал — «целей нет» читалось как «в архиве
+    # ничего нового». Тот же класс молчаливого no-op, что исходный C1.
+    conn = _seeded(tmp_path, "http://h/x.jpg")
+    m = tmp_path / "m.jsonl"
+    import pytest
+    with pytest.raises(ValueError, match="нельзя перезапросить на шаге `download`"):
+        fetch_assets.download(conn, m, tmp_path / "assets", retry=("no_snapshot",))
+    with pytest.raises(ValueError, match="нельзя перезапросить на шаге `index`"):
+        fetch_assets.index_pending(conn, m, retry=("empty",))
+    # А на своём шаге тот же флаг принимается молча и работает. (Подмена CDX
+    # обязательна: адрес и без флага — цель индексации, потому что манифест о
+    # нём не знает вовсе. Забыл подменить в первой версии этого теста —
+    # заграждение сети из conftest поймало вызов на `socket.connect`, что
+    # заодно и подтвердило, что второй рубеж работает.)
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_find_snapshot", lambda url, **kw: None)
+    assert fetch_assets.index_pending(conn, m, retry=("no_snapshot",)) == {"pending": 0, "no_snapshot": 1}
+
+
 def test_cli_reports_a_bad_retry_flag_with_exit_code(tmp_path, capsys):
     from pipeline import run
     rc = run.main(["assets", "download", "--db", str(tmp_path / "f.sqlite"),

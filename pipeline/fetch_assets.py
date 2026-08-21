@@ -158,9 +158,24 @@ TERMINAL_STATUSES = ("ok", "no_snapshot", "empty")
 RETRIABLE_BY_FLAG = ("no_snapshot", "empty")
 
 
-def _retry_targets(retry) -> tuple[set[str], set[str]]:
+# Какой статус имеет смысл перезапрашивать на каком шаге. `no_snapshot` — это
+# ответ CDX «снимков нет», проверить его можно только индексацией; `empty` —
+# «тело скачалось, но содержимым не признано», это шаг скачивания.
+_RETRY_STEP = {"no_snapshot": "index", "empty": "download"}
+
+
+def _retry_targets(retry, want: str) -> tuple[set[str], set[str]]:
     """`retry` (набор статусов из флага) -> какие статусы добавить к целям
-    шага `index` и шага `download`. Неизвестный статус — `ValueError`.
+    шага `index` и шага `download`.
+
+    Неизвестный статус — `ValueError`. Статус, не имеющий смысла для ЭТОГО
+    шага, — тоже `ValueError`, а не тишина (находка A6 ре-ревью, Ruling 44):
+    `assets download --retry no_snapshot` молча давал те же 10 целей, что и
+    без флага, и ответ «целей 10» читался как «нового в архиве не
+    появилось». Это ровно тот класс молчаливого no-op, который волна и
+    чинила в C1, только этажом выше — попросили одно, получили другое, и
+    никто не сказал. Цифра 5007 у человека в голове связана со скачиванием,
+    так что ошибиться шагом — первое, что случится.
     """
     retry = set(retry or ())
     unknown = sorted(retry - set(RETRIABLE_BY_FLAG))
@@ -170,6 +185,14 @@ def _retry_targets(retry) -> tuple[set[str], set[str]]:
             "(`ok` не перезапрашивается никогда — файл уже на диске, "
             "`pending`/`failed` и так входят в цели по умолчанию)"
             % (", ".join(unknown), ", ".join(RETRIABLE_BY_FLAG)))
+    wrong_step = sorted(st for st in retry if _RETRY_STEP[st] != want)
+    if wrong_step:
+        raise ValueError(
+            "статус(ы) %s нельзя перезапросить на шаге `%s`: %s. Иначе прогон "
+            "молча сделал бы не то, о чём просили, и «целей нет» прочиталось бы "
+            "как «в архиве ничего нового»"
+            % (", ".join(wrong_step), want,
+               "; ".join("`%s` — только `assets %s`" % (st, _RETRY_STEP[st]) for st in wrong_step)))
     return ({"no_snapshot"} & retry), ({"empty"} & retry)
 
 
@@ -190,7 +213,7 @@ def _targets(conn, manifest: Path, want: str, limit: int | None, retry=()):
     (`RETRIABLE_BY_FLAG`); без него терминальные статусы не попадают в цели
     ни на одном шаге.
     """
-    retry_index, retry_download = _retry_targets(retry)
+    retry_index, retry_download = _retry_targets(retry, want)
     known = assets_state.load(manifest)
     sql = ("SELECT DISTINCT url, kind FROM attachments WHERE kind IN (%s) AND status <> 'skip'"
            % ",".join("?" * len(CONTENT_KINDS)))
