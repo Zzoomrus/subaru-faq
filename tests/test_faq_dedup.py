@@ -1,6 +1,14 @@
 from pipeline import db, faq_dedup
 
 
+def _faq_with_dup(conn, engine, nr, question, answer, dup_engine, dup_nr):
+    conn.execute(
+        "INSERT INTO faq(engine, nr, question, answer_md, answer_text, "
+        "duplicate_of_engine, duplicate_of_nr) VALUES (?,?,?,?,?,?,?)",
+        (engine, nr, question, answer, answer, dup_engine, dup_nr),
+    )
+
+
 def _faq(conn, engine, nr, question, answer):
     conn.execute(
         "INSERT INTO faq(engine, nr, question, answer_md, answer_text) VALUES (?,?,?,?,?)",
@@ -62,6 +70,30 @@ def test_finds_duplicate_by_answer_containment_when_question_differs(tmp_path):
     assert dupes[0]["reason"] == "ответ дословно внутри канонического"
 
 
+def test_apply_clears_stale_pointer_when_record_no_longer_matches(tmp_path):
+    """apply() обязан сбросить мусорную пометку, а не только проставить новую.
+
+    Находка ревью: без строки `UPDATE ... SET duplicate_of_* = NULL` перед
+    пересчётом весь набор тестов оставался зелёным — регрессия (запись
+    перестала быть дублем, а пометка осталась) прошла бы незамеченной.
+    Запись здесь по текущим правилам НЕ дубль (другой вопрос, короткий,
+    не совпадающий по тексту ответ), но заранее помечена мусорным указателем.
+    """
+    conn = db.connect(tmp_path / "d.sqlite")
+    db.init_schema(conn)
+    _faq(conn, "bitrix", 42, "Вопрос про масло", "Полусинтетика.")
+    _faq_with_dup(conn, "old", 7, "Совсем другой вопрос про фильтры",
+                  "Другой ответ.", "bitrix", 999999)
+    conn.commit()
+
+    faq_dedup.apply(conn)
+
+    row = conn.execute(
+        "SELECT duplicate_of_engine, duplicate_of_nr FROM faq WHERE engine = 'old' AND nr = 7"
+    ).fetchone()
+    assert row == (None, None)
+
+
 def test_short_answer_does_not_count_as_containment(tmp_path):
     """«Да.» встречается внутри чего угодно — это не признак дубля."""
     conn = db.connect(tmp_path / "d.sqlite")
@@ -71,3 +103,27 @@ def test_short_answer_does_not_count_as_containment(tmp_path):
     conn.commit()
 
     assert faq_dedup.find_duplicates(conn) == []
+
+
+def test_answer_containment_ignores_whitespace_differences(tmp_path):
+    """Два движка форума разбивают абзацы ответа по-разному.
+
+    Находка ревью на боевых данных: `FAQ старый 155` («антенна») и
+    `FAQ старый 114` («давление E-4AT») — тот же текст, что у канонических
+    `FAQ 140`/`FAQ 168`, но с одинарным `\n` там, где у Bitrix `\n\n`, и с
+    двойными пробелами. Точное посимвольное `in` это пропускало.
+    """
+    conn = db.connect(tmp_path / "d.sqlite")
+    db.init_schema(conn)
+    _faq(conn, "bitrix", 42, "Про антенну",
+         "Первый абзац про антенну и её механизм выдвижения из корпуса машины.\n\n"
+         "Второй абзац про смазку и уход, чтобы механизм не закисал со временем.")
+    _faq(conn, "old", 7, "Совсем другой вопрос про антенну",
+         "Первый абзац про антенну и её механизм выдвижения из корпуса машины.\n"
+         "Второй абзац  про смазку и уход, чтобы механизм не закисал  со временем.")
+    conn.commit()
+
+    dupes = faq_dedup.find_duplicates(conn)
+
+    assert len(dupes) == 1
+    assert dupes[0]["reason"] == "ответ дословно внутри канонического"

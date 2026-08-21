@@ -15,6 +15,8 @@ from __future__ import annotations
 import re
 import sqlite3
 
+from pipeline import notes
+
 # Порог вхождения ответа: короткий ответ («Да.», «Не стоит.») встречается
 # внутри чего угодно и признаком дубля не является. Порог — свойство
 # безопасности дедупа, подгонять его под фикстуру теста нельзя (первая
@@ -41,8 +43,15 @@ def find_duplicates(conn: sqlite3.Connection) -> list[dict]:
     ):
         canon.setdefault(normalize_question(question), nr)
 
+    # Нормализация пробелов ОБЯЗАНА идти здесь, а не на сырой строке из
+    # `answer_text`: два движка форума разбивают абзацы по-разному (`\n`
+    # у старого движка там, где у Bitrix `\n\n`), и точное посимвольное
+    # `in` из-за этого пропускало настоящие дубли (найдено ревью на живых
+    # данных — `FAQ старый 114`/`155`). `notes.normalize_spaces` — общая
+    # функция с задачей 4 Ф3 (дословная проверка цитат), см. её докстринг:
+    # два потребителя одного правила обязаны ходить одной функцией.
     canon_answers = {
-        nr: (answer or "")
+        nr: notes.normalize_spaces(answer or "")
         for nr, answer in conn.execute("SELECT nr, answer_text FROM faq WHERE engine = 'bitrix'")
     }
 
@@ -58,7 +67,7 @@ def find_duplicates(conn: sqlite3.Connection) -> list[dict]:
                 "reason": "вопрос совпал",
             })
             continue
-        body = (answer or "").strip()
+        body = notes.normalize_spaces(answer or "")
         if len(body) < MIN_CONTAINMENT_CHARS:
             continue
         for canon_nr, canon_body in sorted(canon_answers.items()):
