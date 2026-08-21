@@ -147,30 +147,54 @@ def local_name(url: str) -> str:
     return "%s/%s" % (host, attachments.asset_name(url))
 
 
-# Статусы манифеста, которые повторный прогон `download` ПЕРЕзапрашивает, и
-# те, которые для него терминальны (дефект C1 итогового ревью Ф2, Ruling 33).
+# Статусы манифеста и то, что с ними делает повторный прогон (дефект C1
+# итогового ревью Ф2, Ruling 33 + уточнение лида).
 #
-# `failed` — «сеть не отдала ни одного тела»: это утверждение о ПРОГОНЕ, а не
-# об архиве, и повторять его правильно. Ровно так уже устроен добор страниц
-# сайта (`fetch_site.fetch_all` фильтрует `status not in ("ok", "empty")`) —
-# два модуля решали одну задачу противоположно, и ни один отчёт этого не
-# отмечал. До правки `failed` был терминальным, то есть 10 адресов боевого
+# ПО УМОЛЧАНИЮ перезапрашивается ровно один статус — `failed`. Это
+# утверждение о ПРОГОНЕ («сеть не отдала ни одного тела»), а не об архиве, и
+# повторять его правильно. Ровно так уже устроен добор страниц сайта
+# (`fetch_site.TERMINAL_STATUSES`) — до правки два модуля решали одну задачу
+# противоположно, и ни один отчёт этого не отмечал: 10 адресов боевого
 # манифеста не пробовали больше НИКОГДА, а повторный прогон возвращал
 # `{'ok': 0, ...}` и выглядел как успех.
 #
-# `no_snapshot` (5007 адресов) и `empty` (99) остаются терминальными
-# СОЗНАТЕЛЬНО: первое — честный ответ CDX «снимков нет», второе — тело
-# скачалось, но содержимым не является. Оба перестают быть верными только со
-# временем (архив набирает новые снимки), а не при повторе того же прогона
-# через час, и оба стоят по одному-двум CDX-запросам на адрес: 5106
-# бессмысленных запросов на каждый прогон — это ровно то, за что банят.
-# Пере-запрос этих двух — отдельная осознанная операция «а не появилось ли в
-# архиве нового», её вводить вместе с явным флагом, а не по умолчанию.
+# `no_snapshot` (5007 адресов) и `empty` (99) ТЕРМИНАЛЬНЫ и по умолчанию не
+# перезапрашиваются никогда. Обратная неприятность не менее реальна, чем
+# исходная: молча переспрашивать `no_snapshot` на каждом прогоне — это 5007
+# обращений к индексу впустую за прогон, ровно то, за что банят. Оба статуса
+# перестают быть верными только СО ВРЕМЕНЕМ (архив набирает новые снимки), а
+# не при повторе того же прогона через час, поэтому проверка «а не появилось
+# ли в архиве нового» — отдельная осознанная операция под явным флагом
+# (`--retry no_snapshot,empty` в `run.py`), а не смена умолчания.
+#
+# `ok` не перезапрашивается ни при каком флаге: файл уже лежит на диске, а
+# манифест — истина про добор (см. `assets_state`).
 RETRY_ON_DOWNLOAD = ("pending", "failed")
 TERMINAL_STATUSES = ("ok", "no_snapshot", "empty")
+# Что вообще разрешено передать флагом и на какой шаг это влияет:
+# `no_snapshot` — на индексацию (спросить CDX заново), `empty` — на
+# скачивание (тело было, но содержимым не признано; вдруг архив отдаёт
+# другой снимок). Значение вне этого набора — ошибка вызова, не молчаливое
+# игнорирование.
+RETRIABLE_BY_FLAG = ("no_snapshot", "empty")
 
 
-def _targets(conn, manifest: Path, want: str, limit: int | None):
+def _retry_targets(retry) -> tuple[set[str], set[str]]:
+    """`retry` (набор статусов из флага) -> какие статусы добавить к целям
+    шага `index` и шага `download`. Неизвестный статус — `ValueError`.
+    """
+    retry = set(retry or ())
+    unknown = sorted(retry - set(RETRIABLE_BY_FLAG))
+    if unknown:
+        raise ValueError(
+            "нельзя перезапросить статус(ы) %s: флагом разрешены только %s "
+            "(`ok` не перезапрашивается никогда — файл уже на диске, "
+            "`pending`/`failed` и так входят в цели по умолчанию)"
+            % (", ".join(unknown), ", ".join(RETRIABLE_BY_FLAG)))
+    return ({"no_snapshot"} & retry), ({"empty"} & retry)
+
+
+def _targets(conn, manifest: Path, want: str, limit: int | None, retry=()):
     """URL-адреса и их kind, ожидающие данного шага (index/download).
 
     Состояние — то, что знает манифест (`assets_state.load`), а НЕ колонка
@@ -182,7 +206,12 @@ def _targets(conn, manifest: Path, want: str, limit: int | None):
     (`state is None`): один раз спросили CDX, получили ответ, записали. Цель
     шага `download` — `RETRY_ON_DOWNLOAD` (`pending` + `failed`), терминальны
     `TERMINAL_STATUSES`; какие именно и почему — в комментарии выше.
+
+    `retry` — статусы, которые вызывающий ЯВНО попросил перезапросить
+    (`RETRIABLE_BY_FLAG`); без него терминальные статусы не попадают в цели
+    ни на одном шаге.
     """
+    retry_index, retry_download = _retry_targets(retry)
     known = assets_state.load(manifest)
     sql = ("SELECT DISTINCT url, kind FROM attachments WHERE kind IN (%s) AND status <> 'skip'"
            % ",".join("?" * len(CONTENT_KINDS)))
@@ -190,14 +219,14 @@ def _targets(conn, manifest: Path, want: str, limit: int | None):
     out = []
     for url, kind in rows:
         state = known.get(url, {}).get("status")
-        if want == "index" and state is None:
+        if want == "index" and (state is None or state in retry_index):
             out.append((url, kind))
-        elif want == "download" and state in RETRY_ON_DOWNLOAD:
+        elif want == "download" and (state in RETRY_ON_DOWNLOAD or state in retry_download):
             out.append((url, kind))
     return out[:limit] if limit else out
 
 
-def index_pending(conn, manifest: Path, limit: int | None = None) -> dict[str, int]:
+def index_pending(conn, manifest: Path, limit: int | None = None, retry=()) -> dict[str, int]:
     """Шаг 1: у скольких URL в CDX вообще есть снимок. Тела не тянет.
 
     Использует `fetcher.cdx_find_snapshot` (`matchType=prefix` по самому
@@ -222,7 +251,7 @@ def index_pending(conn, manifest: Path, limit: int | None = None) -> dict[str, i
     """
     stats = {"pending": 0, "no_snapshot": 0}
     pacer = fetcher.TokenBucketPacer()
-    targets = _targets(conn, manifest, "index", limit)
+    targets = _targets(conn, manifest, "index", limit, retry=retry)
     total = len(targets)
     for i, (url, _kind) in enumerate(targets, 1):
         found = fetcher.cdx_find_snapshot(url)
@@ -261,7 +290,8 @@ def _try_candidates(candidates, probe):
     return None, saw_content
 
 
-def download(conn, manifest: Path, assets_root: Path, limit: int | None = None) -> dict[str, int]:
+def download(conn, manifest: Path, assets_root: Path, limit: int | None = None,
+              retry=()) -> dict[str, int]:
     """Шаг 2: качает тело только тем URL, у которых индексация нашла снимок.
 
     Сперва пробует метку снимка, СОХРАНЁННУЮ индексацией (`note` в манифесте)
@@ -276,13 +306,15 @@ def download(conn, manifest: Path, assets_root: Path, limit: int | None = None) 
     и обоснование). Отсюда прямое следствие, которое НЕЛЬЗЯ читать как факт
     об архиве: «повторный прогон нашёл ноль» на манифесте, где всё уже
     размечено, означает только «целей не осталось», а не «в Wayback этого
-    нет». Проверять, не появилось ли в архиве новых снимков для 5106
-    терминальных адресов, придётся отдельной осознанной операцией.
+    нет». Проверить, не появилось ли в архиве нового, можно явным флагом
+    (`--retry empty` / `--retry no_snapshot` — тот самый «осознанный
+    прогон», см. `RETRIABLE_BY_FLAG`), и это стоит 5106 обращений к архиву,
+    поэтому не делается само.
     """
     stats = {"ok": 0, "empty": 0, "failed": 0}
     pacer = fetcher.TokenBucketPacer()
     known = assets_state.load(manifest)
-    targets = _targets(conn, manifest, "download", limit)
+    targets = _targets(conn, manifest, "download", limit, retry=retry)
     total = len(targets)
     for i, (url, kind) in enumerate(targets, 1):
         probe = _content_probe(kind)

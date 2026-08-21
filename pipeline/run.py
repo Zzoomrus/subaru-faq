@@ -26,6 +26,9 @@
                        mirror — заметки в `<--wiki>/<--mirror-dir>/Блоги/`
     assets index    добор Ф2: индексация CDX (тела не тянет, ~40 мин на 6008 URL)
     assets download добор Ф2: скачивание тел там, где индексация нашла снимок
+                    (`--retry no_snapshot,empty` — перезапросить терминальные
+                    статусы, см. `fetch_assets.RETRIABLE_BY_FLAG`; по умолчанию
+                    перезапрашивается только `failed`)
     site build <faq|blogs>  добор Ф2 задача 5: план скачивания раздела по CDX,
                             сохраняется на диск (`--site-root`), CDX спрашивается
                             один раз за весь прогон (см. `fetch_site.py`)
@@ -155,6 +158,17 @@ def _parser() -> argparse.ArgumentParser:
                    help="манифест добора сайта (по умолчанию %s)" % DEFAULT_SITE_MANIFEST)
     p.add_argument("--limit", type=int, default=None,
                    help="ограничить число URL за прогон (для проб/тестов)")
+    # Терминальные статусы добора (`no_snapshot` 5007, `empty` 99) по
+    # умолчанию не перезапрашиваются никогда — это 5106 обращений к архиву за
+    # прогон впустую (Ruling 33 + уточнение лида). Флаг — «осознанная
+    # операция»: посмотреть, не появилось ли в Wayback новых снимков спустя
+    # время. `failed` в флаге не нужен: он перезапрашивается по умолчанию.
+    p.add_argument("--retry", default="",
+                   help="перезапросить терминальные статусы добора: "
+                        "no_snapshot (заново спросить CDX на шаге index), "
+                        "empty (заново скачать на шаге download) или оба через "
+                        "запятую. По умолчанию не перезапрашивается ни один: "
+                        "это часы работы и тысячи запросов к архиву")
     return p
 
 
@@ -186,12 +200,22 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         conn = db.connect(args.db)
         db.init_schema(conn)
-        if args.sub_action == "index":
-            stats = fetch_assets.index_pending(conn, args.assets_manifest, limit=args.limit)
-            print("индексация:", stats)
-        else:
-            stats = fetch_assets.download(conn, args.assets_manifest, args.assets_root, limit=args.limit)
-            print("скачивание:", stats)
+        retry = tuple(x.strip() for x in args.retry.split(",") if x.strip())
+        try:
+            if args.sub_action == "index":
+                stats = fetch_assets.index_pending(conn, args.assets_manifest,
+                                                    limit=args.limit, retry=retry)
+                print("индексация:", stats)
+            else:
+                stats = fetch_assets.download(conn, args.assets_manifest, args.assets_root,
+                                               limit=args.limit, retry=retry)
+                print("скачивание:", stats)
+        except ValueError as e:
+            # Неизвестный статус в `--retry` — ошибка вызова, а не повод
+            # молча ничего не перезапросить (иначе опечатка выглядит как
+            # «нового в архиве не появилось»).
+            print("ОШИБКА:", e)
+            return 2
         # Один раз по завершении всего прогона, не в цикле по URL — см.
         # докстринг модуля про предупреждения "once per process".
         sync_stats = assets_state.sync_to_db(conn, args.assets_manifest, args.assets_root)

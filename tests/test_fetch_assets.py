@@ -341,3 +341,47 @@ def test_the_two_downloaders_agree_on_which_statuses_are_terminal():
     assert "failed" in fetch_assets.RETRY_ON_DOWNLOAD
     assert fetch_assets.TERMINAL_STATUSES == ("ok", "no_snapshot", "empty")
     assert fetch_site.TERMINAL_STATUSES == ("ok", "empty")
+
+
+def test_terminal_statuses_are_retried_only_with_an_explicit_flag(tmp_path, monkeypatch):
+    # Уточнение лида к Ruling 33: перезапрос терминальных статусов — только по
+    # явному флагу, а не сменой умолчания. Обратная неприятность не менее
+    # реальна, чем исходная: молча переспрашивать `no_snapshot` каждый прогон
+    # — это 5007 обращений к архиву впустую.
+    conn = _seeded(tmp_path, "http://h/no.jpg", "http://h/empty.jpg")
+    m = tmp_path / "m.jsonl"
+    assets_state.record(m, "http://h/no.jpg", None, "no_snapshot")
+    assets_state.record(m, "http://h/empty.jpg", None, "empty")
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_find_snapshot",
+                         lambda url, **kw: ("20200101000000", url))
+    monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots", lambda url, **kw: [("20150101", url)])
+    monkeypatch.setattr(fetch_assets.fetcher, "fetch_snapshot", lambda ts, url, **kw: PNG_SIG)
+
+    # без флага — целей нет ни на одном шаге
+    assert fetch_assets.index_pending(conn, m) == {"pending": 0, "no_snapshot": 0}
+    assert fetch_assets.download(conn, m, tmp_path / "assets") == {"ok": 0, "empty": 0, "failed": 0}
+
+    # `no_snapshot` перезапрашивается на шаге index, `empty` — на download,
+    # и каждый только своим флагом, а не «за компанию».
+    assert fetch_assets.index_pending(conn, m, retry=("no_snapshot",)) == {"pending": 1, "no_snapshot": 0}
+    assert fetch_assets.download(conn, m, tmp_path / "assets", retry=("empty",))["ok"] == 2
+
+
+def test_retry_flag_rejects_an_unknown_status(tmp_path):
+    # Опечатка в флаге не должна выглядеть как «нового в архиве не появилось».
+    conn = _seeded(tmp_path, "http://h/x.jpg")
+    m = tmp_path / "m.jsonl"
+    import pytest
+    with pytest.raises(ValueError, match="нельзя перезапросить статус"):
+        fetch_assets.download(conn, m, tmp_path / "assets", retry=("ok",))
+    with pytest.raises(ValueError, match="нельзя перезапросить статус"):
+        fetch_assets.index_pending(conn, m, retry=("нет-такого",))
+
+
+def test_cli_reports_a_bad_retry_flag_with_exit_code(tmp_path, capsys):
+    from pipeline import run
+    rc = run.main(["assets", "download", "--db", str(tmp_path / "f.sqlite"),
+                    "--assets-manifest", str(tmp_path / "m.jsonl"),
+                    "--assets-root", str(tmp_path / "a"), "--retry", "ok"])
+    assert rc == 2
+    assert "нельзя перезапросить статус" in capsys.readouterr().out
