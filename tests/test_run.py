@@ -438,7 +438,13 @@ def test_assets_download_uses_assets_root_and_manifest(tmp_path, monkeypatch):
     rc = run.main(["assets", "download", "--db", str(db_path), "--assets-manifest", str(manifest),
                    "--assets-root", str(assets_root)])
     assert rc == 0
-    assert list(assets_root.rglob("*.jpg"))  # файл лёг именно в переданный --assets-root (имя — по URL)
+    # Файл лёг именно в переданный --assets-root, а расширение — ПО БАЙТАМ
+    # (Ruling 38): тело здесь PNG, хотя адрес обещает .jpg, и на диске
+    # оказывается .png. Раньше расширение брали из адреса, и вложения
+    # `show_file.php?fid=N` получали имя `<hash>.php` — механически целое,
+    # но Obsidian такую вставку картинкой не показывает.
+    assert list(assets_root.rglob("*.png"))
+    assert not list(assets_root.rglob("*.jpg"))
 
     row = sqlite3.connect(db_path).execute(
         "SELECT status FROM attachments WHERE url='http://h/x.jpg'").fetchone()

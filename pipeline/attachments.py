@@ -112,8 +112,76 @@ def canonical_key(url: str) -> str:
     return key
 
 
-def asset_name(url: str) -> str:
+# Байтовые сигнатуры (magic bytes) форматов, которые реально встречаются в
+# контенте форума: картинки фотохостингов и документы, приклеенные к постам.
+# ОДНА таблица на весь проект — до неё знание о сигнатурах жило в двух местах
+# и уже разошлось (мёртвая константа `_IMAGE_SIGS` в `fetch_assets` не знала
+# про WEBP, а живой код знал — M5 итогового ревью Ф2).
+#
+# Третий элемент — расширение, которое ОДНОЗНАЧНО следует из сигнатуры.
+# `None` там, где сигнатура определяет контейнер, а не тип: `PK\x03\x04` это
+# и .zip, и .docx/.xlsx/.pptx, а OLE2 — и .doc, и .xls, и .ppt. Угадывать
+# в таких случаях нельзя: молча назвать неизвестное `.docx` хуже, чем
+# оставить расширение из адреса.
+_SIGNATURES = (
+    (lambda d: d[:3] == b"\xff\xd8\xff", "image", ".jpg"),
+    (lambda d: d[:8] == b"\x89PNG\r\n\x1a\n", "image", ".png"),
+    (lambda d: d[:6] in (b"GIF87a", b"GIF89a"), "image", ".gif"),
+    (lambda d: d[:2] == b"BM", "image", ".bmp"),
+    (lambda d: d[:4] == b"RIFF" and d[8:12] == b"WEBP", "image", ".webp"),
+    (lambda d: d[:4] == b"%PDF", "document", ".pdf"),
+    (lambda d: d[:4] == b"PK\x03\x04", "document", None),
+    (lambda d: d[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", "document", None),
+    (lambda d: d[:6] == b"Rar!\x1a\x07", "document", ".rar"),
+    (lambda d: d[:6] == b"7z\xbc\xaf\x27\x1c", "document", ".7z"),
+    (lambda d: d[:2] == b"\x1f\x8b", "document", ".gz"),
+)
+
+
+def sniff(data: bytes) -> tuple[str, str | None] | None:
+    """`("image"|"document", расширение или None)` по началу данных.
+
+    `None` — ни одна известная сигнатура не совпала.
+    """
+    data = data or b""
+    for matches, kind, ext in _SIGNATURES:
+        if matches(data):
+            return kind, ext
+    return None
+
+
+def sniff_extension(data: bytes) -> str | None:
+    """Расширение, ОДНОЗНАЧНО следующее из байтов, или `None`."""
+    found = sniff(data)
+    return found[1] if found else None
+
+
+def is_image(data: bytes) -> bool:
+    """Валидная сигнатура известного графического формата."""
+    found = sniff(data)
+    return bool(found) and found[0] == "image"
+
+
+def is_document(data: bytes) -> bool:
+    """Валидная сигнатура распространённого офисного/архивного формата:
+    PDF, OLE2 (.doc/.xls), OpenXML и обычный zip, RAR, 7z, gzip.
+    """
+    found = sniff(data)
+    return bool(found) and found[0] == "document"
+
+
+def asset_name(url: str, data: bytes | None = None) -> str:
     """Имя файла вложения в зеркале: `<sha1(canonical_key)[:16]><ext>`.
+
+    `data` (начало файла, если он на руках) — источник РАСШИРЕНИЯ, и он
+    главнее адреса (Ruling 38). Причина: 348 вложений форума раздаются
+    адресами `show_file.php?fid=N` и `index.php?t=getfile&id=N`, где
+    расширения нет вовсе или оно врёт про тип. Имя `<hash>.php` для JPEG
+    механически целое — `check_mirror` видит файл, вставка не битая, — но
+    Obsidian такую вставку картинкой НЕ покажет: 50 настоящих фотографий
+    просто не существуют для читателя, а вики делается для чтения.
+    Байты не опознались (или сигнатура определяет только контейнер) ->
+    расширение берётся из пути, как раньше.
 
     ОДНА функция на все три раздела зеркала (форум, FAQ, блоги) — до этой
     правки их было две с одинаковым видом имени, но считавшихся от ПОЛНОГО
@@ -124,14 +192,15 @@ def asset_name(url: str) -> str:
     двух каталогах под двумя именами, а при доборе недостающих 248 картинок
     через `fetch_assets` тот же файл получил бы третье имя.
 
-    Расширение берётся из пути (не из запроса) и только если похоже на
-    расширение; иначе `.bin` — у раздачи вложений (`show_file.php?fid=N`)
-    расширения в адресе нет вовсе, тип известен только по байтам файла.
+    Расширение из пути берётся не из запроса и только если похоже на
+    расширение; иначе `.bin`.
     """
-    parts = urllib.parse.urlsplit(url or "")
-    ext = Path(urllib.parse.unquote(parts.path or "")).suffix.lower()
-    if not re.fullmatch(r"\.[a-z0-9]{1,5}", ext or ""):
-        ext = ".bin"
+    ext = sniff_extension(data) if data else None
+    if not ext:
+        parts = urllib.parse.urlsplit(url or "")
+        ext = Path(urllib.parse.unquote(parts.path or "")).suffix.lower()
+        if not re.fullmatch(r"\.[a-z0-9]{1,5}", ext or ""):
+            ext = ".bin"
     return hashlib.sha1(canonical_key(url).encode("utf-8")).hexdigest()[:16] + ext
 
 

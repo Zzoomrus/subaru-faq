@@ -109,3 +109,56 @@ def test_prune_does_nothing_when_no_notes_were_written(tmp_path):
     assert (dest / "0123456789abcdef.jpg").exists()
     assert mirror.prune_assets(dest, set(), 1) == 1
     assert not (dest / "0123456789abcdef.jpg").exists()
+
+
+def test_extension_follows_the_bytes_not_the_url(tmp_path):
+    """Ruling 38: `<hash>.php` для JPEG механически цело — файл есть, вставка
+    не битая, `check` молчит, — но Obsidian такую вставку картинкой не
+    покажет, то есть 50 настоящих фотографий не существуют для читателя.
+    Тип определяется по магическим байтам при копировании.
+    """
+    jpeg = b"\xff\xd8\xff" + b"\x00" * 40
+    url = "http://subaru-faq.ru/bitrix/components/bitrix/forum.interface/show_file.php?fid=6252"
+    assert attachments.asset_name(url).endswith(".php")            # без байтов — как раньше
+    assert attachments.asset_name(url, jpeg).endswith(".jpg")      # с байтами — по типу
+    # Хэш (то есть тождество файла) от расширения не зависит: меняется только
+    # хвост имени, адрес остаётся тем же ключом.
+    assert attachments.asset_name(url).split(".")[0] == attachments.asset_name(url, jpeg).split(".")[0]
+
+    dest = tmp_path / "assets"
+    dest.mkdir()
+    src = tmp_path / "raw"
+    src.write_bytes(jpeg)
+    assert mirror.copy_asset(url, src, dest).endswith(".jpg")
+
+
+def test_unrecognized_bytes_keep_the_extension_from_the_path():
+    # Условие лида: не опознались байты — оставляем расширение из адреса.
+    # Молча назвать неизвестное `.jpg` хуже, чем оставить как есть.
+    garbage = b"\x00\x01\x02\x03" + "это не формат".encode() * 4
+    assert attachments.sniff_extension(garbage) is None
+    assert attachments.asset_name("http://h/a.jpg", garbage).endswith(".jpg")
+    assert attachments.asset_name("http://h/getfile?id=7", garbage).endswith(".bin")
+
+
+def test_ambiguous_container_signatures_do_not_guess():
+    # `PK\x03\x04` — это и .zip, и .docx/.xlsx/.pptx; OLE2 — и .doc, и .xls.
+    # Такие сигнатуры опознаются как ДОКУМЕНТ (для проверки содержимого при
+    # доборе), но расширения не дают: угадывание тут хуже адреса.
+    zip_head = b"PK\x03\x04" + b"\x00" * 20
+    ole2 = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 20
+    for data in (zip_head, ole2):
+        assert attachments.is_document(data)
+        assert attachments.sniff_extension(data) is None
+        assert attachments.asset_name("http://h/f.doc", data).endswith(".doc")
+
+
+def test_signature_knowledge_lives_in_one_place():
+    # M5: раньше знание о сигнатурах было в двух местах и разошлось (мёртвая
+    # константа не знала про WEBP, живой код знал). Пробы добора обязаны быть
+    # тем же кодом, а не копией.
+    assert fetch_assets._looks_like_image is attachments.is_image
+    assert fetch_assets._looks_like_document is attachments.is_document
+    webp = b"RIFF" + b"\x00" * 4 + b"WEBP" + b"\x00" * 20
+    assert fetch_assets._looks_like_image(webp)
+    assert attachments.sniff_extension(webp) == ".webp"

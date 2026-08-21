@@ -82,39 +82,13 @@ _PROGRESS_EVERY = 50
 # форума без сырого файла. `chrome` сюда не входит — качать нечего.
 CONTENT_KINDS = (attachments.KIND_EXTERNAL, attachments.KIND_LOCAL)
 
-def _looks_like_image(data: bytes) -> bool:
-    """Валидная сигнатура известного графического формата в начале данных."""
-    if data[:3] == b"\xff\xd8\xff" or data[:8] == b"\x89PNG\r\n\x1a\n":
-        return True
-    if data[:6] in (b"GIF87a", b"GIF89a"):
-        return True
-    if data[:2] == b"BM":
-        return True
-    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        return True
-    return False
-
-
-def _looks_like_document(data: bytes) -> bool:
-    """Валидная сигнатура распространённого офисного/архивного формата.
-
-    Покрывает то, что реально приклеивают к форумным постам: PDF, старые
-    Office-документы (OLE2: .doc/.xls), новые Office/OpenXML и обычный zip
-    (общий ZIP-заголовок PK\\x03\\x04), RAR, 7z, gzip.
-    """
-    if data[:4] == b"%PDF":
-        return True
-    if data[:4] == b"PK\x03\x04":
-        return True
-    if data[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
-        return True
-    if data[:6] in (b"Rar!\x1a\x07",):
-        return True
-    if data[:6] == b"7z\xbc\xaf\x27\x1c":
-        return True
-    if data[:2] == b"\x1f\x8b":
-        return True
-    return False
+# Сигнатуры форматов живут в ОДНОМ месте — `attachments._SIGNATURES` (там же
+# и расширение, однозначно следующее из сигнатуры, Ruling 38). Здесь только
+# тонкие псевдонимы: раньше знание о сигнатурах было продублировано, и копии
+# уже разошлись — мёртвая константа `_IMAGE_SIGS` не знала про WEBP, а живая
+# проверка знала (M5 итогового ревью Ф2).
+_looks_like_image = attachments.is_image
+_looks_like_document = attachments.is_document
 
 
 def _content_probe(kind: str):
@@ -124,7 +98,7 @@ def _content_probe(kind: str):
     return _looks_like_image
 
 
-def local_name(url: str) -> str:
+def local_name(url: str, data: bytes | None = None) -> str:
     """Путь внутри assets/: каталог по хосту + `attachments.asset_name`.
 
     Имя файла считает ОДНА общая функция на весь проект (`attachments.
@@ -138,13 +112,18 @@ def local_name(url: str) -> str:
     неудобно смотреть глазами, а хост сразу говорит, откуда файл. В зеркало
     копируется только имя (`assets/<имя>`), см. `mirror._copy_forum_asset`.
 
+    `data` (скачанное тело) — источник расширения, и он главнее адреса
+    (Ruling 38): у `show_file.php?fid=N` расширения в адресе нет вовсе, а у
+    части адресов оно врёт про тип. Правило одно на весь проект, поэтому
+    будущий добор кладёт файл с тем же расширением, какое даст зеркало.
+
     Уже скачанные файлы НЕ переименовываются: истина про добор — манифест
     (`assets_state`), в нём лежат старые пути, и они продолжают работать.
     Новая формула действует на то, что скачивается впредь.
     """
     parts = urllib.parse.urlsplit(url)
     host = re.sub(r"[^a-z0-9.-]", "_", parts.netloc.lower()) or "nohost"
-    return "%s/%s" % (host, attachments.asset_name(url))
+    return "%s/%s" % (host, attachments.asset_name(url, data))
 
 
 # Статусы манифеста и то, что с ними делает повторный прогон (дефект C1
@@ -347,7 +326,7 @@ def download(conn, manifest: Path, assets_root: Path, limit: int | None = None,
             # роняла бы темп скачивания до потолка паузы.
             pacer.note(reason != "failed")
         else:
-            rel = local_name(url)
+            rel = local_name(url, data)
             dst = Path(assets_root) / rel
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_bytes(data)

@@ -30,8 +30,8 @@ aliases: ["Открытие нового дилерского центра ма�
 
 тел. (495) 783-82-82
 
-![[assets/4690a8eb3f8615fc.jpeg]]
+![[assets/4690a8eb3f8615fc.jpg]]
 
-![[assets/706c98544c3afc60.jpeg]]
+![[assets/706c98544c3afc60.jpg]]
 
-![[assets/b8631309b1dfce6b.jpeg]]
+![[assets/b8631309b1dfce6b.jpg]]

@@ -140,9 +140,13 @@ def copy_asset(url: str, src: Path, dest_dir: Path) -> str:
     обязаны быть громкими: молча подставленная чужая картинка в заметке не
     ловится ни проверкой целостности, ни диффом.
     """
-    name = attachments.asset_name(url)
-    dst = Path(dest_dir) / name
     data = Path(src).read_bytes()
+    # Расширение — по БАЙТАМ файла, а не по адресу (Ruling 38): имя
+    # `<hash>.php` для JPEG механически целое (файл есть, вставка не битая),
+    # но Obsidian такую вставку картинкой не покажет — то есть фотография не
+    # существует для читателя, а вики делается для чтения.
+    name = attachments.asset_name(url, data)
+    dst = Path(dest_dir) / name
     if dst.exists():
         if dst.read_bytes() != data:
             raise RuntimeError(

@@ -24,7 +24,7 @@ aliases: ["Фоты гор Казахстана"]
 
 ![[assets/42cb6186ccf6d386.jpg]]
 
-![[assets/160edf9e6f3a1e8f.bin]]
+![[assets/160edf9e6f3a1e8f.jpg]]
 
 ## Комментарии
 

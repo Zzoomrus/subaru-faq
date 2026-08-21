@@ -22,9 +22,9 @@ aliases: ["Овосч валит"]
 
 (изображение не сохранилось: http://subaru-faq.ru/upload/blog/545/945968.jpg)
 
-![[assets/e9f21e6fc7c0ab72.jpeg]]
+![[assets/e9f21e6fc7c0ab72.jpg]]
 
-![[assets/dc4aa3bedd849cc9.jpeg]]
+![[assets/dc4aa3bedd849cc9.jpg]]
 
 ![[assets/d80435bb9bd35eb7.jpg]]
 
