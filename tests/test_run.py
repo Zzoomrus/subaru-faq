@@ -431,8 +431,12 @@ def test_assets_download_uses_assets_root_and_manifest(tmp_path, monkeypatch):
     manifest = tmp_path / "assets-manifest.jsonl"
     assets_state.record(manifest, "http://h/x.jpg", None, "pending", note="20150101")
     monkeypatch.setattr(fetch_assets.fetcher, "cdx_snapshots", lambda url, **kw: [("20150101", url)])
-    monkeypatch.setattr(fetch_assets.fetcher, "fetch_snapshot",
-                         lambda ts, url, **kw: b"\x89PNG\r\n\x1a\n" + b"\x00" * 40)
+    # Валидная сигнатура И правдоподобный размер (600x400): после просева
+    # заглушек (Ruling 45) картинка 0x0 признаётся пустышкой, и правильно —
+    # «сигнатура валидна» больше не значит «в файле картинка».
+    png = (b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR"
+           + (600).to_bytes(4, "big") + (400).to_bytes(4, "big") + b"\x00" * 30)
+    monkeypatch.setattr(fetch_assets.fetcher, "fetch_snapshot", lambda ts, url, **kw: png)
 
     assets_root = tmp_path / "assets"
     rc = run.main(["assets", "download", "--db", str(db_path), "--assets-manifest", str(manifest),

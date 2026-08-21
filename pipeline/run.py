@@ -25,6 +25,11 @@
                        таблицы `blog_posts`/`blog_images`/`blog_comments`,
                        mirror — заметки в `<--wiki>/<--mirror-dir>/Блоги/`
     assets index    добор Ф2: индексация CDX (тела не тянет, ~40 мин на 6008 URL)
+    assets sieve    просев уже скачанного: заглушки хостингов (1x1 пиксель и
+                    прочее, что валидно как картинка, но картинкой поста быть
+                    не может). Только диск, сети не трогает. Без `--apply` —
+                    отчёт; с `--apply` — пометка `empty` в манифесте плюс
+                    синхронизация с базой, после чего нужен `run mirror`
     assets download добор Ф2: скачивание тел там, где индексация нашла снимок
                     (`--retry no_snapshot,empty` — перезапросить терминальные
                     статусы, см. `fetch_assets.RETRIABLE_BY_FLAG`; по умолчанию
@@ -98,8 +103,8 @@ import logging
 import sys
 from pathlib import Path
 
-from pipeline import (archive_assets, assets_state, check_mirror, coverage, db, fetch_assets, fetch_site,
-                      ingest, mirror, mirror_blog, mirror_faq, parse_blog, parse_faq)
+from pipeline import (archive_assets, assets_state, attachments, check_mirror, coverage, db, fetch_assets,
+                      fetch_site, ingest, mirror, mirror_blog, mirror_faq, parse_blog, parse_faq)
 
 DEFAULT_PAGES = Path("data/raw/archive/pages")
 DEFAULT_MANIFEST = Path("data/raw/archive/manifest.jsonl")
@@ -126,9 +131,11 @@ def _parser() -> argparse.ArgumentParser:
         description="Конвейер subaru-faq: сырой HTML архива -> SQLite -> зеркало Obsidian.")
     p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all", "assets", "site",
                                         "faq", "blog"])
-    p.add_argument("sub_action", nargs="?", choices=["index", "download", "build", "fetch", "load", "mirror"],
+    p.add_argument("sub_action", nargs="?",
+                   choices=["index", "download", "sieve", "build", "fetch", "load", "mirror"],
                    default=None,
-                   help="для command=assets: index — индексация CDX, download — скачивание; "
+                   help="для command=assets: index — индексация CDX, download — скачивание, "
+                        "sieve — просев уже скачанного на заглушки хостингов (сеть не нужна); "
                         "для command=site: build — план по CDX, fetch — скачивание по плану; "
                         "для command=faq/blog: load — только разбор в SQLite, mirror (см. --mirror-dir) — "
                         "только генерация заметок, без действия — оба")
@@ -176,6 +183,9 @@ def _parser() -> argparse.ArgumentParser:
     # прогон впустую (Ruling 33 + уточнение лида). Флаг — «осознанная
     # операция»: посмотреть, не появилось ли в Wayback новых снимков спустя
     # время. `failed` в флаге не нужен: он перезапрашивается по умолчанию.
+    p.add_argument("--apply", action="store_true",
+                   help="для assets sieve: не только показать, но и пометить найденные "
+                        "заглушки `empty` в манифесте (по умолчанию — только отчёт)")
     p.add_argument("--retry", default="",
                    help="перезапросить терминальные статусы добора: "
                         "no_snapshot (заново спросить CDX на шаге index), "
@@ -208,11 +218,38 @@ def main(argv: list[str] | None = None) -> int:
     cmd = args.command
 
     if cmd == "assets":
-        if args.sub_action not in ("index", "download"):
-            print("укажи действие: assets index | assets download")
+        if args.sub_action not in ("index", "download", "sieve"):
+            print("укажи действие: assets index | assets download | assets sieve")
             return 2
         conn = db.connect(args.db)
         db.init_schema(conn)
+        if args.sub_action == "sieve":
+            # Просев (Ruling 45): по байтам на диске, без сети. Печатает и
+            # ОДНОЗНАЧНЫЕ заглушки (сторона <= 2 px), и группы байт-идентичных
+            # файлов у трёх и более адресов — вторые НЕ метятся сами никогда,
+            # по ним решает человек, глядя на картинку.
+            report = fetch_assets.sieve_report(conn, args.assets_manifest, args.assets_root)
+            print("заглушки (сторона <= %d px): %d"
+                  % (attachments.PLACEHOLDER_MAX_SIDE, len(report["placeholders"])))
+            for item in report["placeholders"][:20]:
+                print("  %s  %d байт %s" % (item["url"], item["bytes"], item["size"]))
+            if len(report["placeholders"]) > 20:
+                print("  … ещё %d" % (len(report["placeholders"]) - 20))
+            print("группы байт-идентичных файлов у >= 3 адресов: %d "
+                  "(САМИ НЕ МЕТЯТСЯ — решение человека)" % len(report["identical_groups"]))
+            for g in report["identical_groups"]:
+                print("  %d байт, %s, адресов %d, образец %s"
+                      % (g["bytes"], g["size"], g["urls"], g["sample"]))
+            if not args.apply:
+                print("это только отчёт; чтобы пометить заглушки `empty` в манифесте — "
+                      "повтори с --apply, затем перегенерируй зеркало (`run mirror`)")
+                return 0
+            n = fetch_assets.mark_empty(args.assets_manifest,
+                                        [i["url"] for i in report["placeholders"]])
+            print("помечено `empty` в манифесте:", n)
+            print("синхронизация с базой:",
+                  assets_state.sync_to_db(conn, args.assets_manifest, args.assets_root))
+            return 0
         retry = tuple(x.strip() for x in args.retry.split(",") if x.strip())
         try:
             if args.sub_action == "index":

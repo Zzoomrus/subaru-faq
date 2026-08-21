@@ -63,6 +63,7 @@ zip, старый OLE2 — doc/xls, RAR, 7z, gzip). Если сигнатура 
 то есть в спорном случае лучше явная пометка потери, чем непроверенный блоб
 на диске.
 """
+import hashlib
 import logging
 import re
 import urllib.parse
@@ -91,11 +92,22 @@ _looks_like_image = attachments.is_image
 _looks_like_document = attachments.is_document
 
 
+def _is_real_image(data: bytes) -> bool:
+    """Картинка, которая может быть содержимым поста.
+
+    Валидной сигнатуры НЕДОСТАТОЧНО (находка Б1 ре-ревью): 43-байтный 1x1 GIF
+    — валидный GIF, и фотохостинги отдают именно его вместо удалённого файла.
+    57 таких файлов уже лежат в вики и посчитаны внутри цифры «1484 картинки
+    возвращены». Без этой проверки добор Ф3 принёс бы тот же класс снова.
+    """
+    return _looks_like_image(data) and not attachments.looks_like_placeholder(data)
+
+
 def _content_probe(kind: str):
     """Признак содержимого для `looks_empty_binary`, свой для каждого kind."""
     if kind == attachments.KIND_LOCAL:
-        return lambda data: _looks_like_image(data) or _looks_like_document(data)
-    return _looks_like_image
+        return lambda data: _is_real_image(data) or _looks_like_document(data)
+    return _is_real_image
 
 
 def local_name(url: str, data: bytes | None = None) -> str:
@@ -361,3 +373,64 @@ def download(conn, manifest: Path, assets_root: Path, limit: int | None = None,
                        i, total, stats["ok"], stats["empty"], stats["failed"])
         pacer.wait()
     return stats
+
+
+def sieve_report(conn, manifest: Path, assets_root: Path) -> dict:
+    """Просев уже скачанного: что из него не может быть картинкой поста.
+
+    Читает только диск — ни сети, ни CDX. Возвращает два РАЗНЫХ по природе
+    списка, и это главное в устройстве функции (распоряжение лида, Ruling 45):
+
+    - `placeholders` — адреса, у которых файл валиден как картинка, но сторона
+      <= 2 px. Признак ОДНОЗНАЧЕН (1x1 не несёт содержимого никогда), поэтому
+      их можно метить машинально;
+    - `identical_groups` — группы байт-идентичных файлов у ТРЁХ и более разных
+      адресов, не попавшие в первый список. Признак НЕОДНОЗНАЧЕН: одна и та же
+      настоящая фотография вполне могла лежать по трём адресам. Такие группы
+      функция только перечисляет (размер, число адресов, образец пути) —
+      решение по каждой принимает человек, глядя на картинку.
+
+    Порог «три и более» — из находки Б1: 18 байт-идентичных файлов 200x236 с
+    `images.vfl.ru` оказались баннером «изображение было удалено», и увидеть
+    это можно было только глазами.
+    """
+    known = assets_state.load(manifest)
+    root = Path(assets_root)
+    placeholders: list[dict] = []
+    by_digest: dict[str, list[dict]] = {}
+    for url, rec in sorted(known.items()):
+        if rec.get("status") != "ok" or not rec.get("path"):
+            continue
+        path = root / rec["path"]
+        if not path.exists():
+            continue
+        data = path.read_bytes()
+        item = {"url": url, "path": rec["path"], "bytes": len(data),
+                "size": attachments.image_size(data)}
+        if attachments.looks_like_placeholder(data):
+            placeholders.append(item)
+            continue
+        by_digest.setdefault(hashlib.sha1(data).hexdigest(), []).append(item)
+    groups = [{"bytes": items[0]["bytes"], "size": items[0]["size"], "urls": len(items),
+               "sample": items[0]["path"], "sample_url": items[0]["url"]}
+              for items in by_digest.values() if len(items) >= 3]
+    groups.sort(key=lambda g: -g["urls"])
+    return {"placeholders": placeholders, "identical_groups": groups}
+
+
+def mark_empty(manifest: Path, urls) -> int:
+    """Пометить адреса как `empty` в манифесте добора.
+
+    `empty` — уже существующий статус «тело скачалось, но содержимым не
+    является», и он ровно про этот случай; заводить новый («заглушка») значит
+    учить понимать его `sync_to_db`, `_targets`, отчёты и человека, не получая
+    ничего: дальнейшая судьба у них одна и та же — честная пометка об утрате в
+    заметке. Статус терминальный и перезапрашивается только явным
+    `--retry empty` (см. `RETRIABLE_BY_FLAG`), то есть повторный прогон не
+    станет качать их снова.
+    """
+    n = 0
+    for url in urls:
+        assets_state.record(manifest, url, None, "empty", note="заглушка хостинга")
+        n += 1
+    return n

@@ -32,6 +32,7 @@
 """
 import hashlib
 import re
+import struct
 import urllib.parse
 from pathlib import Path
 from urllib.parse import urlparse
@@ -212,3 +213,91 @@ def asset_name(url: str, data: bytes | None = None) -> str:
 # отличает файлы, которые положил сам, от чужих файлов в каталоге `assets/`
 # (уборка сирот удаляет только свои — см. `mirror.prune_assets`).
 ASSET_NAME_RE = re.compile(r"^[0-9a-f]{16}\.[a-z0-9]{1,5}$")
+
+
+# Размер картинки, при котором она не может быть содержимым поста. Порог
+# ровно 2, а не «маленькая»: 1x1 — трекинг-пиксель, который фотохостинг
+# отдаёт вместо удалённого файла (55 таких на корпусе), а настоящие мелкие
+# картинки в постах — смайлы и иконки от 10 px, их отсекают другие правила
+# (`CHROME_MARKERS`) или не отсекают сознательно (чужие смайлы, находка Б2
+# ре-ревью). Всё, что между, трогать нельзя: «маленькая» не значит «пустая».
+PLACEHOLDER_MAX_SIDE = 2
+
+
+def image_size(data: bytes) -> tuple[int, int] | None:
+    """`(ширина, высота)` из заголовка картинки или `None`, если не вышло.
+
+    `None` — «не знаю», и вызывающий обязан трактовать это как «картинка
+    настоящая»: пометить содержимое утраченным по незнанию хуже, чем
+    пропустить заглушку (см. `looks_like_placeholder`). WEBP разобран только
+    в простых формах (VP8X/VP8 ), lossless VP8L даёт `None` — на корпусе
+    WEBP нет вовсе, а угадывать битовую упаковку ради нуля файлов незачем.
+    """
+    data = data or b""
+    try:
+        if data[:6] in (b"GIF87a", b"GIF89a"):
+            return struct.unpack("<HH", data[6:10])
+        if data[:8] == b"\x89PNG\r\n\x1a\n":
+            w, h = struct.unpack(">II", data[16:24])
+            return int(w), int(h)
+        if data[:2] == b"BM":
+            w, h = struct.unpack("<ii", data[18:26])
+            return abs(w), abs(h)
+        if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+            if data[12:16] == b"VP8X":
+                return (1 + int.from_bytes(data[24:27], "little"),
+                        1 + int.from_bytes(data[27:30], "little"))
+            if data[12:16] == b"VP8 ":
+                w = struct.unpack("<H", data[26:28])[0] & 0x3FFF
+                h = struct.unpack("<H", data[28:30])[0] & 0x3FFF
+                return w, h
+            return None
+        if data[:3] == b"\xff\xd8\xff":
+            # Идём по маркерам до первого SOF — только он несёт размеры.
+            i = 2
+            while i + 9 < len(data):
+                if data[i] != 0xFF:
+                    i += 1
+                    continue
+                marker = data[i + 1]
+                if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
+                              0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                    h, w = struct.unpack(">HH", data[i + 5:i + 9])
+                    return w, h
+                if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD9:
+                    i += 2
+                    continue
+                i += 2 + struct.unpack(">H", data[i + 2:i + 4])[0]
+            return None
+    except (struct.error, IndexError):
+        return None
+    return None
+
+
+def looks_like_placeholder(data: bytes) -> bool:
+    """True — файл валиден как картинка, но картинкой поста быть не может.
+
+    Единственный признак — сторона <= `PLACEHOLDER_MAX_SIDE`, и он выбран
+    потому, что ОДНОЗНАЧЕН: изображение 1x1 не несёт содержимого ни при каких
+    обстоятельствах. Находка Б1 ре-ревью: 57 из 1859 вставок боевой вики — это
+    43-байтные 1x1 GIF (трекинг-пиксель `i.piccy.info`, который хостинг отдаёт
+    вместо удалённого файла) и два 1x1 JPEG. Все механически целы: сигнатура
+    валидна, файл существует, проверка целостности даёт четыре нуля, и они
+    посчитаны внутри главной цифры фазы «1484 картинки возвращены». Читатель
+    же видит пустоту без всякой пометки об утрате.
+
+    Чего этот признак НЕ ловит и ловить не должен: заглушки НОРМАЛЬНОГО
+    размера (на корпусе — 18 байт-идентичных файлов 200x236 с `images.vfl.ru`,
+    баннер «изображение было удалено»). Отличить такую заглушку от настоящей
+    фотографии по байтам нельзя — только по тому, что одни и те же байты
+    лежат под многими разными адресами, а это признак НЕОДНОЗНАЧНЫЙ: одна и
+    та же настоящая фотография вполне могла быть вставлена по трём адресам.
+    Поэтому байт-идентичность здесь не проверяется вовсе: такие группы
+    перечисляет `fetch_assets.sieve_report` и решает по ним человек.
+    """
+    if not is_image(data):
+        return False
+    size = image_size(data)
+    if size is None:
+        return False
+    return min(size) <= PLACEHOLDER_MAX_SIDE
