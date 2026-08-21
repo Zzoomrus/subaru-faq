@@ -195,14 +195,15 @@ def _fixed_parts(literal: str) -> list[str]:
 
 
 def test_every_generator_placeholder_literal_is_scrubbed_by_citable():
-    """Контракт по образцу `tests/test_anchor_contract.py`: полнота
-    `notes.GENERATOR_PATTERNS` проверяется механически по тому, что
-    РЕАЛЬНО пишут генераторы, а не перечислением руками. Ревью задачи 3:
-    список из четырёх видов в брифе уже отстал от генераторов на четыре
-    плейсхолдера, и разошедшийся docstring («ни один плейсхолдер не
-    процитируется») никто не проверял. Этот тест падает, если в
-    `mirror`/`mirror_faq`/`mirror_blog` появится новая
-    плейсхолдер-константа, не покрытая ни одним паттерном очистки.
+    """Контракт по образцу `tests/test_anchor_contract.py`, ВТОРОЙ рубеж
+    (см. следующий тест для первого): AST-скан ловит константу, которую
+    объявили, но забыли использовать где-либо в коде — сам факт, что в
+    исходнике лежит строковый ЛИТЕРАЛ такой формы, уже требует очистки,
+    независимо от того, дошёл ли он до вывода. Слепая зона этого способа —
+    находка ревью (вторая доделка задачи 3): f-строка и конкатенация не
+    являются одним `ast.Constant`, и такой плейсхолдер тест не найдёт —
+    поэтому он не единственный рубеж, см. `test_every_generator_
+    placeholder_constant_value_is_scrubbed_by_citable` ниже.
     """
     literals = set()
     for module in (mirror, mirror_faq, mirror_blog):
@@ -213,3 +214,44 @@ def test_every_generator_placeholder_literal_is_scrubbed_by_citable():
         scrubbed = notes.citable(sample)
         for fixed in _fixed_parts(literal):
             assert fixed not in scrubbed, "не вычищен фрагмент %r из плейсхолдера %r" % (fixed, literal)
+
+
+def _module_uppercase_string_constants(module) -> dict[str, str]:
+    """Все заглавные строковые константы верхнего уровня модуля — как их
+    видит Python ПОСЛЕ импорта, а не как они записаны в исходнике. Форма
+    построения (литерал, f-строка, конкатенация, `%`-шаблон) для этого
+    способа обнаружения не имеет значения: к моменту импорта модуля любая
+    из них уже готовая строка ровно с тем именем, какое дал автор."""
+    return {name: value for name, value in vars(module).items()
+            if name.isupper() and isinstance(value, str)}
+
+
+def test_every_generator_placeholder_constant_value_is_scrubbed_by_citable():
+    """Контракт по РЕЗУЛЬТАТУ, а не по исходнику — первый и главный рубеж
+    (вторая доделка ревью задачи 3). Прежний контракт сканировал AST на
+    литеральный узел вида `(...)`/`*(...)*` — ревьюер впрыснул тот же по
+    смыслу плейсхолдер f-строкой и конкатенацией, и AST-скан прошёл оба
+    раза молча, хотя очистки под них не было: у f-строки литеральные куски
+    лежат отдельными узлами `ast.Constant`, ни один не совпадает с формой
+    ЦЕЛИКОМ; конкатенация — вообще не `ast.Constant`, а `ast.BinOp`.
+
+    Раз весь смысл теста — поймать ЧУЖУЮ будущую правку, а не сегодняшний
+    список из шести известных находок, форма записи в исходнике не должна
+    иметь значения вовсе. Поэтому этот тест не читает исходный текст
+    модулей: он берёт уже вычисленное ЗНАЧЕНИЕ каждой заглавной строковой
+    константы (`vars(module)`, после импорта) и проверяет очистку по нему
+    — литерал, f-строка, конкатенация после импорта неотличимы, все дают
+    обычный `str`.
+    """
+    constants = []
+    for module in (mirror, mirror_faq, mirror_blog):
+        constants.extend((module, name, value)
+                          for name, value in _module_uppercase_string_constants(module).items())
+    assert constants, "не нашлось ни одной заглавной строковой константы — проверь модули"
+    for module, name, literal in constants:
+        sample = literal.replace("%s", "http://example.org/x.jpg").replace("%d", "12345")
+        scrubbed = notes.citable(sample)
+        for fixed in _fixed_parts(literal):
+            assert fixed not in scrubbed, (
+                "%s.%s не вычищена целиком (форма записи в исходнике не важна — "
+                "значение всё равно %r)" % (module.__name__, name, literal))
