@@ -197,29 +197,45 @@ def _parser() -> argparse.ArgumentParser:
     return p
 
 
+def mirror_assets_dir(mirror_path: Path) -> Path:
+    """Путь ОБЩЕГО каталога вложений `<mirror_path>/assets` (задача 2 Ф3,
+    Ruling 37) — единственное место, которое считает эту формулу.
+
+    Находка ревью: до этой правки её считали инлайном в трёх местах
+    (`build_mirror` и точечные команды `faq mirror`/`blog mirror` в
+    `main()`) — три копии одной и той же строки, и откат передачи каталога
+    в любой из точечных команд не ловился тестом на двух других, потому что
+    сравнивать было не с чем: у каждого места была СВОЯ формула, просто
+    совпадающая по значению. Теперь `build_mirror` и обе точечные команды
+    зовут эту функцию, а не пишут `<путь> / "assets"` заново.
+    """
+    return Path(mirror_path) / "assets"
+
+
 def build_mirror(conn, mirror_path: Path, assets_root: Path = DEFAULT_ASSETS_ROOT,
                   archive_assets_manifest: Path = archive_assets.DEFAULT_MANIFEST,
                   archive_assets_root: Path = archive_assets.DEFAULT_ROOT) -> dict[str, int]:
     """Собирает все три раздела зеркала (форум, FAQ, блоги) в дерево
-    `mirror_path`, все три — в ОДИН общий каталог вложений `<mirror_path>/
-    assets` (задача 2 Ф3, Ruling 37 Ф2: до этой правки FAQ и блоги копировали
-    друг с другом и с форумом общие картинки каждый себе — 90 картинок в
-    два-три каталога, 108 лишних копий, 7,68 МиБ; следующая фаза добавит
-    статьи, которые встраивают те же файлы, и без общего каталога один
-    адрес получил бы третью копию).
+    `mirror_path`, все три — в ОДИН общий каталог вложений `mirror_assets_
+    dir(mirror_path)` (задача 2 Ф3, Ruling 37 Ф2: до этой правки FAQ и блоги
+    копировали друг с другом и с форумом общие картинки каждый себе — 90
+    картинок в два-три каталога, 108 лишних копий по оценке решения (90 по
+    факту — см. отчёт задачи), 7,68 МиБ; следующая фаза добавит статьи,
+    которые встраивают те же файлы, и без общего каталога один адрес получил
+    бы третью копию).
 
-    Точка сборки — ОДНА, не три раздельных вызова: путь общего каталога
-    вложений вычисляется здесь один раз и передаётся во все три генератора —
-    тот же урок, что и с `attachments.local_path` в Ф2 (два потребителя
-    одного знания обязаны ходить одной функцией, иначе расходятся молча).
-    Её зовут и `main()` (команды `mirror`/`all`, а также точечные `faq
-    mirror`/`blog mirror` — см. ниже), и тесты (`tests/test_asset_names.py`).
+    Точка сборки ВСЕХ ТРЁХ разделов разом — ОДНА, не три раздельных вызова:
+    все три генератора получают один и тот же путь общего каталога. Её
+    зовёт `main()` для команд `mirror`/`all`. Точечные `faq mirror`/`blog
+    mirror` эту функцию НЕ зовут (они собирают только один раздел, а не все
+    три) — но берут тот же путь через `mirror_assets_dir`, а не считают его
+    заново (см. её докстринг).
 
     Возвращает число заметок по разделам (`forum`/`faq`/`blog`) — то же, что
     печатает `main()`.
     """
     mirror_path = Path(mirror_path)
-    assets_dir = mirror_path / "assets"
+    assets_dir = mirror_assets_dir(mirror_path)
     faq_path = mirror_path / DEFAULT_FAQ_MIRROR_DIRNAME
     blog_path = mirror_path / DEFAULT_BLOG_MIRROR_DIRNAME
     n_forum = mirror.write_all(conn, mirror_path, assets_root=assets_root, assets_dir=assets_dir)
@@ -331,15 +347,16 @@ def main(argv: list[str] | None = None) -> int:
                 conn, args.archive_assets_manifest, args.archive_assets_root))
         if args.sub_action in (None, "mirror"):
             # Общий каталог вложений (задача 2 Ф3, Ruling 37) — тот же путь,
-            # что строит `build_mirror`: точечный `faq mirror` не должен
-            # заводить свой каталог `FAQ/assets`, иначе перегенерация всей
-            # вики (`all`) с общим каталогом снова разложит те же картинки
-            # по двум местам.
+            # что строит `build_mirror` для команды `all`, взятый ОДНОЙ
+            # функцией (`mirror_assets_dir`), а не пересчитанный здесь же:
+            # точечный `faq mirror` не должен заводить свой каталог
+            # `FAQ/assets`, иначе перегенерация всей вики (`all`) с общим
+            # каталогом снова разложит те же картинки по двум местам.
             try:
                 n = mirror_faq.write_all(conn, faq_mirror_path,
                                           assets_manifest=args.archive_assets_manifest,
                                           assets_root=args.archive_assets_root,
-                                          assets_dir=args.wiki / args.mirror_dir / "assets")
+                                          assets_dir=mirror_assets_dir(args.wiki / args.mirror_dir))
             except RuntimeError as e:
                 print("ОШИБКА:", e)
                 return 2
@@ -362,12 +379,13 @@ def main(argv: list[str] | None = None) -> int:
             print("картинки в базе:", archive_assets.sync_local_paths(
                 conn, args.archive_assets_manifest, args.archive_assets_root))
         if args.sub_action in (None, "mirror"):
-            # Общий каталог вложений — см. тот же комментарий у `faq` выше.
+            # Общий каталог вложений через `mirror_assets_dir` — см. тот же
+            # комментарий у `faq` выше.
             try:
                 n = mirror_blog.write_all(conn, blog_mirror_path,
                                            assets_manifest=args.archive_assets_manifest,
                                            assets_root=args.archive_assets_root,
-                                           assets_dir=args.wiki / args.mirror_dir / "assets")
+                                           assets_dir=mirror_assets_dir(args.wiki / args.mirror_dir))
             except RuntimeError as e:
                 print("ОШИБКА:", e)
                 return 2

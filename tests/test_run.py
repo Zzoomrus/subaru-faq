@@ -126,6 +126,70 @@ def test_faq_command_rejects_unknown_sub_action(tmp_path, capsys):
     assert "faq load" in capsys.readouterr().out
 
 
+def test_faq_mirror_alone_uses_the_shared_assets_directory(tmp_path):
+    """Точечный `faq mirror` (без блогов/форума) обязан класть картинки в
+    ОБЩИЙ каталог `<mirror-dir>/assets` (задача 2 Ф3, Ruling 37), а не
+    заводить свой `FAQ/assets` — иначе следующий полный `all` разложил бы ту
+    же картинку по двум местам снова.
+
+    Регрессия ревью: формула этого пути была продублирована инлайном в
+    команде `faq` отдельно от `build_mirror` — откат передачи `assets_dir`
+    здесь молча не ловился ничем (все 336 тестов оставались зелёными),
+    потому что до правки ни один тест не гонял точечную команду с реальной
+    картинкой на диске.
+    """
+    from pipeline import db as _db
+    db_path = tmp_path / "forum.sqlite"
+    conn = _db.connect(db_path)
+    _db.init_schema(conn)
+    url = "http://subaru-faq.ru/upload/blog/84b/x.jpg"  # тот же файл, что и FIX_ASSETS ниже
+    conn.execute("INSERT INTO faq(engine, nr, question, answer_md) VALUES "
+                 "('bitrix', 1, 'вопрос', 'ответ ![](%s)')" % url)
+    conn.execute("INSERT INTO faq_images(engine, nr, url) VALUES ('bitrix', 1, ?)", (url,))
+    conn.commit()
+    conn.close()
+
+    fix_assets = Path(__file__).parent / "fixtures" / "faq_assets"
+    rc = run.main(["faq", "mirror", "--db", str(db_path),
+                   "--wiki", str(tmp_path / "wiki"), "--mirror-dir", "Источники",
+                   "--archive-assets-manifest", str(fix_assets / "manifest-assets.jsonl"),
+                   "--archive-assets-root", str(fix_assets / "assets")])
+    assert rc == 0
+    mirror_root = tmp_path / "wiki" / "Источники"
+    assert not (mirror_root / "FAQ" / "assets").exists()
+    assert (mirror_root / "assets").is_dir()
+    assert list((mirror_root / "assets").iterdir())
+
+
+def test_blog_mirror_alone_uses_the_shared_assets_directory(tmp_path):
+    """Тот же регрессионный тест, что и у FAQ выше, для команды `blog
+    mirror`: без него откат `assets_dir` в этой ветке `main()` тоже не
+    ловился ничем.
+    """
+    from pipeline import db as _db
+    db_path = tmp_path / "forum.sqlite"
+    conn = _db.connect(db_path)
+    _db.init_schema(conn)
+    url = "http://subaru-faq.ru/upload/blog/84b/x.jpg"
+    conn.execute("INSERT INTO blog_posts(blog, post_id, title, body_md, tags, is_excerpt, truncated) "
+                 "VALUES ('remont', 1, 'запись', 'тело ![](%s)', '[]', 0, 0)" % url)
+    conn.execute("INSERT INTO blog_images(blog, post_id, comment_id, url) VALUES ('remont', 1, NULL, ?)",
+                 (url,))
+    conn.commit()
+    conn.close()
+
+    fix_assets = Path(__file__).parent / "fixtures" / "faq_assets"
+    rc = run.main(["blog", "mirror", "--db", str(db_path),
+                   "--wiki", str(tmp_path / "wiki"), "--mirror-dir", "Источники",
+                   "--archive-assets-manifest", str(fix_assets / "manifest-assets.jsonl"),
+                   "--archive-assets-root", str(fix_assets / "assets")])
+    assert rc == 0
+    mirror_root = tmp_path / "wiki" / "Источники"
+    assert not (mirror_root / "Блоги" / "assets").exists()
+    assert (mirror_root / "assets").is_dir()
+    assert list((mirror_root / "assets").iterdir())
+
+
 def test_rebuild_from_scratch_reproduces_faq_table_and_column(tmp_path):
     # Требование лида (ревизия задачи 6): полная пересборка — главная
     # гарантия проекта, она должна восстанавливать FAQ (таблицу И колонку
