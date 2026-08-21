@@ -591,3 +591,45 @@ def test_safeguard_does_not_block_normal_orphan_cleanup(tmp_path):
     mirror.write_all(conn, out)
     assert not (out / "Тема 777.md").exists()
     assert (out / "Тема 10045.md").exists()
+
+
+def test_post_images_stay_inside_their_own_post(tmp_path):
+    """Тот же класс, что ловушка блогов, но в форумном генераторе: у заметки
+    темы много постов, и словарь картинок обязан быть по ОДНОМУ посту.
+
+    Здесь он такой и есть (`by_url` пересобирается внутри цикла по постам из
+    `attachments WHERE mid = ?`), но утверждение стоит рядом с кодом: у
+    `render_post_body` есть фолбэк «адреса из словаря, не встретившиеся в
+    тексте, — блоком в конец тела», и стоит однажды поднять сборку словаря на
+    уровень темы, как каждый пост получит хвост из картинок соседей. В
+    блогах это уже случилось (+1316 ложных вставок в 49 заметках) и было
+    поймано не тестом, а несошедшейся цифрой.
+    """
+    conn = _seed(tmp_path)
+    assets_root = tmp_path / "files"
+    (assets_root / "h").mkdir(parents=True)
+    for name in ("a.jpg", "b.jpg"):
+        (assets_root / "h" / name).write_bytes(b"\xff\xd8\xff" + name.encode() * 8)
+    conn.execute("INSERT INTO posts(mid, tid, page_no, author, posted_at, number, markdown, text) "
+                 "VALUES (60001, 10045, 1, 'A', '2007-05-01 10:00:00', '#20', "
+                 "'мой снимок ![](http://h/a.jpg) вот', 'x')")
+    conn.execute("INSERT INTO posts(mid, tid, page_no, author, posted_at, number, markdown, text) "
+                 "VALUES (60002, 10045, 1, 'B', '2007-05-01 11:00:00', '#21', "
+                 "'а мой ![](http://h/b.jpg) такой', 'x')")
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (60001, 'external_image', 'http://h/a.jpg', 'h/a.jpg', 'ok')")
+    conn.execute("INSERT INTO attachments(mid, kind, url, local_path, status) "
+                 "VALUES (60002, 'external_image', 'http://h/b.jpg', 'h/b.jpg', 'ok')")
+    conn.commit()
+
+    out = tmp_path / "Источники"
+    mirror.write_all(conn, out, assets_root=assets_root)
+    md = (out / "Тема 10045.md").read_text(encoding="utf-8")
+    parts = md.split("##### Пост ")
+    post_a = next(p for p in parts if p.startswith("60001"))
+    post_b = next(p for p in parts if p.startswith("60002"))
+    name_a = attachments.asset_name("http://h/a.jpg", b"\xff\xd8\xff")
+    name_b = attachments.asset_name("http://h/b.jpg", b"\xff\xd8\xff")
+    assert name_a != name_b
+    assert name_a in post_a and name_b not in post_a
+    assert name_b in post_b and name_a not in post_b

@@ -1,9 +1,10 @@
 import json
+import re
 from pathlib import Path
 
 import yaml
 
-from pipeline import db, mirror_blog
+from pipeline import attachments, db, mirror_blog
 
 FIX_ASSETS = Path(__file__).parent / "fixtures" / "faq_assets"
 
@@ -271,34 +272,94 @@ def test_parser_collects_comment_image_urls_and_skips_engine_smileys():
     assert "bitrix/images/blog/smile" in with_images[0].text_md
 
 
-def test_entry_images_do_not_leak_into_comments(tmp_path):
-    """Первая попытка исправить M1 была неверной, и вот её след.
-
-    `mirror.render_post_body` выводит адреса из словаря, не встретившиеся в
-    тексте, отдельным блоком в КОНЕЦ тела (осознанный фолбэк задачи 4 против
-    молчаливой потери пометки). Поэтому общий словарь картинок на всю запись
-    дал каждому комментарию хвост из чужих картинок: на боевом корпусе
-    +1316 ложных вставок в 49 заметках. Словарь обязан быть по области
-    видимости — этот тест ловит возврат к общему.
+def _local_archive(tmp_path, *rel_paths):
+    """Свой манифест архива Ф0/Ф1 и файлы под него — чтобы в тесте было
+    НЕСКОЛЬКО разрешимых картинок, а не одна из общей fixture: только тогда
+    видно, какая картинка попала в какую область заметки.
     """
-    conn = db.connect(tmp_path / "leak.sqlite")
+    root = tmp_path / "archive"
+    manifest = tmp_path / "manifest-assets.jsonl"
+    lines = []
+    for i, rel in enumerate(rel_paths):
+        f = root / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(b"\xff\xd8\xff" + bytes([i]) * 40)      # валидный JPEG-заголовок
+        lines.append(json.dumps({"path": rel, "url": "http://subaru-faq.ru/" + rel,
+                                  "ts": "20110109125532", "bytes": 43}, ensure_ascii=False))
+    manifest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return manifest, root
+
+
+def test_images_stay_inside_their_own_scope(tmp_path):
+    """Область видимости словаря картинок — в ОБЕ стороны, а не в одну.
+
+    История. Первая версия правки M1 передавала комментариям общий словарь
+    на всю запись, и каждый комментарий получил хвост из чужих картинок:
+    +1316 ложных вставок в 49 заметках на боевом корпусе. Причина — редкий
+    фолбэк `mirror.render_post_body`: адреса из словаря, не встретившиеся в
+    тексте, он выводит блоком в КОНЕЦ тела (осознанное решение задачи 4
+    против молчаливой потери пометки об утрате).
+
+    Первая версия ЭТОГО теста ловила только половину класса — утечку картинки
+    ЗАПИСИ в комментарий, — и пропускала возврат к общему словарю в форме
+    «склеить `images_by_comment.values()`»: картинок записи такая склейка не
+    содержит, зато картинка комментария 7 уезжает хвостом в комментарий 9.
+    Ре-ревью лида поймало это на незакоммиченной правке в рабочем дереве,
+    при которой все 299 тестов оставались зелёными. Масштаб на корпусе: у 3
+    записей картинки несут ДВА и более комментария (у `Hello 65` — четыре
+    комментария и восемь картинок), у 2 записей картинки есть и в теле, и в
+    комментариях.
+
+    Поэтому проверяются все три области разом и каждая — на своё и только
+    своё: тело записи, комментарий 7, комментарий 9.
+    """
+    manifest, root = _local_archive(
+        tmp_path, "upload/blog/aaa/entry.jpg", "upload/blog/bbb/c7.jpg", "upload/blog/ccc/c9.jpg")
+    entry_url = "http://subaru-faq.ru/upload/blog/aaa/entry.jpg"
+    c7_url = "http://subaru-faq.ru/upload/blog/bbb/c7.jpg"
+    c9_url = "http://subaru-faq.ru/upload/blog/ccc/c9.jpg"
+
+    conn = db.connect(tmp_path / "scope.sqlite")
     db.init_schema(conn)
     _insert_post(conn, "remont", 901, "Запись с картинкой", "Пётр", "01.01.2015 10:00:00",
-                  "Тело с ![](http://subaru-faq.ru/upload/blog/84b/x.jpg) картинкой.", [],
+                  "Тело с ![](%s) картинкой." % entry_url, [],
                   "http://www.subaru-faq.ru/blogs/index.php?page=post&blog=remont&post_id=901",
                   "20150101100000")
+    for comment_id, url, text in ((7, c7_url, "у меня вот так ![](%s) вышло" % c7_url),
+                                   (9, c9_url, "а у меня иначе ![](%s)" % c9_url),
+                                   (11, None, "комментарий вообще без картинок")):
+        conn.execute("INSERT INTO blog_comments(blog, post_id, comment_id, parent_id, depth, author, "
+                     "posted_at, text_md) VALUES ('remont', 901, ?, NULL, 0, 'scilla', "
+                     "'11.08.2011 10:38:01', ?)", (comment_id, text))
+        if url:
+            conn.execute("INSERT INTO blog_images(blog, post_id, comment_id, url, local_path) "
+                         "VALUES ('remont', 901, ?, ?, NULL)", (comment_id, url))
     conn.execute("INSERT INTO blog_images(blog, post_id, comment_id, url, local_path) "
-                 "VALUES ('remont', 901, NULL, 'http://subaru-faq.ru/upload/blog/84b/x.jpg', NULL)")
-    conn.execute("INSERT INTO blog_comments(blog, post_id, comment_id, parent_id, depth, author, "
-                 "posted_at, text_md) VALUES ('remont', 901, 7, NULL, 0, 'scilla', "
-                 "'11.08.2011 10:38:01', 'комментарий вообще без картинок')")
+                 "VALUES ('remont', 901, NULL, ?, NULL)", (entry_url,))
     conn.commit()
 
     out = tmp_path / "Блоги"
-    mirror_blog.write_all(conn, out, assets_manifest=FIX_ASSETS / "manifest-assets.jsonl",
-                           assets_root=FIX_ASSETS / "assets")
+    mirror_blog.write_all(conn, out, assets_manifest=manifest, assets_root=root)
     md = (out / "Блог remont 901.md").read_text(encoding="utf-8")
+
+    names = {"запись": attachments.asset_name(entry_url, b"\xff\xd8\xff"),
+             "к7": attachments.asset_name(c7_url, b"\xff\xd8\xff"),
+             "к9": attachments.asset_name(c9_url, b"\xff\xd8\xff")}
+    assert len(set(names.values())) == 3            # три разных файла, иначе тест ничего не различает
+
+    # Разрезаем заметку на области ровно по её якорям.
     body, comments = md.split("## Комментарии", 1)
-    assert "![[assets/" in body            # картинка записи на своём месте в теле
-    assert "![[assets/" not in comments    # и её нет в комментарии, где её не было
-    assert "изображение не сохранилось" not in comments
+    _, c7, c9, c11 = re.split(r"##### Комментарий \d+", comments)
+    scopes = {"тело": body, "к7": c7, "к9": c9, "к11": c11}
+
+    # Каждая картинка стоит РОВНО в своей области и ровно один раз.
+    expected = {"тело": {names["запись"]}, "к7": {names["к7"]}, "к9": {names["к9"]}, "к11": set()}
+    for scope, text in scopes.items():
+        found = set(re.findall(r"!\[\[assets/([^\]]+)\]\]", text))
+        assert found == expected[scope], "область %s: %s" % (scope, sorted(found))
+        assert text.count("![[assets/") == len(expected[scope]), scope
+
+    # И ни одной пометки об утрате: все три файла в архиве есть.
+    assert "изображение не сохранилось" not in md
+    # Всего вставок ровно три — ни одного хвоста ни в одной области.
+    assert md.count("![[assets/") == 3
