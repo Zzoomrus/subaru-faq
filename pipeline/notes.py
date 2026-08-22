@@ -347,11 +347,44 @@ def _canon_unit(unit: str) -> str:
     return re.sub(r"[.\s]", "", unit.strip().lower().translate(_CYR_TO_LAT))
 
 
+def _canon_word(word: str) -> str:
+    """Ключ сравнения СЛОВА (служебное слово/месяц/окончание/позиционное
+    существительное) — регистр и орфографический пробельный шум сняты,
+    но БЕЗ транслитерации в латиницу (в отличие от `_canon_unit`).
+
+    Находка Н21 ре-ревью: `_STRICT_EXCLUSIONS` раньше строился через
+    `_canon_unit`, а он транслитерирует и заодно ВЫКИДЫВАЕТ мягкий/твёрдый
+    знак (`_CYR_TO_LAT["ь"] = ""`). Из-за этого частица «ль» (служебное
+    слово, есть в `_FUNCTION_WORDS`) канонизировалась в тот же ключ «l»,
+    что и единица «л» (литр) — литр всегда классифицировался как строчное
+    служебное слово и никогда не извлекался как единица. Живая подделка:
+    источник «расход в городе 13,5 литра» (полная форма — ловится),
+    статья «по городу 8,5 л» (сокращение — молчал гейт, расход занижен
+    вдвое). Транслитерация нужна ТОЛЬКО чтобы сравнить ЕДИНИЦЫ измерения
+    между алфавитами («mm» == «мм»); служебные слова/месяцы/окончания —
+    русские по определению, сравнивать их с реальной единицей нужно
+    буква-в-букву своим алфавитом, без прохода через общий с единицами
+    латинский ключ, который стирает различающую буквы информацию (мягкий
+    знак — не пустое место, а часть написания слова).
+    """
+    return re.sub(r"[.\s]", "", word.strip().lower())
+
+
 def _canon_number(raw: str) -> str:
+    # Снимает ВСЕ пробельные разделители разряда, которые вообще способен
+    # принять разбор (`_NUM_SPACE` — обычный/неразрывный/узкий неразрывный
+    # пробел), а не только буквальный ASCII-пробел (находка Н22 ре-ревью):
+    # русская типографика набирает «130 000» через НЕразрывный пробел
+    # (чтобы разряды не разъезжались по строкам при переносе) — разбор его
+    # принимал, а канонизация не снимала, и такое число НИКОГДА не
+    # совпадало бы с той же величиной в цитате, набранной обычным пробелом
+    # (или наоборот) — ложный отказ на честном совпадении, не подделка.
     raw = raw.strip()
+    for ch in _NUM_SPACE:
+        raw = raw.replace(ch, "")
     if "/" in raw:
-        return raw.replace(" ", "")
-    return raw.replace(" ", "").replace(",", ".")
+        return raw
+    return raw.replace(",", ".")
 
 
 #: Служебные слова русского языка — предлоги, союзы, частицы. ЗАКРЫТЫЙ
@@ -435,7 +468,7 @@ _POSITION_NOUNS = (
     "передача", "передачи", "передаче", "передачу", "передачей", "передач", "передачах",
 )
 
-_STRICT_EXCLUSIONS = {_canon_unit(w) for w in
+_STRICT_EXCLUSIONS = {_canon_word(w) for w in
                        _FUNCTION_WORDS + _MONTH_NAMES + _KNOWN_NON_UNITS
                        + _ORDINAL_ENDINGS + _POSITION_NOUNS}
 
@@ -460,7 +493,7 @@ _QUANTITY_NOUNS = (
     "человек", "человека", "человеку", "человеком", "человеке",
     "руб", "руб.", "р", "р.", "тр", "тр.",
 )
-_SOFT_QUANTITY_NOUNS = {_canon_unit(w) for w in _QUANTITY_NOUNS}
+_SOFT_QUANTITY_NOUNS = {_canon_word(w) for w in _QUANTITY_NOUNS}
 # «тыс. руб»/«тыс.руб» — тот же множитель, что у легальных «тыс. км», но
 # ЕДИНИЦА за ним — деньги (мягкое исключение); множитель снимается перед
 # проверкой исключения отдельно, чтобы «тыс. км» не исключался заодно.
@@ -491,17 +524,17 @@ def _classify_unit(token: str) -> str | None:
     """`"strict"` (не проверяется вовсе — служебное слово/месяц/«wd»),
     `"soft"` (не единица, но число проверяется голым — количественное
     существительное домена) или `None` (настоящая единица измерения)."""
-    canon = _canon_unit(token)
-    if canon in _STRICT_EXCLUSIONS and not _is_strict_single_letter_exception(token):
+    word = _canon_word(token)
+    if word in _STRICT_EXCLUSIONS and not _is_strict_single_letter_exception(token):
         return "strict"
-    if canon in _SOFT_QUANTITY_NOUNS:
+    if word in _SOFT_QUANTITY_NOUNS:
         return "soft"
     stripped = _MULTIPLIER_PREFIX.sub("", token)
     if stripped != token:
-        canon2 = _canon_unit(stripped)
-        if canon2 in _STRICT_EXCLUSIONS and not _is_strict_single_letter_exception(stripped):
+        word2 = _canon_word(stripped)
+        if word2 in _STRICT_EXCLUSIONS and not _is_strict_single_letter_exception(stripped):
             return "strict"
-        if canon2 in _SOFT_QUANTITY_NOUNS:
+        if word2 in _SOFT_QUANTITY_NOUNS:
             return "soft"
     return None
 

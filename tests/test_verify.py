@@ -134,6 +134,39 @@ tid: 7
 если амплитуда сигнала < 0,1 В, то датчик неисправен
 """
 
+# --- Тема 8: расход топлива в литрах, сокращение «л» (Н21) -----------------
+# Живой случай ре-ревью: транслитерация роняла мягкий знак, поэтому ключ
+# частицы «ль» (служебное слово) совпадал с ключом единицы «л» (литр) — литр
+# в сокращении никогда не извлекался как число-с-единицей, и заниженный
+# вдвое расход в статье («8,5 л»/«4,5 л» вместо честных «13,5 л»/«8,5 л»)
+# проходил бы молча, потому что гейт вообще не видел эту величину.
+THEME_8_FUEL = """---
+tid: 8
+---
+
+# Расход топлива
+
+##### Пост 800
+
+*Toropov · 05.03.2011 12:00:00 · #1*
+
+Расход в городе 13,5 л, на трассе 8,5 л.
+"""
+
+# --- Тема 9: пробег с типографским (неразрывным) пробелом-разделителем (Н22)
+THEME_9_MILEAGE = """---
+tid: 9
+---
+
+# Продажа
+
+##### Пост 900
+
+*Denis77 · 01.09.2015 12:00:00 · #1*
+
+Пробег 130 000 км, состояние хорошее.
+"""
+
 # --- Тема 3: пустая тема форума — ни одного поста ---------------------------
 THEME_3_EMPTY = """---
 tid: 3
@@ -189,6 +222,8 @@ def mirror(tmp_path):
     (root / "Тема 5.md").write_text(THEME_5_TWO_PARAGRAPHS, encoding="utf-8")
     (root / "Тема 6.md").write_text(THEME_6_YEAR, encoding="utf-8")
     (root / "Тема 7.md").write_text(THEME_7_VOLTAGE, encoding="utf-8")
+    (root / "Тема 8.md").write_text(THEME_8_FUEL, encoding="utf-8")
+    (root / "Тема 9.md").write_text(THEME_9_MILEAGE, encoding="utf-8")
     (root / "FAQ 100.md").write_text(FAQ_100, encoding="utf-8")
     (root / "FAQ старый 9.md").write_text(FAQ_OLD_9, encoding="utf-8")
     (root / "Блог remont 77.md").write_text(BLOG_77_EXCERPT, encoding="utf-8")
@@ -215,6 +250,10 @@ def conn():
               "VALUES (600, 6, 'Antoha_samara', '2008-02-13 12:00:00', '', '')")
     c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
               "VALUES (700, 7, 'Kolos', '2008-02-15 12:00:00', '', '')")
+    c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+              "VALUES (800, 8, 'Toropov', '2011-03-05 12:00:00', '', '')")
+    c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+              "VALUES (900, 9, 'Denis77', '2015-09-01 12:00:00', '', '')")
     c.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text) "
               "VALUES ('bitrix', 100, 'Как часто менять масло?', "
               "'Рекомендуемый интервал замены масла 5000 км пробега.', "
@@ -372,6 +411,39 @@ def test_markdown_and_html_noise_around_number_does_not_break_coverage(mirror, c
             "## Сноски\n\n[^f1]: «Трубки нужны 3/16 дюйма, это 4,75 мм» — Razum, "
             "11.10.2014, [[Тема 1#Пост 100]]\n")
     p = mirror.parent / "статья3.md"
+    p.write_text(text, encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert result["ок"], result["проблемы"]
+
+
+def test_liter_abbreviation_is_extracted_and_honest_citation_passes(mirror, conn):
+    """Н21 ре-ревью: до фикса «л» (литр) канонизировался в тот же ключ, что
+    и частица «ль» (мягкий знак транслитерацией отбрасывался), и всегда
+    классифицировался как служебное слово — число с этой «единицей» гейт
+    вообще не видел. Честная (не заниженная) статья с сокращением «л»
+    обязана пройти — иначе фикс просто заменил бы один false negative
+    (подделка проходит) на false positive (честное тоже не проходит)."""
+    text = ("---\ntype: статья\nисточников: 1\nсобрано: 2026-08-22\n---\n\n"
+            "# Тема\n\nРасход по городу 13,5 л, по трассе 8,5 л[^f1].\n\n"
+            "## Сноски\n\n[^f1]: «Расход в городе 13,5 л, на трассе 8,5 л» — Toropov, "
+            "05.03.2011, [[Тема 8#Пост 800]]\n")
+    p = mirror.parent / "статья-топливо.md"
+    p.write_text(text, encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert result["ок"], result["проблемы"]
+
+
+def test_thin_space_number_in_article_matches_regular_space_in_quote(mirror, conn):
+    """Н22 ре-ревью: разбор чисел принимает неразрывный/узкий неразрывный
+    пробел как разделитель разрядов (русская типографика «130 000» —
+    норма, не экзотика), а канонизация снимала только обычный ASCII-пробел
+    — то же число, набранное по-разному в статье и в цитате источника,
+    никогда не совпадало бы, хотя это одно и то же честное число."""
+    text = ("---\ntype: статья\nисточников: 1\nсобрано: 2026-08-22\n---\n\n"
+            "# Тема\n\nПробег на момент продажи — 130 000 км[^f1].\n\n"
+            "## Сноски\n\n[^f1]: «Пробег 130 000 км» — Denis77, 01.09.2015, "
+            "[[Тема 9#Пост 900]]\n")
+    p = mirror.parent / "статья-пробег.md"
     p.write_text(text, encoding="utf-8")
     result = verify.check(p, mirror, mirror, conn)
     assert result["ок"], result["проблемы"]
