@@ -404,6 +404,65 @@ def test_check_all_never_trusts_author_or_date_supplied_by_the_incoming_fact(mir
     assert "дата" not in fact
 
 
+# --- цитируемость источника (задача 6 Ф3, `notes.citable_source`) ----------
+#
+# `check_one` зовёт её только когда дан `conn` (как и атрибуцию выше) — без
+# базы под рукой узнать про дубль/выдержку неоткуда, и это не должно
+# становиться ложным «источник цитируем».
+
+
+def test_duplicate_faq_entry_is_rejected_as_uncitable_with_conn(mirror, conn):
+    """Дубль FAQ (`duplicate_of_nr` не пусто) — текст настоящий, но ссылаться
+    нужно на каноническую (битриксовую) запись, не на дубль."""
+    conn.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text) "
+                 "VALUES ('bitrix', 5, 'Как часто менять колодки?', 'Раз в 30 тысяч км', "
+                 "'Раз в 30 тысяч км')")
+    conn.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text, "
+                 "duplicate_of_engine, duplicate_of_nr) "
+                 "VALUES ('old', 9, 'Как часто менять колодки?', 'Раз в 30 тысяч км', "
+                 "'Раз в 30 тысяч км', 'bitrix', 5)")
+    conn.commit()
+    fact = {"источник": "FAQ старый 9#Ответ",
+            "цитата": "Раз в 30 тысяч километров пробега", "суть": "интервал"}
+    ok, reason = facts.check_one(fact, mirror, conn)
+    assert not ok
+    assert "дубл" in reason.lower()
+
+
+def test_faq_without_conn_is_not_checked_for_duplicate_status(mirror):
+    """Без `conn` проверка дублей просто не выполняется — не считается ни
+    цитируемым, ни нецитируемым молча, а прежнее поведение (без базы)
+    сохраняется."""
+    fact = {"источник": "FAQ 5#Ответ", "цитата": "Раз в 30 тысяч километров пробега", "суть": "интервал"}
+    ok, reason = facts.check_one(fact, mirror)
+    assert ok, reason
+
+
+def test_blog_excerpt_is_rejected_as_uncitable_with_conn(mirror, conn):
+    """Выдержка блога (`is_excerpt=1`) — текст настоящий (восстановлен из
+    ленты), но не тело записи (контракт зеркала §4)."""
+    conn.execute("INSERT INTO blog_posts(blog, post_id, author, posted_at, body_md, is_excerpt) "
+                 "VALUES ('remont', 42, 'ИгорьБлог', '09.08.2011 10:41:53', '', 1)")
+    conn.commit()
+    fact = {"источник": "Блог remont 42#Запись",
+            "цитата": "Тормозные колодки нужно менять каждые 30 тысяч", "суть": "интервал"}
+    ok, reason = facts.check_one(fact, mirror, conn)
+    assert not ok
+    assert "выдержка" in reason.lower()
+
+
+def test_blog_record_without_excerpt_flag_still_passes_with_conn(mirror, conn):
+    """Обычная (не выдержка) запись блога с `conn` под рукой по-прежнему
+    проходит — новая проверка не должна задевать честные записи."""
+    conn.execute("INSERT INTO blog_posts(blog, post_id, author, posted_at, body_md) "
+                 "VALUES ('remont', 42, 'ИгорьБлог', '09.08.2011 10:41:53', '')")
+    conn.commit()
+    fact = {"источник": "Блог remont 42#Запись",
+            "цитата": "Тормозные колодки нужно менять каждые 30 тысяч", "суть": "интервал"}
+    ok, reason = facts.check_one(fact, mirror, conn)
+    assert ok, reason
+
+
 def test_lookup_meta_scopes_post_lookup_by_tid_not_only_mid(mirror, conn):
     """Н8 (мелочь, закрывается бесплатно): `mid` — первичный ключ `posts` и
     сам по себе уникален глобально, но проверка не должна держаться только

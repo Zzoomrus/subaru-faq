@@ -133,7 +133,15 @@ def _resolve_note(mirror_root: Path, name: str) -> tuple[Path | None, str]:
     return Path(mirror_root) / (hits[0] + ".md"), ""
 
 
-def check_one(fact: dict, mirror_root: Path) -> tuple[bool, str]:
+def check_one(fact: dict, mirror_root: Path, conn: sqlite3.Connection | None = None) -> tuple[bool, str]:
+    """`conn`, если дан, включает проверку ЦИТИРУЕМОСТИ ИСТОЧНИКА
+    (`notes.citable_source`, задача 6 Ф3) — дубль FAQ и выдержка блога
+    отбраковываются здесь же, до резолва и чтения секции: текст в них
+    настоящий (не пометка генератора), значит `citable()` их не ловит, и
+    единственный способ узнать про запрет — спросить базу. Без `conn`
+    (программные вызовы/тесты без базы под рукой, как и у автора/даты ниже)
+    эта проверка пропускается — не становится ложным «источник цитируем».
+    """
     source = (fact.get("источник") or "").strip()
     quote = (fact.get("цитата") or "").strip()
     if not source or not quote:
@@ -158,6 +166,11 @@ def check_one(fact: dict, mirror_root: Path) -> tuple[bool, str]:
         return False, "цитата требует точного якоря — сноска на источник целиком не подтверждает цитату"
     if not any(pattern.match(anchor) for pattern in _ANCHOR_FORMS):
         return False, "якорь «%s» не входит в закрытый список видов сносок (контракт зеркала §1)" % anchor
+
+    if conn is not None:
+        citable, reason = notes.citable_source(name, conn)
+        if not citable:
+            return False, reason
 
     path, reason = _resolve_note(mirror_root, name)
     if path is None:
@@ -208,7 +221,7 @@ def check_all(facts: list[dict], mirror_root: Path, conn: sqlite3.Connection | N
     """
     passed, dropped = [], []
     for fact in facts:
-        ok, reason = check_one(fact, mirror_root)
+        ok, reason = check_one(fact, mirror_root, conn)
         if ok:
             item = dict(fact)
             item.pop("автор", None)
