@@ -188,6 +188,25 @@ tid: 10
 После протяжки болтов подождать 10 минут перед финальным моментом.
 """
 
+# --- Тема 11: цена продажи и пробег в одном посте (Н25) --------------------
+# Живой случай финальной сверки, ХУДШАЯ находка задачи — не отвергнутая
+# честная статья, а ПРОШЕДШАЯ подделка: множитель «тысяч» терял единицу за
+# собой, и «5 тысяч рублей» (деньги) канонизировалось в тот же вырожденный
+# ключ, что «5 тысяч км» (пробег) — цитата о деньгах молча подтверждала
+# утверждение о пробеге.
+THEME_11_PRICE_MILEAGE = """---
+tid: 11
+---
+
+# Продажа Forester
+
+##### Пост 1100
+
+*Grom78 · 03.06.2016 12:00:00 · #1*
+
+Продаю. Пробег 187 тысяч км, торг ради 3-5 тысяч рублей уместен.
+"""
+
 # --- Тема 3: пустая тема форума — ни одного поста ---------------------------
 THEME_3_EMPTY = """---
 tid: 3
@@ -246,6 +265,7 @@ def mirror(tmp_path):
     (root / "Тема 8.md").write_text(THEME_8_FUEL, encoding="utf-8")
     (root / "Тема 9.md").write_text(THEME_9_MILEAGE, encoding="utf-8")
     (root / "Тема 10.md").write_text(THEME_10_TORQUE_WAIT, encoding="utf-8")
+    (root / "Тема 11.md").write_text(THEME_11_PRICE_MILEAGE, encoding="utf-8")
     (root / "FAQ 100.md").write_text(FAQ_100, encoding="utf-8")
     (root / "FAQ старый 9.md").write_text(FAQ_OLD_9, encoding="utf-8")
     (root / "Блог remont 77.md").write_text(BLOG_77_EXCERPT, encoding="utf-8")
@@ -278,6 +298,8 @@ def conn():
               "VALUES (900, 9, 'Denis77', '2015-09-01 12:00:00', '', '')")
     c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
               "VALUES (1000, 10, 'Egorov', '2013-04-12 12:00:00', '', '')")
+    c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+              "VALUES (1100, 11, 'Grom78', '2016-06-03 12:00:00', '', '')")
     c.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text) "
               "VALUES ('bitrix', 100, 'Как часто менять масло?', "
               "'Рекомендуемый интервал замены масла 5000 км пробега.', "
@@ -485,6 +507,21 @@ def test_minute_abbreviation_matches_full_word_in_quote(mirror, conn):
             "## Сноски\n\n[^f1]: «После протяжки болтов подождать 10 минут перед "
             "финальным моментом» — Egorov, 12.04.2013, [[Тема 10#Пост 1000]]\n")
     p = mirror.parent / "статья-протяжка.md"
+    p.write_text(text, encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert result["ок"], result["проблемы"]
+
+
+def test_multiplier_mileage_claim_matches_only_the_mileage_citation(mirror, conn):
+    """Н25 ре-ревью, честная сторона: правильно процитированный пробег
+    («187 тысяч км», ссылается на цитату ПРО пробег) обязан пройти — фикс
+    не должен был превратить составные единицы во что-то, что не проходит
+    вовсе, только в то, что не путается с чужой величиной."""
+    text = ("---\ntype: статья\nисточников: 1\nсобрано: 2026-08-22\n---\n\n"
+            "# Тема\n\nПробег этой машины составлял 187 тысяч км[^f1].\n\n"
+            "## Сноски\n\n[^f1]: «Пробег 187 тысяч км, торг ради 3-5 тысяч рублей "
+            "уместен» — Grom78, 03.06.2016, [[Тема 11#Пост 1100]]\n")
+    p = mirror.parent / "статья-пробег-цена.md"
     p.write_text(text, encoding="utf-8")
     result = verify.check(p, mirror, mirror, conn)
     assert result["ок"], result["проблемы"]
