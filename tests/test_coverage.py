@@ -123,3 +123,142 @@ def test_to_csv_has_bom_and_writes_rows(tmp_path):
     lines = raw.decode("utf-8-sig").splitlines()
     assert lines[1] == "1,19,Тормоза,3,3,0,ok"
     assert lines[2] == "2,19,Мосты,,1,,unverifiable"
+
+
+# --- задача 7 Ф3: покрытие FAQ/блогов + доля непроцитированных источников --
+
+
+def _faq_row(conn, engine, nr, answer_md="", answer_text="", dup_engine=None, dup_nr=None):
+    conn.execute(
+        "INSERT INTO faq(engine, nr, question, answer_md, answer_text, "
+        "duplicate_of_engine, duplicate_of_nr) VALUES (?,?,?,?,?,?,?)",
+        (engine, nr, "вопрос %s%d" % (engine, nr), answer_md, answer_text, dup_engine, dup_nr))
+
+
+def _blog_row(conn, blog, post_id, body_md="", body_text="", is_excerpt=0):
+    conn.execute(
+        "INSERT INTO blog_posts(blog, post_id, body_md, body_text, is_excerpt) "
+        "VALUES (?,?,?,?,?)",
+        (blog, post_id, body_md, body_text, is_excerpt))
+
+
+def _seed_faq_blog(tmp_path):
+    conn = db.connect(tmp_path / "fb.sqlite")
+    db.init_schema(conn)
+    # FAQ: с текстом, дубль, из одних картинок, пустой ответ.
+    _faq_row(conn, "bitrix", 1, "Лей полусинтетику.", "Лей полусинтетику.")
+    _faq_row(conn, "old", 2, "Лей полусинтетику.", "Лей полусинтетику.",
+             dup_engine="bitrix", dup_nr=1)
+    _faq_row(conn, "bitrix", 3, "![[assets/x.jpg]]", "")           # из одних картинок
+    _faq_row(conn, "bitrix", 4, "", "")                             # пустой ответ вовсе
+    # Блоги: с текстом, выдержка, из одних картинок.
+    _blog_row(conn, "remont", 10, "Заменил ремень.", "Заменил ремень.")
+    _blog_row(conn, "remont", 11, "Обрывок из ленты.", "Обрывок из ленты.", is_excerpt=1)
+    _blog_row(conn, "remont", 12, "![[assets/y.jpg]]", "")          # из одних картинок
+    conn.commit()
+    return conn
+
+
+def test_faq_blog_coverage_partitions_records_without_overlap(tmp_path):
+    conn = _seed_faq_blog(tmp_path)
+    result = coverage.faq_blog_coverage(conn)
+
+    assert result["faq"] == {
+        "всего": 4, "дублей": 1, "из_одних_картинок": 1, "пустых": 1, "с_текстом": 1,
+    }
+    assert result["блоги"] == {
+        "всего": 3, "выдержек": 1, "из_одних_картинок": 1, "с_текстом": 1,
+    }
+    # Группы не пересекаются — сумма обязана сходиться в "всего" (иначе
+    # запись посчиталась бы дважды или потерялась).
+    faq = result["faq"]
+    assert faq["дублей"] + faq["из_одних_картинок"] + faq["пустых"] + faq["с_текстом"] == faq["всего"]
+    blog = result["блоги"]
+    assert blog["выдержек"] + blog["из_одних_картинок"] + blog["с_текстом"] == blog["всего"]
+
+
+def test_faq_duplicate_that_is_also_image_only_counts_as_duplicate_only(tmp_path):
+    """Живой случай (1 запись на боевых данных): дубль без единого слова
+    текста. Дубль — не самостоятельный источник вовсе (задача 1), значит
+    приоритет у категории "дублей", а не "из одних картинок" — иначе
+    сумма разошлась бы с "всего" (запись считалась бы в двух корзинах)."""
+    conn = db.connect(tmp_path / "fb2.sqlite")
+    db.init_schema(conn)
+    _faq_row(conn, "bitrix", 1, "Настоящий ответ.", "Настоящий ответ.")
+    _faq_row(conn, "old", 2, "![[assets/x.jpg]]", "", dup_engine="bitrix", dup_nr=1)
+    conn.commit()
+
+    result = coverage.faq_blog_coverage(conn)["faq"]
+    assert result == {"всего": 2, "дублей": 1, "из_одних_картинок": 0, "пустых": 0, "с_текстом": 1}
+
+
+def test_citable_sources_excludes_duplicate_excerpt_empty_thread_and_image_only(tmp_path):
+    conn = db.connect(tmp_path / "cs.sqlite")
+    db.init_schema(conn)
+    conn.execute("INSERT INTO threads(tid, fid, title, replies_expected) VALUES (1, 19, 'т1', 0)")
+    conn.execute("INSERT INTO posts(mid, tid, page_no, text) VALUES (100, 1, 1, 'текст')")
+    conn.execute("INSERT INTO threads(tid, fid, title, replies_expected) VALUES (2, 19, 'пустая', NULL)")
+    _faq_row(conn, "bitrix", 42, "Ответ.", "Ответ.")
+    _faq_row(conn, "old", 7, "Ответ.", "Ответ.", dup_engine="bitrix", dup_nr=42)
+    _faq_row(conn, "bitrix", 9, "![[assets/x.jpg]]", "")
+    _blog_row(conn, "remont", 5, "Текст.", "Текст.")
+    _blog_row(conn, "remont", 6, "Выдержка.", "Выдержка.", is_excerpt=1)
+    conn.commit()
+
+    sources = coverage.citable_sources(conn)
+
+    assert sources == ["Тема 1", "FAQ 42", "Блог remont 5"]
+    # Дубль FAQ, пустая тема, выдержка блога и запись из одних картинок —
+    # ни один не самостоятельный цитируемый источник.
+    assert "FAQ старый 7" not in sources
+    assert "Тема 2" not in sources
+    assert "Блог remont 6" not in sources
+    assert "FAQ 9" not in sources
+
+
+def _article(tmp_path, name, draft, verified, meta):
+    from pipeline import articles
+    out = tmp_path / name
+    out.write_text(articles.render(draft, verified, meta), encoding="utf-8")
+    return out
+
+
+def _fact(fid, source, quote):
+    return {"id": fid, "источник": source, "цитата": quote, "суть": "х",
+            "автор": "Автор", "дата": "01.01.2020"}
+
+
+def test_citation_coverage_counts_source_cited_twice_as_one(tmp_path):
+    draft = "Раз[^f1]. Два[^f2]."
+    verified = [_fact("f1", "Тема 1#Пост 100", "раз"), _fact("f2", "Тема 1#Пост 101", "два")]
+    _article(tmp_path, "a.md", draft, verified, {"заголовок": "А"})
+
+    result = coverage.citation_coverage(tmp_path, ["Тема 1", "Тема 2", "FAQ 1"])
+
+    assert result["процитировано"] == 1
+    assert result["не процитировано"] == 2
+    assert sorted(result["список"]) == ["FAQ 1", "Тема 2"]
+    assert result["доля"] == 2 / 3
+
+
+def test_citation_coverage_counts_source_cited_across_two_articles_once(tmp_path):
+    _article(tmp_path, "a.md", "Раз[^f1].", [_fact("f1", "Тема 1#Пост 100", "раз")], {"заголовок": "А"})
+    _article(tmp_path, "b.md", "Два[^f1].", [_fact("f1", "Тема 1#Пост 200", "два")], {"заголовок": "Б"})
+
+    result = coverage.citation_coverage(tmp_path, ["Тема 1"])
+
+    assert result["процитировано"] == 1
+    assert result["не процитировано"] == 0
+    assert result["список"] == []
+
+
+def test_citation_coverage_uncited_source_lands_in_list(tmp_path):
+    result = coverage.citation_coverage(tmp_path, ["Тема 1", "Тема 2"])
+    assert result["не процитировано"] == 2
+    assert sorted(result["список"]) == ["Тема 1", "Тема 2"]
+    assert result["доля"] == 1.0
+
+
+def test_citation_coverage_empty_source_list_gives_zero_share_not_error(tmp_path):
+    result = coverage.citation_coverage(tmp_path, [])
+    assert result == {"процитировано": 0, "не процитировано": 0, "доля": 0.0, "список": []}
