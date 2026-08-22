@@ -143,15 +143,78 @@ def test_citable_drops_faq_question_and_answer_lost_placeholders():
     подставляет `(вопрос не сохранился)`/`(ответ не сохранился)`, когда
     поле пусто. Контракт зеркала прямо называет это текстом генератора.
     """
-    assert notes.citable(mirror_faq.QUESTION_LOST).strip() == ""
-    assert notes.citable(mirror_faq.ANSWER_LOST).strip() == ""
+    # `.strip() == ""` работало, пока замена шла на пробел; после фикса Н5
+    # ревью задачи 4 (замена на несхлопываемый `notes._GAP`, не на пробел
+    # — см. его докстринг) весь текст плейсхолдера схлопывается ровно в
+    # один `_GAP`, а не в пустоту. Проверяем то же самое утверждение
+    # («от плейсхолдера ничего, кроме разделителя, не осталось») новым
+    # инвариантом.
+    assert notes.citable(mirror_faq.QUESTION_LOST).strip() == notes._GAP
+    assert notes.citable(mirror_faq.ANSWER_LOST).strip() == notes._GAP
 
 
 def test_citable_drops_blog_body_lost_placeholder():
     """Латентная находка 4б (0 живых случаев сейчас): `pipeline.
     mirror_blog.render_entry` подставляет `(текст не сохранился)`, когда
     `body_md` записи блога пуст."""
-    assert notes.citable(mirror_blog.BODY_LOST).strip() == ""
+    assert notes.citable(mirror_blog.BODY_LOST).strip() == notes._GAP
+
+
+# --- ревью задачи 4 (Н1, Н5): цитирование чужих слов и сшивание фрагментов ---
+
+NOTE_QUOTE_BLOCK = """---
+tid: 10045
+---
+
+# Тема с цитированием
+
+##### Пост 302230
+
+*evil · 27.03.2012 15:00:00 · #1*
+
+Передаточное отношение без разницы снимаш заднюю часть кпп и переставляеш в свою
+
+##### Пост 302526
+
+*KOLESO · 27.03.2012 16:00:00 · #2*
+
+> evil пишет:
+> Передаточное отношение без разницы снимаш заднюю часть кпп и переставляеш в свою
+
+Согласен с evil, тоже так делал.
+"""
+
+
+def test_citable_drops_quote_block_content_and_its_header(tmp_path):
+    """Н1 ревью задачи 4: `> <ник> пишет:` + `> …` — слова ДРУГОГО участника,
+    перенесённые форумной цитатой в пост KOLESO. Без вычистки цитата из
+    этого блока прошла бы гейт с подписью KOLESO, хотя слова написал evil
+    (живой пример: тема 10045, пост 302526).
+    """
+    p = tmp_path / "n.md"
+    p.write_text(NOTE_QUOTE_BLOCK, encoding="utf-8")
+    s = notes.citable(notes.section(p, "Пост 302526"))
+    assert "снимаш заднюю часть кпп" not in s   # тело чужой цитаты
+    assert "evil пишет" not in s                # шапка цитаты — тоже не слова KOLESO
+    assert "Согласен с evil" in s                # а вот это — собственные слова KOLESO
+
+
+def test_citable_gap_does_not_bridge_paragraphs_across_removed_placeholder(tmp_path):
+    """Н5 ревью задачи 4: замена вычищенного текста на пробел (не на
+    `notes._GAP`) превращала два абзаца, разделённых пометкой об утрате
+    картинки, в СОСЕДНИЕ после схлопывания пробелов — цитата, идущая через
+    эту границу в источнике, стала бы неотличима от честной непрерывной.
+    """
+    text = ("Первая часть предложения\n\n"
+            "(изображение не сохранилось: http://i.piccy.info/x.jpg)\n\n"
+            "вторая часть предложения")
+    cleaned = notes.normalize_spaces(notes.citable(text))
+    bridged = notes.normalize_spaces("Первая часть предложения вторая часть предложения")
+    assert bridged not in cleaned
+    # Обе половины по отдельности остаются дословно доступны — фикс не
+    # портит обычную (не сшитую) цитату.
+    assert notes.normalize_spaces("Первая часть предложения") in cleaned
+    assert notes.normalize_spaces("вторая часть предложения") in cleaned
 
 
 def test_body_handles_degenerate_empty_frontmatter(tmp_path):
