@@ -1094,12 +1094,20 @@ def test_find_number_units_multiplier_captures_unit_in_every_spelling():
 
 def test_find_number_units_multiplier_distinguishes_money_from_mileage():
     """Живая подделка Н25: источник — «ради 3-5 тысяч рублей» (деньги),
-    статья — «пробег... составлял 5 тысяч км» (пробег). Без фикса оба давали
-    один и тот же вырожденный ключ «tysyach» (единица терялась вовсе), и
-    цитата о деньгах молча подтверждала утверждение о пробеге."""
+    статья — «пробег... составлял 5 тысяч км» (пробег). Без фикса Н25 оба
+    давали один и тот же вырожденный ключ «tysyach» (единица терялась
+    вовсе), и цитата о деньгах молча подтверждала утверждение о пробеге.
+
+    После дефекта 8 (категория 1: «рублей» — полная словоформа денег,
+    заведена в исключения вместе с «руб»/«р») деньги с множителем стали
+    ПОЛНОСТЬЮ мягкой заявкой (голое число, а не единица измерения) — то же
+    направление защиты, только через другой механизм: у money теперь
+    вовсе НЕТ жёстких пар «число+единица», значит утверждение о пробеге
+    («5», «tyskm») не может найтись НИ В КАКОМ виде в цитате о деньгах."""
     money = notes.find_number_units("ради 3-5 тысяч рублей")
     mileage = notes.find_number_units("пробег этой машины составлял 5 тысяч км")
-    assert money == {("3", "tysrubley"), ("5", "tysrubley")}
+    assert money == set(), "деньги с множителем не единица измерения вовсе — только мягкая заявка"
+    assert notes.find_quantity_claims("ради 3-5 тысяч рублей") == {"3", "5"}
     assert mileage == {("5", "tyskm")}
     assert not (mileage <= money), "утверждение о пробеге не должно подтверждаться цитатой о деньгах"
 
@@ -1117,24 +1125,29 @@ def test_find_number_units_multiplier_alone_is_not_a_hard_unit():
 
 
 def test_find_number_units_multiplier_million_and_billion_forms():
-    # «руб»/«р» (сокращение) — «мягкое» исключение денег само по себе
-    # (`_QUANTITY_NOUNS`, Н16), поэтому «млн руб» уходит в quantity claims,
-    # а не в hard unit — это ПРЕЖНЕЕ, не задетое Н25 поведение (то же для
-    # «тыс. руб»). Полное слово «рублей»/«долларов» этим исключением не
-    # накрыто и остаётся честной единицей — на нём и сравниваем написания.
-    assert notes.find_number_units("2 млн рублей") == notes.find_number_units("2 миллиона рублей")
-    assert notes.find_number_units("2 млрд долларов") == notes.find_number_units("2 миллиарда долларов")
-    assert notes.find_number_units("2 млн долларов") != notes.find_number_units("2 млрд долларов")
-    assert notes.find_number_units("2 млн рублей") == {("2", "mlnrubley")}
-    assert notes.find_number_units("2 млрд долларов") == {("2", "mlrddollarov")}
+    # «руб»/«р»/«рублей» — «мягкое» исключение денег (`_QUANTITY_NOUNS`,
+    # Н16 + дефект 8 категория 1), поэтому «млн руб»/«млн рублей» уходят в
+    # quantity claims, а не в hard unit — сравнение написаний множителя
+    # («млн»/«миллиона», «млрд»/«миллиарда») делаем на единицах, которые
+    # исключением не накрыты («тонн»/«километров» — обычные, не денежные,
+    # реальные величины).
+    assert notes.find_number_units("2 млн тонн") == notes.find_number_units("2 миллиона тонн")
+    assert notes.find_number_units("2 млрд километров") == notes.find_number_units("2 миллиарда километров")
+    assert notes.find_number_units("2 млн километров") != notes.find_number_units("2 млрд километров")
+    assert notes.find_number_units("2 млн тонн") == {("2", "mlntonn")}
+    assert notes.find_number_units("2 млрд километров") == {("2", "mlrdkm")}
+    # деньги с множителем — по-прежнему только мягкая заявка (дефект 8)
+    assert notes.find_number_units("2 млн рублей") == set()
+    assert notes.find_quantity_claims("2 млн рублей") == {"2"}
 
 
 def test_find_number_units_multiplier_does_not_glue_a_random_word():
-    """«5 тысяч и 3 рубля» — «и» после множителя союз, не единица: не
-    должен склеиться в бессмысленный составной ключ, множитель остаётся
-    голым количеством (soft), а «3 рубля» — отдельная, честная единица."""
-    assert notes.find_number_units("5 тысяч и 3 рубля") == {("3", "rublya")}
-    assert notes.find_quantity_claims("5 тысяч и 3 рубля") == {"5"}
+    """«5 тысяч и 3 кг» — «и» после множителя союз, не единица: не должен
+    склеиться в бессмысленный составной ключ, множитель остаётся голым
+    количеством (soft), а «3 кг» — отдельная, честная единица (не деньги —
+    дефект 8 не должен смягчить и её)."""
+    assert notes.find_number_units("5 тысяч и 3 кг") == {("3", "kg")}
+    assert notes.find_quantity_claims("5 тысяч и 3 кг") == {"5"}
 
 
 def test_attached_lowercase_k_means_thousand_and_is_a_soft_claim():
@@ -1182,6 +1195,40 @@ def test_find_quantity_claims_does_not_leak_into_find_number_units():
     «число+единица» — `find_number_units` его не выдаёт вовсе, иначе
     считалось бы дважды двумя разными проверками."""
     assert notes.find_number_units("означает 1998 год") == set()
+
+
+# --- дефект 8, категория 1: словоформы уже принятых исключений (пилот) ----
+
+
+def test_find_quantity_claims_extracts_full_word_forms_of_money_and_duration():
+    """Живые находки скана корпуса: полные словоформы денег и срока не
+    были заведены (список знал только сокращения «руб»/«р»/«тр» и
+    «месяц»/«лет»/«раз», но не «рублей»/«дня»/«недели») — число рядом с
+    ними ложно становилось «числом с единицей измерения»."""
+    assert notes.find_quantity_claims("отдал 500 рублей за деталь") == {"500"}
+    assert notes.find_quantity_claims("продали за 300 евро") == {"300"}
+    assert notes.find_quantity_claims("прошло 3 дня после замены") == {"3"}
+    assert notes.find_quantity_claims("ждал запчасть 2 недели") == {"2"}
+    assert notes.find_number_units("отдал 500 рублей за деталь") == set()
+    assert notes.find_number_units("прошло 3 дня после замены") == set()
+
+
+def test_find_quantity_claims_extracts_glued_manufacture_year_abbreviation():
+    """«гв» (год выпуска без точек, «97гв») — сокращение года выпуска,
+    живой массовый паттерн форума; форма с точками («г.в.») сюда не
+    входит (не переходит точку) и сознательно оставлена открытому классу
+    (см. докстринг `_QUANTITY_NOUNS`)."""
+    assert notes.find_quantity_claims("Легаси 97гв продаю") == {"97"}
+    assert notes.find_number_units("Легаси 97гв продаю") == set()
+
+
+def test_find_quantity_claims_extracts_rally_placement_and_points():
+    """«место»/«очков» — результат ралли-соревнования (позиция в
+    зачёте/счёт баллов), не единица измерения; число всё равно проверяется
+    голым."""
+    assert notes.find_quantity_claims("занял 1 место в зачёте") == {"1"}
+    assert notes.find_quantity_claims("набрал 15 очков за этап") == {"15"}
+    assert notes.find_number_units("занял 1 место в зачёте") == set()
 
 
 def test_find_bare_numbers_finds_year_without_a_neighbouring_word():
