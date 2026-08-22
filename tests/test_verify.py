@@ -171,6 +171,23 @@ tid: 9
 Пробег 130 000 км, состояние хорошее.
 """
 
+# --- Тема 10: время затяжки словом «минут» в источнике (Н24) ---------------
+# Живой случай финальной сверки: прозу статьи ИИ сокращает «минут» до
+# «мин», источник пишет полным словом — без строки «минута» в таблице
+# синонимов (`notes._UNIT_SYNONYMS`) честная статья отвергалась бы.
+THEME_10_TORQUE_WAIT = """---
+tid: 10
+---
+
+# Протяжка ГБЦ
+
+##### Пост 1000
+
+*Egorov · 12.04.2013 12:00:00 · #1*
+
+После протяжки болтов подождать 10 минут перед финальным моментом.
+"""
+
 # --- Тема 3: пустая тема форума — ни одного поста ---------------------------
 THEME_3_EMPTY = """---
 tid: 3
@@ -228,6 +245,7 @@ def mirror(tmp_path):
     (root / "Тема 7.md").write_text(THEME_7_VOLTAGE, encoding="utf-8")
     (root / "Тема 8.md").write_text(THEME_8_FUEL, encoding="utf-8")
     (root / "Тема 9.md").write_text(THEME_9_MILEAGE, encoding="utf-8")
+    (root / "Тема 10.md").write_text(THEME_10_TORQUE_WAIT, encoding="utf-8")
     (root / "FAQ 100.md").write_text(FAQ_100, encoding="utf-8")
     (root / "FAQ старый 9.md").write_text(FAQ_OLD_9, encoding="utf-8")
     (root / "Блог remont 77.md").write_text(BLOG_77_EXCERPT, encoding="utf-8")
@@ -258,6 +276,8 @@ def conn():
               "VALUES (800, 8, 'Toropov', '2011-03-05 12:00:00', '', '')")
     c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
               "VALUES (900, 9, 'Denis77', '2015-09-01 12:00:00', '', '')")
+    c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+              "VALUES (1000, 10, 'Egorov', '2013-04-12 12:00:00', '', '')")
     c.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text) "
               "VALUES ('bitrix', 100, 'Как часто менять масло?', "
               "'Рекомендуемый интервал замены масла 5000 км пробега.', "
@@ -450,6 +470,21 @@ def test_thin_space_number_in_article_matches_regular_space_in_quote(mirror, con
             "## Сноски\n\n[^f1]: «Пробег 130 000 км» — Denis77, 01.09.2015, "
             "[[Тема 9#Пост 900]]\n")
     p = mirror.parent / "статья-пробег.md"
+    p.write_text(text, encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert result["ок"], result["проблемы"]
+
+
+def test_minute_abbreviation_matches_full_word_in_quote(mirror, conn):
+    """Н24 ре-ревью (последняя блокирующая финальной сверки): проза статьи
+    сокращает «минут» до «мин» (обычное поведение ИИ-прозы), источник пишет
+    полным словом — без строки «минута» в таблице синонимов честная статья
+    отвергалась бы («число не встречается ни в одной сноске»)."""
+    text = ("---\ntype: статья\nисточников: 1\nсобрано: 2026-08-22\n---\n\n"
+            "# Тема\n\nПосле протяжки подождать 10 мин перед моментом[^f1].\n\n"
+            "## Сноски\n\n[^f1]: «После протяжки болтов подождать 10 минут перед "
+            "финальным моментом» — Egorov, 12.04.2013, [[Тема 10#Пост 1000]]\n")
+    p = mirror.parent / "статья-протяжка.md"
     p.write_text(text, encoding="utf-8")
     result = verify.check(p, mirror, mirror, conn)
     assert result["ок"], result["проблемы"]

@@ -635,7 +635,11 @@ def test_find_number_units_splits_range_into_two_numbers():
 
 
 def test_find_number_units_compares_fraction_as_whole_string():
-    assert notes.find_number_units("3/16 дюйма") == {("3/16", notes._canon_unit("дюйма"))}
+    """«Дюйма» сворачивается в ключ символа дюйма (`"`) таблицей синонимов
+    (Н24 ре-ревью) — до нее это был отдельный ключ `dyuyma`, что не давало
+    дробной форме источника (`3/16"`) подтвердить пересказ прозой словом
+    (`3/16 дюйма`) и наоборот (см. Н24-тесты)."""
+    assert notes.find_number_units("3/16 дюйма") == {("3/16", '"')}
 
 
 def test_find_number_units_ignores_bare_numbers_without_unit():
@@ -925,6 +929,52 @@ def test_find_number_units_synonyms_do_not_merge_different_units():
     assert notes.find_number_units("5 С") == {("5", "s")}
     assert notes.find_number_units("5 г") == {("5", "g")}
     assert notes.find_number_units("5 кг") == {("5", "kg")}
+
+
+# --- Н24 ре-ревью: подбор групп синонимов «по интуиции» ненадёжен вообще —
+# «минута»/«мин» пропущена не потому что редка, а потому что список брался
+# «по памяти». Эта партия ГРУПП подобрана сканированием всего живого
+# корпуса (см. `notes._UNIT_SYNONYMS`, комментарий над группами Н24):
+# минута/мин, секунда/сек (добавлена сверх пяти названных ре-ревью — тот
+# же класс, та же уверенность), градус/град, атмосфера+атмо/атм, бар
+# (падежные формы), дюйм (падежные формы -> символ дюйма).
+
+
+def test_find_number_units_unifies_abbreviation_and_full_word_н24():
+    pairs = [
+        ("5 мин", "5 минут"),
+        ("30 сек", "30 секунд"),
+        ("90 град", "90 градусов"),
+        ("2 атм", "2 атмосферы"),
+        ("2 атм", "2 атмо"),
+        ("2 бар", "2 бара"),
+        ('3/16"', "3/16 дюйма"),
+    ]
+    for abbrev, word in pairs:
+        assert notes.find_number_units(abbrev) == notes.find_number_units(word), (abbrev, word)
+        assert notes.find_number_units(abbrev), abbrev
+
+
+def test_find_number_units_н24_synonyms_do_not_merge_different_units():
+    """Та же обратная проверка для новой партии: «мин»/«м», «град»/«г»,
+    «атм»/«а» (ампер) обязаны остаться разными ключами."""
+    assert notes.find_number_units("5 мин") != notes.find_number_units("5 м")
+    assert notes.find_number_units("5 град") != notes.find_number_units("5 г")
+    assert notes.find_number_units("5 атм") != notes.find_number_units("5 А")
+    assert notes.find_number_units("5 мин") == {("5", "min")}
+    assert notes.find_number_units("5 м") == {("5", "m")}
+    assert notes.find_number_units("5 град") == {("5", "grad")}
+    assert notes.find_number_units("5 г") == {("5", "g")}
+    assert notes.find_number_units("5 атм") == {("5", "atm")}
+    assert notes.find_number_units("5 А") == {("5", "a")}
+
+
+def test_find_number_units_atmosfernik_engine_type_is_not_folded_into_atm():
+    """«Атмосферник» (двигатель без наддува) — прилагательное/существительное
+    о ТИПЕ двигателя, не о давлении; сознательно НЕ включено в группу «атм»
+    (живой пример: 8 вхождений на корпусе, но склейка дала бы ложное
+    подтверждение величины давления через слово о типе мотора)."""
+    assert notes.find_number_units("2.0 атмосферник") == {("2.0", "atmosfernik")}
 
 
 # --- Н16 ре-ревью: голое число рядом с количественным существительным ------
