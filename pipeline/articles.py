@@ -1,0 +1,228 @@
+"""Проход 2: сборка готовой статьи из прозы ИИ и проверенных фактов.
+
+Ценность этого модуля не в том, что он красиво форматирует markdown, а в
+том, что он не даёт ИИ солгать в единственном месте, где ложь была бы
+незаметна: в самой сноске. ИИ видит только `articles/проверено/<ключ>.json`
+(выход `facts.check_all`, задача 4) — факты, чья цитата уже механически
+сверена с телом заметки-источника, — и ставит в прозе маркер `[^f3]`.
+**Содержимое** сноски (цитату, подпись, ссылку) собирает этот модуль из
+данных факта, а не парсит из текста ИИ: если бы сноску набирал ИИ, он мог
+бы написать верную цитату при неверной ссылке (или верную цитату под чужим
+именем), и проверка сошлась бы на цитате. Поэтому черновик, в котором уже
+стоит готовое определение сноски (`^[^f1]:` в начале строки), отбраковывается
+целиком, а не молча перезаписывается кодом — иначе ИИ мог бы подписать
+настоящую, дословно верную цитату чужим именем и датой, а ни этот модуль (он
+не сверяет автора/дату с базой — их и негде взять, кроме базы, из которой
+`facts.check_all` их уже проставил), ни `verify.py` задачи 6 (в его таблице
+проверок автора/даты нет вовсе) такую подмену не поймали бы.
+
+**Два вида сноски, не один.** У реплики форумчанина/блогера есть автор и
+дата (`facts._lookup_meta` берёт их из базы). У записи FAQ — нет: у неё нет
+автора-человека, а единственная дата в базе — момент, когда страницу СНЯЛ
+краулер, а не когда её написали; подставить её как «дату» было бы обманом
+того же рода, против которого затеян весь проект (см. `facts._lookup_meta`,
+случай FAQ). Поэтому `_footnote_line` не выбирает один из двух жёстко
+заданных шаблонов, а собирает подпись из того, что у факта есть: код
+одинаково обрабатывает случай, когда ключей `автор`/`дата` у факта нет
+вовсе (программные вызовы `facts.check_all` без `conn`), и случай, когда они
+есть, но `None` или пустая строка (FAQ-факт, полученный `facts.check_all` с
+`conn` под рукой) — оба дают один и тот же безподписной вид.
+
+Ссылки в сносках не резолвятся и не проверяются заново здесь: имя заметки и
+якорь уже прошли через `check_mirror` внутри `facts.check_one` на проходе 1
+(Global Constraint №3 фазы — своей цепочки резолва не писать), а повторная
+проверка дословности цитаты — работа `verify.py` (задача 6), а не этого
+модуля. Дублировать её здесь значило бы завести вторую цепочку резолва одного
+и того же знания — урок Ф2 (`local_path`), который эта фаза обязана не
+повторить.
+"""
+from __future__ import annotations
+
+import json
+import re
+from datetime import date
+from pathlib import Path
+
+# Маркер сноски в прозе черновика — то, что ставит ИИ: `[^f1]`, `[^f12]` и
+# т.п. Идентификатор — всё до `]`, без пробелов (ровно те `id`, что выдаёт
+# `facts.check_all`: `f1`, `f2`, …).
+_MARKER = re.compile(r"\[\^([^\]\s]+)\]")
+
+# Строка ОПРЕДЕЛЕНИЯ сноски в начале строки — `[^f1]: …`. Если она уже стоит
+# в черновике, значит её набрал ИИ, а не код: это и есть дыра, которую
+# задача обязана закрыть (см. докстринг модуля).
+_EMBEDDED_DEFINITION = re.compile(r"^\[\^[^\]]+\]:", re.M)
+
+
+class DraftError(Exception):
+    """Черновик прохода 2 непригоден для сборки: маркер без проверенного
+    факта, встроенное ИИ определение сноски, отсутствующие метаданные."""
+
+
+def used_ids(draft: str) -> list[str]:
+    """Идентификаторы фактов, на которые проза ссылается маркерами, в
+    порядке первого появления, без повторов — ровно то множество, для
+    которого нужно отрендерить ОДНО определение сноски каждому (тест
+    `test_every_footnote_definition_appears_once`: маркер, повторённый в
+    прозе несколько раз, — не повод дублировать сноску)."""
+    seen: list[str] = []
+    for m in _MARKER.finditer(draft):
+        fid = m.group(1)
+        if fid not in seen:
+            seen.append(fid)
+    return seen
+
+
+def _footnote_line(fact: dict) -> str:
+    """Собирает ОДНУ строку определения сноски из данных факта — не из
+    текста ИИ (см. докстринг модуля).
+
+    Подпись — то, что у факта есть: автор и дата, если они есть и непустые
+    (форум/блог), иначе ничего вовсе (FAQ). `fact.get(...) or ""` нарочно
+    уравнивает три формы отсутствия — ключа нет, ключ `None`, ключ `""` —
+    все три реально встречаются на выходе `facts.check_all` (без базы ключи
+    отсутствуют; с базой FAQ получает явный `None`) и не должны давать
+    разные сноски.
+    """
+    quote = fact.get("цитата", "")
+    parts = []
+    author = (fact.get("автор") or "").strip()
+    if author:
+        parts.append(author)
+    when = (fact.get("дата") or "").strip()
+    if when:
+        parts.append(when)
+    parts.append("[[%s]]" % fact["источник"])
+    return "[^%s]: «%s» — %s" % (fact["id"], quote, ", ".join(parts))
+
+
+def render(draft: str, verified: list[dict], meta: dict) -> str:
+    """Собирает готовый markdown статьи: frontmatter + прозу черновика +
+    раздел сносок, отрендеренный из `verified` (см. докстринг модуля —
+    сноску набирает код, не ИИ).
+
+    Отказывает (`DraftError`), если:
+    - в черновике уже стоит готовое определение сноски (её обязан
+      набрать код, а не ИИ — иначе проверка дословности сошлась бы на
+      настоящей цитате при подменённой подписи);
+    - маркер ссылается на факт, которого нет среди `verified` (ИИ
+      сослался на то, чего проход 1 не подтвердил, или опечатался в id).
+
+    Неиспользованный факт (проверенный, но не упомянутый в прозе) не
+    выбрасывается молча — он попадает и в поле frontmatter
+    `неиспользованные_факты`, и в видимый коллаут в теле статьи: спека §6
+    требует измерять долю фактов, которые ИИ проигнорировал, и молчаливое
+    выбрасывание превратило бы этот замер в ноль.
+    """
+    embedded = _EMBEDDED_DEFINITION.search(draft)
+    if embedded:
+        raise DraftError(
+            "черновик содержит готовое определение сноски «%s» — его обязан "
+            "рендерить код (pipeline.articles.render), а не ИИ: иначе подмену "
+            "подписи при верной цитате никто не поймает" % embedded.group(0))
+
+    by_id = {fact["id"]: fact for fact in verified}
+    ids = used_ids(draft)
+    missing = [fid for fid in ids if fid not in by_id]
+    if missing:
+        raise DraftError(
+            "проза ссылается на факт(ы), которых нет среди проверенных: %s"
+            % ", ".join(missing))
+
+    unused = [fact["id"] for fact in verified if fact["id"] not in ids]
+
+    frontmatter = ["---", "type: статья"]
+    if meta.get("узел"):
+        frontmatter.append("узел: %s" % meta["узел"])
+    if meta.get("модель"):
+        frontmatter.append("модель: [%s]" % ", ".join(meta["модель"]))
+    frontmatter.append("источников: %d" % len(verified))
+    if unused:
+        frontmatter.append("неиспользованные_факты: [%s]" % ", ".join(unused))
+    frontmatter.append("собрано: %s" % meta.get("собрано", date.today().isoformat()))
+    frontmatter.append("---")
+
+    body_parts = [draft.rstrip("\n")]
+    if unused:
+        body_parts.append("")
+        body_parts.append("> [!warning] Факты не использованы: %s" % ", ".join(unused))
+
+    out = ["\n".join(frontmatter), "", "# %s" % meta.get("заголовок", ""), "",
+           "\n".join(body_parts)]
+    if ids:
+        out += ["", "## Сноски", "", "\n".join(_footnote_line(by_id[fid]) for fid in ids)]
+    return "\n".join(out) + "\n"
+
+
+# --- build: черновик + проверенные факты -> заметка в wiki/Статьи ---------
+
+# frontmatter черновика — простые пары `ключ: значение`, значение — либо
+# скаляр, либо список `[a, b]` (ровно тот минимум, который нужен статье;
+# полноценный YAML-парсер этому проекту нигде не требовался, см. docstring
+# `check_mirror._strip_frontmatter` — везде до этой задачи frontmatter только
+# ОТРЕЗАЛИ, а не читали обратно как структуру).
+def _parse_draft(path: Path) -> tuple[dict, str]:
+    text = Path(path).read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        raise DraftError("в черновике «%s» нет frontmatter с метаданными статьи (заголовок/путь)" % path)
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        raise DraftError("frontmatter черновика «%s» не закрыт строкой `---`" % path)
+    meta: dict = {}
+    for line in text[4:end].splitlines():
+        line = line.strip()
+        if not line or ":" not in line:
+            continue
+        key, _, value = line.partition(":")
+        key, value = key.strip(), value.strip()
+        if value.startswith("[") and value.endswith("]"):
+            meta[key] = [x.strip() for x in value[1:-1].split(",") if x.strip()]
+        else:
+            meta[key] = value.strip('"')
+    return meta, text[end + 5:]
+
+
+def build(key: str, root: Path) -> Path:
+    """Собирает статью с ключом `key` и пишет её в
+    `<root>/wiki/Статьи/<путь>/<заголовок>.md`.
+
+    Потребляет два файла с фиксированными путями (тот же приём, что у
+    `pipeline.run` для `articles/факты`/`articles/проверено` — фиксированное
+    место по ключу, не аргумент): `<root>/articles/черновики/<key>.md`
+    (проза ИИ с маркерами + frontmatter — заголовок, путь, узел, модель) и
+    `<root>/articles/проверено/<key>.json` (выход `facts.check_all`, задача
+    4 — читается поле `проверено`).
+
+    `путь` — папка `wiki/Статьи/<путь>/`, задаётся ЯВНО во frontmatter
+    черновика, а не выводится кодом из `узел`: правило вида «взять `узел` и
+    сделать первую букву заглавной» ломается на акронимах («грм» ->
+    `Grm`/`Грм`, а не `ГРМ`), и молчаливое неверное угадывание пути — ровно
+    тот класс ошибки, против которого затеяна вся фаза. Отсутствие `путь`
+    или `заголовок` — `DraftError`, а не подстановка по умолчанию.
+    """
+    root = Path(root)
+    draft_path = root / "articles" / "черновики" / ("%s.md" % key)
+    verified_path = root / "articles" / "проверено" / ("%s.json" % key)
+    if not draft_path.exists():
+        raise FileNotFoundError("черновик не найден: %s" % draft_path)
+    if not verified_path.exists():
+        raise FileNotFoundError("проверенные факты не найдены: %s" % verified_path)
+
+    meta, draft = _parse_draft(draft_path)
+    title = meta.get("заголовок")
+    if not title:
+        raise DraftError("в черновике «%s» не задан заголовок статьи (frontmatter `заголовок:`)"
+                          % draft_path)
+    section_path = meta.get("путь")
+    if not section_path:
+        raise DraftError("в черновике «%s» не задан `путь` (папка узла в wiki/Статьи) — код "
+                          "не угадывает её из «узел», это должно быть решено явно" % draft_path)
+
+    verified = json.loads(verified_path.read_text(encoding="utf-8"))["проверено"]
+    text = render(draft, verified, meta)
+
+    out_dir = root / "wiki" / "Статьи" / section_path
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / ("%s.md" % title)
+    out_path.write_text(text, encoding="utf-8")
+    return out_path
