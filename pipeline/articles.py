@@ -142,7 +142,11 @@ def render(draft: str, verified: list[dict], meta: dict) -> str:
     frontmatter.append("собрано: %s" % meta.get("собрано", date.today().isoformat()))
     frontmatter.append("---")
 
-    body_parts = [draft.rstrip("\n")]
+    # `strip("\n")`, не только `rstrip`: `_parse_draft` возвращает тело
+    # черновика с ведущим переносом строки (пустая строка сразу после
+    # закрывающей `---` frontmatter) — без обрезки с обоих концов между
+    # заголовком статьи и прозой оставалась бы лишняя пустая строка.
+    body_parts = [draft.strip("\n")]
     if unused:
         body_parts.append("")
         body_parts.append("> [!warning] Факты не использованы: %s" % ", ".join(unused))
