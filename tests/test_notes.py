@@ -806,9 +806,14 @@ def test_find_number_units_ignores_domain_position_nouns():
 
 def test_find_number_units_does_not_touch_open_class_counting_nouns():
     """«виток» — счётное существительное, ОТКРЫТЫЙ класс (таких слов
-    бесконечно много), трогать нельзя — это законный замер количества,
-    не подделка, и он должен уйти в статистику пилота как есть."""
-    assert notes.find_number_units("6 витков") == {("6", "vitkov")}
+    бесконечно много), трогать нельзя — это законный замер количества, не
+    подделка. До дефекта 8 это означало «настоящая единица измерения»
+    (`None`); после — «не опознан, мягкая заявка» (`_is_recognized_unit`
+    не знает слова «виток», и не должна — список остаётся закрытым).
+    Число «6» при этом ПРОДОЛЖАЕТ проверяться (не молчание, не лазейка) —
+    просто через `find_quantity_claims`, а не через жёсткую пару."""
+    assert notes.find_number_units("6 витков") == set()
+    assert notes.find_quantity_claims("6 витков") == {"6"}
 
 
 def test_find_number_units_ordinal_endings_do_not_break_ohm():
@@ -933,18 +938,28 @@ def test_find_number_units_unifies_abbreviation_and_full_word():
 
 def test_find_number_units_synonyms_do_not_merge_different_units():
     """Обратная проверка, которую явно потребовал ре-ревью: таблица
-    синонимов не должна склеить РАЗНЫЕ величины — «м»/«мм», «с»/«ч»,
-    «кг»/«г» обязаны остаться разными ключами."""
+    синонимов не должна склеить РАЗНЫЕ величины — «м»/«мм», «с»/«ч»
+    обязаны остаться разными ключами.
+
+    «г» (грамм) сюда больше не входит буквально: после дефекта 8 «г»
+    сознательно НЕ опознан (см. докстринг `_QUANTITY_NOUNS` — живая смесь
+    года/грамма/города без дешёвого признака развести) и стал мягкой
+    заявкой, а не единицей измерения вовсе — сравнивать его с «кг» как
+    «две разные единицы» больше не имеет смысла (это уже не единица с
+    ОДНОЙ стороны сравнения). Обратная проверка на «г» — что дефект 8 не
+    сделал его тихим — перенесена в тесты категории 1."""
     assert notes.find_number_units("5 м") != notes.find_number_units("5 мм")
     assert notes.find_number_units("5 ч") != notes.find_number_units("5 С")
-    assert notes.find_number_units("5 кг") != notes.find_number_units("5 г")
     # и по значению, не только "не равно" — убедиться, что обе стороны вообще
     # извлекаются (иначе `set() != set()` было бы False, а не доказательством)
     assert notes.find_number_units("5 м") == {("5", "m")}
     assert notes.find_number_units("5 мм") == {("5", "mm")}
     assert notes.find_number_units("5 ч") == {("5", "ch")}
     assert notes.find_number_units("5 С") == {("5", "s")}
-    assert notes.find_number_units("5 г") == {("5", "g")}
+    # «кг» остаётся жёсткой единицей, «г» — мягкой заявкой (не единицей)
+    assert notes.find_number_units("5 кг") == {("5", "kg")}
+    assert notes.find_number_units("5 г") == set()
+    assert notes.find_quantity_claims("5 г") == {"5"}
     assert notes.find_number_units("5 кг") == {("5", "kg")}
 
 
@@ -973,15 +988,15 @@ def test_find_number_units_unifies_abbreviation_and_full_word_н24():
 
 
 def test_find_number_units_н24_synonyms_do_not_merge_different_units():
-    """Та же обратная проверка для новой партии: «мин»/«м», «град»/«г»,
-    «атм»/«а» (ампер) обязаны остаться разными ключами."""
+    """Та же обратная проверка для новой партии: «мин»/«м», «атм»/«а»
+    (ампер) обязаны остаться разными ключами. «град»/«г» — сравнение
+    убрано: после дефекта 8 «г» сам не единица (мягкая заявка, см. тест
+    `test_find_number_units_synonyms_do_not_merge_different_units`)."""
     assert notes.find_number_units("5 мин") != notes.find_number_units("5 м")
-    assert notes.find_number_units("5 град") != notes.find_number_units("5 г")
     assert notes.find_number_units("5 атм") != notes.find_number_units("5 А")
     assert notes.find_number_units("5 мин") == {("5", "min")}
     assert notes.find_number_units("5 м") == {("5", "m")}
     assert notes.find_number_units("5 град") == {("5", "grad")}
-    assert notes.find_number_units("5 г") == {("5", "g")}
     assert notes.find_number_units("5 атм") == {("5", "atm")}
     assert notes.find_number_units("5 А") == {("5", "a")}
 
@@ -989,9 +1004,15 @@ def test_find_number_units_н24_synonyms_do_not_merge_different_units():
 def test_find_number_units_atmosfernik_engine_type_is_not_folded_into_atm():
     """«Атмосферник» (двигатель без наддува) — прилагательное/существительное
     о ТИПЕ двигателя, не о давлении; сознательно НЕ включено в группу «атм»
-    (живой пример: 8 вхождений на корпусе, но склейка дала бы ложное
-    подтверждение величины давления через слово о типе мотора)."""
-    assert notes.find_number_units("2.0 атмосферник") == {("2.0", "atmosfernik")}
+    (живой пример: 8 вхождений на корпусе, склейка дала бы ложное
+    подтверждение величины давления через слово о типе мотора).
+
+    После дефекта 8 «не включено в атм» и «не единица измерения вовсе»
+    — одно и то же: «атмосферник» не опознан ни одним источником, значит
+    мягкая заявка, а не собственный (хотя бы отличный от «атм») ключ."""
+    assert notes.find_number_units("2.0 атмосферник") == set()
+    assert notes.find_number_units("2.0 атм") == {("2.0", "atm")}
+    assert notes.find_quantity_claims("2.0 атмосферник") == {"2.0"}
 
 
 # --- дефект 8, категория 2: реальные, но никогда не регистрировавшиеся ----
@@ -1058,6 +1079,40 @@ def test_find_number_units_recognizes_bare_rpm_without_slash_min():
     assert notes.find_number_units("на холостых 1000 оборотов") == {("1000", ob_min)}
     assert notes.find_number_units("на холостых 1000 об/мин") == notes.find_number_units(
         "на холостых 1000 оборотов")
+
+
+# --- дефект 8 (пилот статей): неопознанная единица — мягкая заявка --------
+
+
+def test_unrecognized_word_after_number_becomes_a_soft_claim_not_a_hard_unit():
+    """Живая находка пилота статей (разбор тимлида остатка статьи «Износ
+    двигателей»): источник пишет «двигатели объёмом 2.2 живучие», статья
+    пересказывает «2.2 живучи» — расходится только соседнее прилагательное
+    («живучи» — не единица измерения), число автор не менял вовсе. До
+    дефекта 8 «живучи» автоматически становилось «настоящей единицей»
+    (открытый класс — любое неисключённое слово), и пара «2.2 zhivuchi» не
+    находила соответствия в цитате («2.2 живучие») — честная статья
+    отклонялась.
+
+    После дефекта 8: «живучи» не опознано ни одним источником
+    (`_is_recognized_unit`), значит НЕ единица измерения — число «2.2»
+    становится мягкой заявкой (проверяется голым), а не жёсткой парой.
+    Число ВСЁ РАВНО обязано найтись в цитате — мягкость это не молчание
+    (обратная проверка ниже)."""
+    assert notes.find_number_units("двигатели объёмом 2.2 живучи") == set()
+    assert notes.find_quantity_claims("двигатели объёмом 2.2 живучи") == {"2.2"}
+    # обратная проверка: подмена САМОГО числа продолжает ловиться — мягкая
+    # заявка не перестаёт проверять число, только не требует слова рядом
+    assert notes.find_bare_numbers("двигатели объёмом 2.2 живучие") == {"2.2"}
+    assert "3.0" not in notes.find_bare_numbers("двигатели объёмом 2.2 живучие")
+
+
+def test_recognized_unit_still_makes_a_hard_pair_after_defect_8():
+    """Обратная проверка направления: ОПОЗНАННАЯ единица (мм против см —
+    обе есть в таблице синонимов) продолжает сверяться жёстко — дефект 8
+    смягчает только НЕОПОЗНАННОЕ, не единицы измерения вообще."""
+    assert notes.find_number_units("зазор 5 мм") == {("5", notes._canon_unit("мм"))}
+    assert notes.find_number_units("зазор 5 мм") != notes.find_number_units("зазор 5 см")
 
 
 def test_find_number_units_recognizes_kilo_ohm_written_with_internal_space():
@@ -1132,11 +1187,19 @@ def test_find_number_units_recognizes_degree_symbol_as_synonym_of_gradus():
     assert notes.find_number_units("сдвига 106 С-1") == {("106", notes._canon_unit("С"))}
     assert notes.find_number_units("сдвига 106 С-1") != {("106", notes._canon_unit("град"))}
     # обратная проверка 2: «оС» (буква вместо знака градуса) сознательно НЕ
-    # свёрнута с «град» — иначе счёт осей и код детали стали бы температурой
+    # свёрнута с «град» — иначе счёт осей и код детали стали бы температурой.
+    # После дефекта 8 все три («оС», «ось», «OS») не опознаны ни одним
+    # источником и стали мягкой заявкой — тем же результатом, что решает
+    # исходную коллизию ещё надёжнее (раньше они делили один ЛОЖНЫЙ
+    # жёсткий ключ «os», теперь никто из них не единица измерения вовсе,
+    # но число каждого всё равно проверяется голым).
     assert notes._canon_unit("оС") == notes._canon_unit("ось") == notes._canon_unit("OS")
-    assert notes.find_number_units("до температуры 400оС") != {("400", notes._canon_unit("град"))}
-    assert notes.find_number_units("в подвешенном состоянии 1 ось") == {("1", notes._canon_unit("ось"))}
-    assert notes.find_number_units("кольца 0.25 OS") == {("0.25", notes._canon_unit("OS"))}
+    assert notes.find_number_units("до температуры 400оС") == set()
+    assert notes.find_number_units("в подвешенном состоянии 1 ось") == set()
+    assert notes.find_number_units("кольца 0.25 OS") == set()
+    assert notes.find_quantity_claims("до температуры 400оС") == {"400"}
+    assert notes.find_quantity_claims("в подвешенном состоянии 1 ось") == {"1"}
+    assert notes.find_quantity_claims("кольца 0.25 OS") == {"0.25"}
 
 
 # --- Н25 ре-ревью: множитель («тысяча»/«миллион»/«миллиард») теряет ---------
@@ -1195,12 +1258,13 @@ def test_find_number_units_multiplier_million_and_billion_forms():
     # Н16 + дефект 8 категория 1), поэтому «млн руб»/«млн рублей» уходят в
     # quantity claims, а не в hard unit — сравнение написаний множителя
     # («млн»/«миллиона», «млрд»/«миллиарда») делаем на единицах, которые
-    # исключением не накрыты («тонн»/«километров» — обычные, не денежные,
-    # реальные величины).
-    assert notes.find_number_units("2 млн тонн") == notes.find_number_units("2 миллиона тонн")
+    # исключением не накрыты и опознаны («кг»/«километров» — обычные, не
+    # денежные, зарегистрированные величины; не новые «тонн» — тонна не
+    # зарегистрирована и после дефекта 8 сама не единица измерения).
+    assert notes.find_number_units("2 млн кг") == notes.find_number_units("2 миллиона кг")
     assert notes.find_number_units("2 млрд километров") == notes.find_number_units("2 миллиарда километров")
     assert notes.find_number_units("2 млн километров") != notes.find_number_units("2 млрд километров")
-    assert notes.find_number_units("2 млн тонн") == {("2", "mlntonn")}
+    assert notes.find_number_units("2 млн кг") == {("2", "mlnkg")}
     assert notes.find_number_units("2 млрд километров") == {("2", "mlrdkm")}
     # деньги с множителем — по-прежнему только мягкая заявка (дефект 8)
     assert notes.find_number_units("2 млн рублей") == set()
