@@ -147,7 +147,7 @@ def conn():
 
 @pytest.mark.parametrize("подделка", sorted(p.name for p in FAKES.iterdir()))
 def test_every_fake_article_is_caught(подделка, mirror, conn):
-    result = verify.check(FAKES / подделка, mirror, conn)
+    result = verify.check(FAKES / подделка, mirror, mirror, conn)
     assert not result["ок"], "подделка %s прошла проверку — проверяльщику нельзя верить" % подделка
     assert result["проблемы"], "ок=False обязан сопровождаться хотя бы одной причиной (%s)" % подделка
 
@@ -160,9 +160,87 @@ def test_article_name_colliding_with_source_note_is_rejected(mirror, conn):
     («Тема 1.md» — файл `tests/подделки/Тема 1.md`, специально совпадающий
     с «Тема 1» из фикстуры `mirror`), сноска на этот источник после сборки
     в общее дерево может молча резолвиться в саму статью."""
-    result = verify.check(FAKES / "Тема 1.md", mirror, conn)
+    result = verify.check(FAKES / "Тема 1.md", mirror, mirror, conn)
     assert not result["ок"]
-    assert any("совпадает с именем заметки-источника" in p for p in result["проблемы"])
+    assert any("совпадает с именем/алиасом заметки" in p for p in result["проблемы"])
+
+
+def test_name_collision_check_is_case_insensitive(mirror, conn, tmp_path):
+    """Н12 ре-ревью: Obsidian резолвит вики-ссылки БЕЗ учёта регистра —
+    «тема 1» и «Тема 1» для него одно и то же имя, значит и проверка
+    коллизии обязана сравнивать без учёта регистра, а не точной строкой."""
+    p = tmp_path / "тема 1.md"
+    p.write_text("---\ntype: статья\nисточников: 0\nсобрано: 2026-08-22\n---\n\n# тема 1\n\nтекст.\n",
+                 encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert not result["ок"]
+    assert any("совпадает с именем/алиасом заметки" in x for x in result["проблемы"])
+
+
+def test_name_collision_check_sees_alias_space_not_only_filenames(mirror, conn, tmp_path):
+    """Н12/Н14 ре-ревью: у заметок зеркала машинное имя файла (`Тема N`), но
+    человек называет статью, скорее всего, так же, как названа тема форума
+    (`aliases`) — коллизия возможна там, а не в пространстве машинных имён."""
+    (mirror / "Тема 1.md").write_text(
+        THEME_1.replace("---\ntid: 1\n---", '---\ntid: 1\naliases: ["Провалы в работе ДВС"]\n---'),
+        encoding="utf-8")
+    p = tmp_path / "Провалы в работе ДВС.md"
+    p.write_text(
+        "---\ntype: статья\nисточников: 0\nсобрано: 2026-08-22\n---\n\n# Провалы в работе ДВС\n\nтекст.\n",
+        encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert not result["ок"]
+    assert any("совпадает с именем/алиасом заметки" in x for x in result["проблемы"])
+
+
+def test_alias_link_in_prose_resolves(mirror, conn, tmp_path):
+    """Н14 ре-ревью: ссылка «смотри также» по человеческому названию темы
+    (alias), а не по машинному имени `Тема N` — Obsidian такую ссылку
+    резолвит, `resolve_note` (только по имени файла) — нет."""
+    (mirror / "Тема 1.md").write_text(
+        THEME_1.replace("---\ntid: 1\n---", '---\ntid: 1\naliases: ["Провалы в работе ДВС"]\n---'),
+        encoding="utf-8")
+    article = ("---\ntype: статья\nисточников: 0\nсобрано: 2026-08-22\n---\n\n"
+               "# Другая статья\n\nПодробнее — [[Провалы в работе ДВС]].\n")
+    p = tmp_path / "Другая статья.md"
+    p.write_text(article, encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert not any("не резолвится" in x for x in result["проблемы"]), result["проблемы"]
+
+
+def test_cross_article_see_also_link_is_not_a_false_positive(mirror, conn, tmp_path):
+    """Н5 ре-ревью: ссылка «смотри также» на ДРУГУЮ статью — не подделка;
+    раньше индекс строился только по `Источники/`, и такая ссылка считалась
+    выдуманной. `wiki_root` теперь охватывает и `Статьи/`."""
+    wiki_root = mirror.parent
+    other = wiki_root / "Статьи" / "Прочее" / "Другая статья.md"
+    other.parent.mkdir(parents=True)
+    other.write_text("---\ntype: статья\n---\n\n# Другая статья\n\nтекст.\n", encoding="utf-8")
+
+    p = tmp_path / "статья.md"
+    p.write_text(
+        "---\ntype: статья\nисточников: 0\nсобрано: 2026-08-22\n---\n\n"
+        "# Своя статья\n\nСм. также [[Другая статья]].\n",
+        encoding="utf-8")
+    result = verify.check(p, wiki_root, mirror, conn)
+    assert not any("не резолвится" in x for x in result["проблемы"]), result["проблемы"]
+
+
+def test_two_articles_sharing_a_title_collide_with_each_other(mirror, conn):
+    """Н13 ре-ревью: коллизия имени возможна и между ДВУМЯ СТАТЬЯМИ, не
+    только между статьёй и источником — прежняя проверка смотрела только в
+    `Источники/` и такую пару не видела вовсе."""
+    wiki_root = mirror.parent
+    a = wiki_root / "Статьи" / "Двигатель" / "Зазоры клапанов.md"
+    b = wiki_root / "Статьи" / "Ходовая" / "Зазоры клапанов.md"
+    for p in (a, b):
+        p.parent.mkdir(parents=True)
+        p.write_text("---\ntype: статья\n---\n\n# Зазоры клапанов\n\nтекст.\n", encoding="utf-8")
+
+    for p in (a, b):
+        result = verify.check(p, wiki_root, mirror, conn)
+        assert not result["ок"], p
+        assert any("совпадает с именем/алиасом заметки" in x for x in result["проблемы"])
 
 
 # --- контрольный случай: честная статья обязана пройти ----------------------
@@ -194,7 +272,7 @@ def test_honest_article_passes(mirror, conn, tmp_path):
     out_path = tmp_path / "статья.md"
     out_path.write_text(text, encoding="utf-8")
 
-    v = verify.check(out_path, mirror, conn)
+    v = verify.check(out_path, mirror, mirror, conn)
     assert v["ок"], v["проблемы"]
     assert v["источники_без_цитаты"] == []
 
@@ -218,7 +296,7 @@ def test_honest_article_with_unused_fact_still_passes_but_reports_it(mirror, con
     out_path = tmp_path / "статья.md"
     out_path.write_text(text, encoding="utf-8")
 
-    v = verify.check(out_path, mirror, conn)
+    v = verify.check(out_path, mirror, mirror, conn)
     assert v["ок"], v["проблемы"]
     assert v["источники_без_цитаты"] == ["f2"]
 
@@ -255,5 +333,5 @@ def test_multiline_quote_survives_render_and_verify_roundtrip(mirror, conn, tmp_
 
     out_path = tmp_path / "статья.md"
     out_path.write_text(text, encoding="utf-8")
-    v = verify.check(out_path, mirror, conn)
+    v = verify.check(out_path, mirror, mirror, conn)
     assert v["ок"], v["проблемы"]

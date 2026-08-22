@@ -651,6 +651,15 @@ def test_find_number_units_does_not_split_an_alphanumeric_identifier():
     assert notes.find_number_units("VIN JF1GDDLF37G076103") == set()
 
 
+def test_find_number_units_does_not_read_a_digit_run_embedded_in_an_identifier():
+    """Живая находка (проверка на реальной статье «Расшифровка VIN Subaru»):
+    у VIN `JF1GDDLF37G076103` цифровой хвост `076103` предшествован буквой
+    («G076103»), и без запрета слева `076103` читался бы как САМОСТОЯТЕЛЬНОЕ
+    число — а «076103 на форуме» (обычный предлог сразу после) давало бы
+    ложную пару («76103», «на»), хотя «на» — предлог, а не единица."""
+    assert notes.find_number_units("по VIN JF1GDDLF37G076103 на форуме расшифровали") == set()
+
+
 # --- Н1 ре-ревью: список ИСКЛЮЧЕНИЙ вместо списка разрешённого --------------
 
 

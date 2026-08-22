@@ -530,7 +530,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         conn = db.connect(args.db)
         db.init_schema(conn)
-        result = verify.check(args.article, args.wiki / args.mirror_dir, conn)
+        result = verify.check(args.article, args.wiki, args.wiki / args.mirror_dir, conn)
         for problem in result["проблемы"]:
             print("  -", problem)
         if result["источники_без_цитаты"]:

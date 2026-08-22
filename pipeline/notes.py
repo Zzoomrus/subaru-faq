@@ -366,16 +366,25 @@ _UNIT = "(?:%s)" % "|".join(list(_COMPOUND_UNITS) + [_UNIT_WORD, _UNIT_SYMBOL])
 # («22611AD982»): без цифрового запрета «22611» + «AD» ошибочно читалось
 # бы как число с единицей «AD», хотя это один слитный идентификатор.
 _NOT_LETTER_AHEAD = r"(?![A-Za-zА-Яа-яЁё0-9])"
+# ...и ПЕРЕД числом не должно быть ни буквы, ни цифры — та же дыра с другой
+# стороны: VIN `JF1GDDLF37G076103` содержит цифровой хвост `076103`,
+# которому непосредственно ПРЕДШЕСТВУЕТ буква («G076103»); без запрета
+# слева `076103` читался бы как самостоятельное число, и «076103 на форуме»
+# (обычный предлог сразу после числа) ошибочно давал бы число с «единицей»
+# «на» — предлог, а не единица измерения, просто оказался внутри
+# идентификатора, а не после настоящего числа.
+_NOT_LETTER_BEHIND = r"(?<![A-Za-zА-Яа-яЁё0-9])"
 
 _NUM = r"\d[\d\s]*(?:[.,]\d+)?"
 _FRACTION = r"\d+\s*/\s*\d+"
 # ASCII-дефис и типографские тире (Н8: `7–4 мм` с длинным тире не ловился).
 _DASH = r"[-‐-―−]"
 _RANGE = re.compile(
-    r"(?P<n1>%s)\s*%s\s*(?P<n2>%s)\s*(?P<unit>%s)%s" % (_NUM, _DASH, _NUM, _UNIT, _NOT_LETTER_AHEAD),
+    r"%s(?P<n1>%s)\s*%s\s*(?P<n2>%s)\s*(?P<unit>%s)%s"
+    % (_NOT_LETTER_BEHIND, _NUM, _DASH, _NUM, _UNIT, _NOT_LETTER_AHEAD),
     re.IGNORECASE)
 _SINGLE = re.compile(
-    r"(?P<num>%s|%s)\s?(?P<unit>%s)%s" % (_FRACTION, _NUM, _UNIT, _NOT_LETTER_AHEAD),
+    r"%s(?P<num>%s|%s)\s?(?P<unit>%s)%s" % (_NOT_LETTER_BEHIND, _FRACTION, _NUM, _UNIT, _NOT_LETTER_AHEAD),
     re.IGNORECASE)
 
 
