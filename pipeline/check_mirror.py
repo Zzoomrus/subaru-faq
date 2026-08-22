@@ -130,6 +130,39 @@ def resolve_note(target: str, notes: dict[str, str], by_name: dict[str, list[str
     return by_name.get(target.rsplit("/", 1)[-1])
 
 
+def build_heading_index(notes: dict[str, str]) -> dict[str, list[str]]:
+    """Заголовки каждой заметки индекса `notes` (`build_notes_index`) — та
+    же операция, что раньше жила инлайном внутри `check()`. Выделена, чтобы
+    якорную проверку (`anchor_exists` ниже) мог переиспользовать второй
+    потребитель (`pipeline.verify`, задача 6 Ф3) — до этой правки якорь
+    ссылки в ПРОЗЕ статьи не сверялся вовсе, хотя ровно этот код уже умеет
+    (находка Н4 ревью задачи 6: `check_mirror.check` сверяет, а `verify.py`
+    выбрасывал якорь из ссылки, довольствуясь тем, что цель существует)."""
+    return {key: HEADING.findall(text) for key, text in notes.items()}
+
+
+def build_block_index(notes: dict[str, str]) -> dict[str, list[str]]:
+    """Блочные идентификаторы (`^abc123`) каждой заметки — см.
+    `build_heading_index` выше, тот же приём и та же причина выделения."""
+    return {key: BLOCK_ANCHOR.findall(text) for key, text in notes.items()}
+
+
+def anchor_exists(resolved_keys: list[str], anchor: str,
+                   headings: dict[str, list[str]], blocks: dict[str, list[str]]) -> bool:
+    """Есть ли `anchor` (уже БЕЗ ведущей `#`) хотя бы у одной из заметок
+    `resolved_keys` — при неоднозначном имени (`resolve_note` вернул
+    несколько ключей) якорь сверяется с ОБЪЕДИНЕНИЕМ, как и раньше в
+    `check()`. Блочный якорь (`^abc123`) и путь по подзаголовкам
+    (`#Раздел#Подраздел`) — те же два вида, что понимал инлайн-код `check()`
+    до выделения; поведение НЕ изменилось, тесты `test_check_mirror.py` и
+    `test_anchor_contract.py` держат это ровно так же, как до рефакторинга.
+    """
+    if anchor.startswith("^"):
+        return any(anchor[1:] in blocks.get(r, []) for r in resolved_keys)
+    segments = [s.strip() for s in anchor.split("#") if s.strip()]
+    return any(all(s in headings.get(r, []) for s in segments) for r in resolved_keys)
+
+
 def check(directory: Path) -> dict[str, list[str]]:
     directory = Path(directory)
     notes, by_name = build_notes_index(directory)
@@ -146,8 +179,8 @@ def check(directory: Path) -> dict[str, list[str]]:
     for key in files:
         by_file_name.setdefault(key.rsplit("/", 1)[-1], []).append(key)
 
-    headings = {key: HEADING.findall(text) for key, text in notes.items()}
-    blocks = {key: BLOCK_ANCHOR.findall(text) for key, text in notes.items()}
+    headings = build_heading_index(notes)
+    blocks = build_block_index(notes)
 
     dupes = []
     for key in notes:
@@ -186,14 +219,7 @@ def check(directory: Path) -> dict[str, list[str]]:
             if not anchor:
                 continue
             anchor = anchor[1:]  # снимаем ведущую `#`
-            if anchor.startswith("^"):
-                ok = any(anchor[1:] in blocks[r] for r in resolved)
-            else:
-                # Путь по подзаголовкам `#Раздел#Подраздел`: приближение —
-                # требуем, чтобы каждый сегмент был заголовком целевой
-                # заметки (вложенность не проверяется).
-                segments = [s.strip() for s in anchor.split("#") if s.strip()]
-                ok = any(all(s in headings[r] for s in segments) for r in resolved)
+            ok = anchor_exists(resolved, anchor, headings, blocks)
             if not ok:
                 broken_anchors.append("%s -> [[%s#%s]]" % (key, target.strip(), anchor))
 
