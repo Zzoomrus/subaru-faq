@@ -517,3 +517,67 @@ def test_assets_download_uses_assets_root_and_manifest(tmp_path, monkeypatch):
     row = sqlite3.connect(db_path).execute(
         "SELECT status FROM attachments WHERE url='http://h/x.jpg'").fetchone()
     assert row == ("ok",)
+
+
+def test_facts_command_reads_writes_and_reports_stats(tmp_path, capsys):
+    from pipeline import db as _db
+
+    wiki = tmp_path / "wiki"
+    (wiki / "Источники").mkdir(parents=True)
+    (wiki / "Источники" / "Тема 1.md").write_text(
+        "##### Пост 100\n\n*Razum · 11.10.2014 12:00:00 · #1*\n\nТрубки нужны 3/16 дюйма.\n",
+        encoding="utf-8")
+
+    db_path = tmp_path / "forum.sqlite"
+    conn = _db.connect(db_path)
+    _db.init_schema(conn)
+    conn.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+                 "VALUES (100, 1, 'Razum', '2014-10-11 12:00:00', '', '')")
+    conn.commit()
+    conn.close()
+
+    articles = tmp_path / "articles"
+    (articles / "факты").mkdir(parents=True)
+    raw = [
+        {"источник": "Тема 1#Пост 100", "цитата": "Трубки нужны 3/16 дюйма", "суть": "диаметр"},
+        {"источник": "Тема 1#Пост 100", "цитата": "выдумка", "суть": "враньё"},
+    ]
+    (articles / "факты" / "тормоза.json").write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+
+    rc = run.main(["facts", "--key", "тормоза", "--wiki", str(wiki), "--mirror-dir", "Источники",
+                   "--db", str(db_path), "--articles-dir", str(articles)])
+    assert rc == 0
+
+    out = json.loads((articles / "проверено" / "тормоза.json").read_text(encoding="utf-8"))
+    assert out["статистика"] == {"всего": 2, "прошло": 1, "отброшено": 1}
+    assert out["проверено"][0]["автор"] == "Razum"
+    assert out["проверено"][0]["дата"] == "11.10.2014"
+    # Отброшенные факты остаются В ТОМ ЖЕ файле — доля брака входит в
+    # замеры фазы, теряться она не должна (бриф задачи 4, шаг 5).
+    assert len(out["отброшено"]) == 1
+    assert out["отброшено"][0]["факт"]["цитата"] == "выдумка"
+    assert "факты:" in capsys.readouterr().out
+
+
+def test_facts_command_requires_key(tmp_path, capsys):
+    rc = run.main(["facts", "--wiki", str(tmp_path / "wiki"), "--db", str(tmp_path / "x.sqlite")])
+    assert rc == 2
+    assert "--key" in capsys.readouterr().out
+
+
+def test_facts_command_requires_existing_facts_file(tmp_path, capsys):
+    rc = run.main(["facts", "--key", "нет-такого", "--articles-dir", str(tmp_path / "articles"),
+                   "--db", str(tmp_path / "x.sqlite"), "--wiki", str(tmp_path / "wiki")])
+    assert rc == 2
+    assert "не найден" in capsys.readouterr().out
+
+
+def test_facts_command_requires_existing_db(tmp_path, capsys):
+    # Отсутствующая база — не повод молча проверять факты без атрибуции
+    # (см. коммент run.main про coverage/mirror: то же правило).
+    (tmp_path / "articles" / "факты").mkdir(parents=True)
+    (tmp_path / "articles" / "факты" / "key.json").write_text("[]", encoding="utf-8")
+    rc = run.main(["facts", "--key", "key", "--articles-dir", str(tmp_path / "articles"),
+                   "--db", str(tmp_path / "missing.sqlite"), "--wiki", str(tmp_path / "wiki")])
+    assert rc == 2
+    assert "не найдена" in capsys.readouterr().out

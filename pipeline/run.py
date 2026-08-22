@@ -26,6 +26,12 @@
                        mirror — заметки в `<--wiki>/<--mirror-dir>/Блоги/`
     dedup         дедуп FAQ между движками (Ф3, задача 1) — точечный повтор
                   без полного `ingest`; внутри `ingest`/`all` уже включён
+    facts         Ф3, задача 4, проход 1: читает `<--articles-dir>/факты/
+                  <--key>.json` (JSON-факты, выданные ИИ), прогоняет через
+                  `pipeline.facts.check_all` (дословность цитаты по телу
+                  заметки + автор/дата из `--db`), пишет `<--articles-dir>/
+                  проверено/<--key>.json` — отброшенные факты остаются в
+                  том же файле, не теряются
     assets index    добор Ф2: индексация CDX (тела не тянет, ~40 мин на 6008 URL)
     assets sieve    просев уже скачанного: заглушки хостингов (1x1 пиксель и
                     прочее, что валидно как картинка, но картинкой поста быть
@@ -101,12 +107,14 @@
 архиве).
 """
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
 
-from pipeline import (archive_assets, assets_state, attachments, check_mirror, coverage, db, faq_dedup,
-                      fetch_assets, fetch_site, ingest, mirror, mirror_blog, mirror_faq, parse_blog, parse_faq)
+from pipeline import (archive_assets, assets_state, attachments, check_mirror, coverage, db, facts,
+                      faq_dedup, fetch_assets, fetch_site, ingest, mirror, mirror_blog, mirror_faq,
+                      parse_blog, parse_faq)
 
 DEFAULT_PAGES = Path("data/raw/archive/pages")
 DEFAULT_MANIFEST = Path("data/raw/archive/manifest.jsonl")
@@ -125,6 +133,10 @@ DEFAULT_ASSETS_MANIFEST = Path("data/assets/manifest.jsonl")
 DEFAULT_ASSETS_ROOT = Path("data/assets/files")
 DEFAULT_SITE_ROOT = Path("data/raw/site")
 DEFAULT_SITE_MANIFEST = Path("data/raw/site/manifest-site.jsonl")
+# Корень черновиков/фактов статей Ф3 (задача 4): `<articles-dir>/факты/
+# <ключ>.json` (вход, проход 1 — выдача ИИ) -> `<articles-dir>/проверено/
+# <ключ>.json` (выход `facts.check_all`, задача 5 читает его как вход).
+DEFAULT_ARTICLES_DIR = Path("articles")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -132,7 +144,7 @@ def _parser() -> argparse.ArgumentParser:
         prog="python -m pipeline.run",
         description="Конвейер subaru-faq: сырой HTML архива -> SQLite -> зеркало Obsidian.")
     p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all", "assets", "site",
-                                        "faq", "blog", "dedup"])
+                                        "faq", "blog", "dedup", "facts"])
     p.add_argument("sub_action", nargs="?",
                    choices=["index", "download", "sieve", "build", "fetch", "load", "mirror"],
                    default=None,
@@ -194,6 +206,13 @@ def _parser() -> argparse.ArgumentParser:
                         "empty (заново скачать на шаге download) или оба через "
                         "запятую. По умолчанию не перезапрашивается ни один: "
                         "это часы работы и тысячи запросов к архиву")
+    p.add_argument("--key", default=None,
+                   help="для command=facts: ключ статьи — читает "
+                        "<--articles-dir>/факты/<ключ>.json, пишет "
+                        "<--articles-dir>/проверено/<ключ>.json")
+    p.add_argument("--articles-dir", type=Path, default=DEFAULT_ARTICLES_DIR,
+                   help="корень черновиков/фактов/проверенного статей Ф3 (по умолчанию %s)"
+                        % DEFAULT_ARTICLES_DIR)
     return p
 
 
@@ -402,6 +421,39 @@ def main(argv: list[str] | None = None) -> int:
         conn = db.connect(args.db)
         db.init_schema(conn)
         print("дедуп faq:", faq_dedup.apply(conn))
+        return 0
+
+    if cmd == "facts":
+        # Проход 1 фазы Ф3 (задача 4): читает JSON-факты, выданные ИИ по
+        # одной теме/записи, и прогоняет их через механический гейт
+        # дословности (`pipeline.facts.check_all`). Отброшенные факты
+        # остаются В ТОМ ЖЕ выходном файле, а не отбрасываются молча — доля
+        # брака входит в замеры фазы (бриф задачи 4, шаг 5).
+        if not args.key:
+            print("укажи ключ статьи: --key <ключ> "
+                  "(читает <--articles-dir>/факты/<ключ>.json)")
+            return 2
+        facts_path = args.articles_dir / "факты" / (args.key + ".json")
+        if not facts_path.exists():
+            print("файл фактов не найден: %s" % facts_path)
+            return 2
+        # Автора/дату проверенный факт обязан нести ИЗ БАЗЫ (не из ответа
+        # ИИ, см. docstring `facts._lookup_meta`) — без базы фактам просто
+        # неоткуда их взять, поэтому отсутствующая база здесь такая же
+        # ошибка вызова, как у `coverage`/`mirror` (см. комментарий ниже),
+        # а не молчаливый пропуск атрибуции.
+        if not args.db.exists():
+            print("база не найдена: %s (нужна для автора/даты подтверждённых "
+                  "фактов — python -m pipeline.run ingest)" % args.db)
+            return 2
+        conn = db.connect(args.db)
+        db.init_schema(conn)
+        raw = json.loads(facts_path.read_text(encoding="utf-8"))
+        result = facts.check_all(raw, args.wiki / args.mirror_dir, conn)
+        out_path = args.articles_dir / "проверено" / (args.key + ".json")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print("факты:", result["статистика"], "->", out_path)
         return 0
 
     if cmd == "site":
