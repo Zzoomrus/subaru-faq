@@ -118,6 +118,22 @@ tid: 6
 8 - Год выпуска (С-1992)
 """
 
+# --- Тема 7: диагностический порог напряжения (Н19) ------------------------
+# Живой источник (Тема 16109#Пост 104598): «если амплитуда сигнала < 0,1 В,
+# то датчик неисправен» — однобуквенная единица «В» (вольт), а не предлог.
+THEME_7_VOLTAGE = """---
+tid: 7
+---
+
+# Датчик детонации
+
+##### Пост 700
+
+*Kolos · 15.02.2008 12:00:00 · #1*
+
+если амплитуда сигнала < 0,1 В, то датчик неисправен
+"""
+
 # --- Тема 3: пустая тема форума — ни одного поста ---------------------------
 THEME_3_EMPTY = """---
 tid: 3
@@ -172,6 +188,7 @@ def mirror(tmp_path):
     (root / "Тема 4.md").write_text(THEME_4_QUOTED, encoding="utf-8")
     (root / "Тема 5.md").write_text(THEME_5_TWO_PARAGRAPHS, encoding="utf-8")
     (root / "Тема 6.md").write_text(THEME_6_YEAR, encoding="utf-8")
+    (root / "Тема 7.md").write_text(THEME_7_VOLTAGE, encoding="utf-8")
     (root / "FAQ 100.md").write_text(FAQ_100, encoding="utf-8")
     (root / "FAQ старый 9.md").write_text(FAQ_OLD_9, encoding="utf-8")
     (root / "Блог remont 77.md").write_text(BLOG_77_EXCERPT, encoding="utf-8")
@@ -196,6 +213,8 @@ def conn():
               "VALUES (500, 5, 'allrad', '2009-02-20 12:00:00', '', '')")
     c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
               "VALUES (600, 6, 'Antoha_samara', '2008-02-13 12:00:00', '', '')")
+    c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+              "VALUES (700, 7, 'Kolos', '2008-02-15 12:00:00', '', '')")
     c.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text) "
               "VALUES ('bitrix', 100, 'Как часто менять масло?', "
               "'Рекомендуемый интервал замены масла 5000 км пробега.', "
