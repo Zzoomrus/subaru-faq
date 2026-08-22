@@ -345,6 +345,23 @@ def test_build_rejects_dotdot_путь_without_slash(tmp_path):
         articles.build("х", tmp_path)
 
 
+def test_build_second_barrier_catches_symlink_escaping_wiki_stati(tmp_path):
+    """R2 ре-ревью: первая проверка (`_require_safe_path_component`) отбивает
+    ВСЕ четыре других теста этого блока ещё до второго рубежа (`resolve()`
+    внутри `wiki/Статьи`) — сам рубеж ни одним тестом не покрыт. `путь:
+    Ссылка` не содержит ни одного разделителя, значит первая проверка его
+    пропускает; если `Ссылка` — симлинк ВНУТРИ `wiki/Статьи`, ведущий наружу
+    дерева, поймать обход обязан именно рубеж."""
+    _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: Ссылка"])
+    articles_dir = tmp_path / "wiki" / "Статьи"
+    articles_dir.mkdir(parents=True)
+    outside = tmp_path / "снаружи"
+    outside.mkdir()
+    (articles_dir / "Ссылка").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(articles.DraftError):
+        articles.build("х", tmp_path)
+
+
 # --- ревью задачи 5: F4 — маркер в коде/HTML-комментарии считался
 # «использованным», обнуляя замер непроцитированных источников -------------
 
