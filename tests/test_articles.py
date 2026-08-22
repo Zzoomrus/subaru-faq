@@ -202,6 +202,22 @@ def test_build_writes_article_under_wiki_stati_by_node_path(tmp_path):
     assert "узел: тормоза" in text
 
 
+def test_build_returns_path_relative_to_root_argument_not_resolved(tmp_path):
+    """R6 ре-ревью: `build()` документирован как «пишет `wiki/Статьи/<путь>/
+    <заголовок>.md` от переданного `root`» — возвращаемое значение обязано
+    остаться таким, даже если `root` сам оказался симлинком (например, macOS
+    `/var` -> `/private/var`). Прежняя реализация строила путь от
+    `root.resolve()`, и внешняя оснастка, вызывающая `relative_to(root)` или
+    `root / ...`, ломалась на расхождении корней."""
+    actual_root = tmp_path / "актуальный-корень"
+    actual_root.mkdir()
+    _write_inputs(actual_root, "х", ["заголовок: Х", "путь: Узел"])
+    root_link = tmp_path / "ссылка-на-корень"
+    root_link.symlink_to(actual_root, target_is_directory=True)
+    out_path = articles.build("х", root_link)
+    assert out_path == root_link / "wiki" / "Статьи" / "Узел" / "Х.md"
+
+
 def test_build_missing_draft_is_a_clear_error(tmp_path):
     (tmp_path / "articles" / "проверено").mkdir(parents=True)
     with pytest.raises(FileNotFoundError):

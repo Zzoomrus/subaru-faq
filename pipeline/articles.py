@@ -344,17 +344,28 @@ def build(key: str, root: Path) -> Path:
     verified = json.loads(verified_path.read_text(encoding="utf-8"))["проверено"]
     text = render(draft, verified, meta)
 
-    articles_root = (root / "wiki" / "Статьи").resolve()
-    out_path = (articles_root / section_path / ("%s.md" % title))
+    # R6 ре-ревью: `out_path` строится от ПЕРЕДАННОГО `root`, не резолвленного
+    # — контракт функции документирован как «пишет <root>/wiki/Статьи/<путь>/
+    # <заголовок>.md», то есть путь ОТ `root`, а не абсолютный канонический.
+    # `.resolve()` нужен только для проверки рубежа ниже (символьные ссылки,
+    # `..`, юникод-трюки) и не должен просачиваться в возвращаемое значение —
+    # иначе, например, macOS-симлинк `/var` -> `/private/var` в `root`
+    # разворачивается в путь, для которого `relative_to(root)`/`root / ...`
+    # у вызывающего кода перестают совпадать (сломанная оснастка ре-ревью).
+    articles_dir = root / "wiki" / "Статьи"
+    out_path = articles_dir / section_path / ("%s.md" % title)
     # Второй, независимый от `_require_safe_path_component` рубеж (F3):
     # итоговый путь обязан фактически лежать внутри `wiki/Статьи` после
     # `resolve()` — символьные ссылки, юникод-трюки и всё, что первая
-    # проверка не предвидела, ловятся здесь.
+    # проверка не предвидела, ловятся здесь. Резолвим ОБЕ стороны сравнения
+    # (и `articles_dir`, и `out_path`) — иначе, например, симлинк в самом
+    # `root` дал бы ложное несовпадение корней при полностью безопасном пути.
+    articles_root_resolved = articles_dir.resolve()
     resolved = out_path.resolve()
-    if resolved != articles_root and articles_root not in resolved.parents:
+    if resolved != articles_root_resolved and articles_root_resolved not in resolved.parents:
         raise DraftError(
             "итоговый путь статьи «%s» выходит за пределы «%s» — проверь поля "
-            "«путь»/«заголовок» черновика «%s»" % (resolved, articles_root, draft_path))
+            "«путь»/«заголовок» черновика «%s»" % (resolved, articles_root_resolved, draft_path))
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(text, encoding="utf-8")
