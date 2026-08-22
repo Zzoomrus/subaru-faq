@@ -30,7 +30,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import articles, verify
+from . import articles, facts, notes, verify
 
 
 @dataclass
@@ -169,33 +169,75 @@ def faq_blog_coverage(conn: sqlite3.Connection) -> dict:
     }
 
 
+# Ревью задачи 7 (находка 1): контракт зеркала §3 запрещает как источник
+# 4 класса — пустые темы форума, выдержки блогов, дубли FAQ, записи
+# FAQ/блогов из одних картинок, — но у ФОРУМА своего аналога «из одних
+# картинок» в контракте не было: тема может иметь ≥1 пост и всё равно не
+# нести ни одной цитаты, которая пройдёт `facts.check_one` (посты вида
+# «test», «....», «ф», «летние» — контента для факта нет, только шум).
+# Живой замер (21.08.2026): **23 темы из 3509** «с постами» — ни один
+# пост которых не даёт хотя бы `facts.MIN_QUOTE_CHARS` (8) «чистых» знаков
+# после `notes.citable()` (снимает шапки/пометки генератора) и
+# `notes.normalize_spaces()` (та же нормализация, что использует гейт
+# прохода 1). Раз ни одна цитата такой длины физически не пройдёт гейт —
+# тема не источник, структурно то же самое, что «из одних картинок» у
+# FAQ/блогов. Решение лида (дообсуждение ревью 22.08.2026): добавить класс,
+# исключить из знаменателя, задокументировать в контракте зеркала §3.
+#
+# Читает `posts.markdown` (не `posts.text`) — тот же канон дословной
+# проверки, что и везде в фазе (Global Constraint №1): `facts.check_one`
+# сверяет цитату с телом ЗАМЕТКИ, а заметку строит `markdown`, не `text`.
+def _mute_forum_threads(conn: sqlite3.Connection) -> set[int]:
+    """`tid` тем, где МАКСИМАЛЬНАЯ по длине "чистая" цитата любого поста
+    короче `facts.MIN_QUOTE_CHARS` — ни для одной из них не существует
+    цитаты, способной пройти гейт прохода 1, независимо от того, что
+    напишет ИИ."""
+    best_len: dict[int, int] = {}
+    for tid, markdown in conn.execute("SELECT tid, markdown FROM posts"):
+        clean_len = len(notes.normalize_spaces(notes.citable(markdown or "")).strip())
+        if clean_len > best_len.get(tid, -1):
+            best_len[tid] = clean_len
+    return {tid for tid, length in best_len.items() if length < facts.MIN_QUOTE_CHARS}
+
+
 def citable_sources(conn: sqlite3.Connection) -> list[str]:
     """Полный список источников корпуса, на которые ВООБЩЕ можно
     сослаться дословной цитатой, — знаменатель `citation_coverage`.
 
-    Три класса контракта (`docs/контракт-зеркала.md` §3-4), которые сюда
-    не попадают, — те же три, что различает `notes.citable_source`
-    (задача 6): пустые темы форума (2829 из 6338), выдержки блогов (56
-    из 528), дубли FAQ (17 из 174). Не переизобретается заново — но
-    `notes.citable_source` проверяет ОДНО заданное имя (нужен вызывающему
-    коду сноски), а здесь нужен список ВСЕГО корпуса сразу, и дешевле
-    получить его прямыми запросами по тем же полям базы, чем звать
-    `citable_source` в цикле по каждому имени.
+    Дубли FAQ (17 из 174, `faq.duplicate_of_nr`) и выдержки блогов (56 из
+    528, `blog_posts.is_excerpt`) исключаются условиями SQL ниже — то же
+    самое знание, что несёт `notes.citable_source` (задача 6), просто
+    прямым запросом по тем же полям базы, а не вызовом в цикле по каждому
+    из ~4800 потенциальных имён: `citable_source` рассчитана на ОДНО
+    заданное имя (нужен вызывающему коду одной сноски), здесь нужен список
+    всего корпуса разом. **Уточнение по находке 2 ревью задачи 7**:
+    пустые темы форума (2829 из 6338) исключает условие `EXISTS posts`
+    ниже, а НЕ `notes.citable_source` — та имя вида «Тема N» вообще не
+    разбирает (её регэкспы — только `FAQ`/`Блог`) и молча вернула бы
+    «цитируемо» для любой пустой темы. Это не расхождение: у пустой темы
+    нет ни одного заголовка `##### Пост <MID>`, `notes.section()` вернёт
+    `None` раньше, чем вопрос о цитируемости источника вообще возникнет
+    (структурная защита через отсутствие якоря в `facts.check_one`, см.
+    докстринг `notes.py` про пустые темы) — но МЕХАНИЗМ другой, и раньше
+    здесь было написано неверно.
 
-    ЧЕТВЁРТЫЙ класс, которого `notes.citable_source` не касается вовсе
-    (он про то, что ЗАПРЕЩЕНО контрактом, а не про то, есть ли текст) —
-    33 записи из одних картинок (25 FAQ + 8 блогов): цитировать формально
-    не запрещено, но физически нечего — `answer_text`/`body_text` пуст.
-    Включать их в знаменатель было бы нечестно перед мерой «что ИИ
-    молча проигнорировал» (см. `faq_blog_coverage` — считает их отдельной
-    строкой) — они не процитированы не потому, что ИИ проглядел источник,
-    а потому что источник немой.
+    Записи из одних картинок (33 = 25 FAQ + 8 блогов — `answer_text`/
+    `body_text` пуст при непустом `answer_md`/`body_md`) и «немые» темы
+    форума (23 из 3509 — см. `_mute_forum_threads`) исключаются отдельными
+    условиями: `notes.citable_source` про них не знает вовсе (она про то,
+    что ЗАПРЕЩЕНО контрактом, а не про то, есть ли текст физически).
+    Включать их в знаменатель было бы нечестно перед мерой «что ИИ молча
+    проигнорировал» (`faq_blog_coverage` считает картиночные FAQ/блоги
+    отдельной строкой) — они не процитированы не потому, что ИИ проглядел
+    источник, а потому что источник немой.
     """
+    mute = _mute_forum_threads(conn)
     sources: list[str] = []
     for tid, in conn.execute(
         "SELECT t.tid FROM threads t WHERE EXISTS (SELECT 1 FROM posts p WHERE p.tid = t.tid) "
         "ORDER BY t.tid"):
-        sources.append("Тема %d" % tid)
+        if tid not in mute:
+            sources.append("Тема %d" % tid)
     for engine, nr in conn.execute(
         "SELECT engine, nr FROM faq WHERE duplicate_of_nr IS NULL "
         "AND answer_text IS NOT NULL AND answer_text <> '' ORDER BY engine, nr"):
@@ -207,9 +249,10 @@ def citable_sources(conn: sqlite3.Connection) -> list[str]:
     return sources
 
 
-def _cited_sources(articles_root: Path) -> set[str]:
+def _scan_articles(articles_root: Path) -> tuple[set[str], list[str]]:
     """Множество имён источников (без якоря), процитированных хотя бы
-    раз хоть в одной статье дерева `articles_root`.
+    раз хоть в одной статье дерева `articles_root`, + список файлов
+    `*.md`, которые не удалось разобрать вовсе.
 
     Не заводит свой разбор определения сноски (`[^fN]: «цитата» — ...,
     [[источник]]`) — использует ТУ ЖЕ пару функций, что и проверяльщик
@@ -218,12 +261,23 @@ def _cited_sources(articles_root: Path) -> set[str]:
     проект, вторая копия разбора расходилась бы с первой молча (тот же
     урок Ф2, что и Global Constraint №3 про резолв ссылок, только здесь
     про формат сноски, а не про адрес заметки).
+
+    Находка 4 ревью задачи 7: файл, не прошедший `articles._parse_draft`
+    (нет frontmatter вовсе, либо не закрыт), раньше просто пропускался
+    (`continue`) — его цитаты (если они там есть) молча выпадали из
+    «процитировано», раздувая «не процитировано» ложно, а сам факт, что
+    в дереве статей лежит файл, который код не смог прочитать, никуда не
+    попадал. Такой путь теперь возвращается вызывающему коду ОТДЕЛЬНО
+    (`citation_coverage` кладёт список в `"не_разобрано"`), а не тонет в
+    тишине.
     """
     cited: set[str] = set()
+    unparsed: list[str] = []
     for path in sorted(Path(articles_root).rglob("*.md")):
         try:
             _, raw_body = articles._parse_draft(path)
         except articles.DraftError:
+            unparsed.append(str(path))
             continue
         body = articles._strip_non_prose(raw_body)
         defs, _ = verify._parse_footnote_definitions(body)
@@ -231,7 +285,7 @@ def _cited_sources(articles_root: Path) -> set[str]:
             name = info["источник"].split("#", 1)[0].strip()
             if name:
                 cited.add(name)
-    return cited
+    return cited, unparsed
 
 
 def citation_coverage(articles_root: Path, sources: list[str]) -> dict:
@@ -250,8 +304,16 @@ def citation_coverage(articles_root: Path, sources: list[str]) -> dict:
     `доля` — доля НЕ процитированных (та величина, которую называет спека
     §10), а не процитированных: 0 при пустом `sources` (нечего делить, а
     не деление на ноль).
+
+    `"не_разобрано"` (находка 4 ревью задачи 7) — файлы `*.md` дерева
+    `articles_root`, которые не удалось разобрать вовсе (нет/не закрыт
+    frontmatter): их цитаты не попадают ни в «процитировано», ни в явном
+    виде в «не процитировано» — не потому что источники не процитированы,
+    а потому что статья, которая могла бы их процитировать, не прочиталась.
+    Смешивать это с честным «источник не процитирован» значило бы молча
+    завышать охват непроцитированного, поэтому список — отдельно.
     """
-    cited_in_articles = _cited_sources(articles_root)
+    cited_in_articles, unparsed = _scan_articles(articles_root)
     # `dict.fromkeys` — де-дуп с сохранением порядка: `sources` может
     # прийти с повторами (конкатенация нескольких запросов), а источник —
     # не два, если назван дважды.
@@ -264,4 +326,5 @@ def citation_coverage(articles_root: Path, sources: list[str]) -> dict:
         "не процитировано": len(uncited),
         "доля": (len(uncited) / total) if total else 0.0,
         "список": uncited,
+        "не_разобрано": sorted(unparsed),
     }

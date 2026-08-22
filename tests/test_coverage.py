@@ -19,7 +19,7 @@
 см. `ingest.ensure_thread_from_page`), но порядок проверок закладывает это
 как инвариант, а не как случайное совпадение.
 """
-from pipeline import db, coverage
+from pipeline import db, coverage, facts
 
 
 def _seed(tmp_path):
@@ -196,7 +196,7 @@ def test_citable_sources_excludes_duplicate_excerpt_empty_thread_and_image_only(
     conn = db.connect(tmp_path / "cs.sqlite")
     db.init_schema(conn)
     conn.execute("INSERT INTO threads(tid, fid, title, replies_expected) VALUES (1, 19, 'т1', 0)")
-    conn.execute("INSERT INTO posts(mid, tid, page_no, text) VALUES (100, 1, 1, 'текст')")
+    conn.execute("INSERT INTO posts(mid, tid, page_no, markdown) VALUES (100, 1, 1, 'настоящий текст поста')")
     conn.execute("INSERT INTO threads(tid, fid, title, replies_expected) VALUES (2, 19, 'пустая', NULL)")
     _faq_row(conn, "bitrix", 42, "Ответ.", "Ответ.")
     _faq_row(conn, "old", 7, "Ответ.", "Ответ.", dup_engine="bitrix", dup_nr=42)
@@ -214,6 +214,61 @@ def test_citable_sources_excludes_duplicate_excerpt_empty_thread_and_image_only(
     assert "Тема 2" not in sources
     assert "Блог remont 6" not in sources
     assert "FAQ 9" not in sources
+
+
+def test_citable_sources_excludes_forum_thread_with_no_quotable_post(tmp_path):
+    """Тема с постами, но ни один пост которых не даёт ни одной цитаты
+    длиной хотя бы `facts.MIN_QUOTE_CHARS` — структурно то же самое, что
+    «из одних картинок» у FAQ/блогов: процитировать физически нечего
+    (находка 1 ревью задачи 7, живые примеры — посты «test», «....»)."""
+    conn = db.connect(tmp_path / "mute.sqlite")
+    db.init_schema(conn)
+    conn.execute("INSERT INTO threads(tid, fid, title, replies_expected) VALUES (1, 19, 'немая', 1)")
+    conn.execute("INSERT INTO posts(mid, tid, page_no, markdown) VALUES (100, 1, 1, 'test')")
+    conn.execute("INSERT INTO posts(mid, tid, page_no, markdown) VALUES (101, 1, 1, '....')")
+    conn.execute("INSERT INTO threads(tid, fid, title, replies_expected) VALUES (2, 19, 'живая', 1)")
+    conn.execute("INSERT INTO posts(mid, tid, page_no, markdown) VALUES (200, 2, 1, 'настоящий текст поста')")
+    conn.commit()
+
+    sources = coverage.citable_sources(conn)
+
+    assert "Тема 1" not in sources
+    assert "Тема 2" in sources
+
+
+def test_citable_sources_boundary_at_min_quote_chars(tmp_path):
+    """Граница ровно на `facts.MIN_QUOTE_CHARS` (8): 8 знаков — источник
+    остаётся (`>=`, тот же знак, что в `facts.check_one`), 7 — уже "немая"
+    тема."""
+    conn = db.connect(tmp_path / "mute2.sqlite")
+    db.init_schema(conn)
+    conn.execute("INSERT INTO threads(tid, fid, title, replies_expected) VALUES (1, 19, 'ровно 8', 1)")
+    conn.execute("INSERT INTO posts(mid, tid, page_no, markdown) VALUES (100, 1, 1, '12345678')")
+    conn.execute("INSERT INTO threads(tid, fid, title, replies_expected) VALUES (2, 19, 'ровно 7', 1)")
+    conn.execute("INSERT INTO posts(mid, tid, page_no, markdown) VALUES (200, 2, 1, '1234567')")
+    conn.commit()
+    assert facts.MIN_QUOTE_CHARS == 8, "тест держит границу конкретно этого порога"
+
+    sources = coverage.citable_sources(conn)
+
+    assert "Тема 1" in sources
+    assert "Тема 2" not in sources
+
+
+def test_citable_sources_uses_note_body_markdown_not_flat_text_column(tmp_path):
+    """Канон дословной проверки — тело заметки (`markdown`, из него строится
+    заметка зеркала), не `posts.text` (Global Constraint фазы №1) — они
+    расходятся у 56% постов на живом корпусе. Пост с длинным `text`, но
+    пустым/коротким `markdown`, всё равно "немой" для этой меры."""
+    conn = db.connect(tmp_path / "mute3.sqlite")
+    db.init_schema(conn)
+    conn.execute("INSERT INTO threads(tid, fid, title, replies_expected) VALUES (1, 19, 'т', 0)")
+    conn.execute(
+        "INSERT INTO posts(mid, tid, page_no, text, markdown) VALUES (100, 1, 1, "
+        "'достаточно длинный плоский текст', 'test')")
+    conn.commit()
+
+    assert "Тема 1" not in coverage.citable_sources(conn)
 
 
 def _article(tmp_path, name, draft, verified, meta):
@@ -271,4 +326,22 @@ def test_citation_coverage_deduplicates_repeated_source_in_denominator(tmp_path)
 
 def test_citation_coverage_empty_source_list_gives_zero_share_not_error(tmp_path):
     result = coverage.citation_coverage(tmp_path, [])
-    assert result == {"процитировано": 0, "не процитировано": 0, "доля": 0.0, "список": []}
+    assert result == {"процитировано": 0, "не процитировано": 0, "доля": 0.0,
+                       "список": [], "не_разобрано": []}
+
+
+def test_citation_coverage_reports_unparsable_article_files_separately(tmp_path):
+    """Файл без корректного frontmatter (находка 4 ревью задачи 7) — не
+    молчаливый `continue`: он попадает в "не_разобрано" отдельно, а
+    статьи, разобравшиеся нормально, продолжают считаться как обычно."""
+    bad = tmp_path / "sub" / "не-статья.md"
+    bad.parent.mkdir()
+    bad.write_text("нет фронтматтера вовсе\n", encoding="utf-8")
+    _article(tmp_path, "ok.md", "Раз[^f1].", [_fact("f1", "Тема 1#Пост 100", "раз")], {"заголовок": "А"})
+
+    result = coverage.citation_coverage(tmp_path, ["Тема 1", "Тема 2"])
+
+    assert result["не_разобрано"] == [str(bad)]
+    assert result["процитировано"] == 1
+    assert result["не процитировано"] == 1
+    assert result["список"] == ["Тема 2"]
