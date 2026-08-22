@@ -739,6 +739,23 @@ def test_find_number_units_ignores_month_names():
     assert notes.find_number_units("это было в марте прошлого года") == set()
 
 
+def test_find_number_units_ignores_oil_viscosity_grade():
+    """Живая находка пилота статей: класс вязкости масла по SAE («5W-40»,
+    «10W-40», слитно «5w40») — название сорта масла, не измеримая величина,
+    но структурно «число + W + число» без снятия читалось бы как ложные
+    числа-кандидаты («сезонную схему 10W-40 летом и 5W-40 зимой» давало бы
+    «10 w», «40 letom», «5 w», «40 zimoy»)."""
+    assert notes.find_number_units("сезонную схему — 10W-40 летом и 5W-40 зимой") == set()
+    assert notes.find_number_units("заливаю 5w40 весь год") == set()
+    assert notes.find_number_units("трансмиссионное 75W-90 не течёт") == set()
+    # живая склейка «Mobil 1 10W-40»: без снятия «1» и «10» через
+    # разделитель разрядов внутри числа читались бы одним числом «110»
+    assert notes.find_number_units("масла Mobil 1 10W-40 до 25 градусов") == {
+        ("25", notes._canon_unit("град"))}
+    # обратная проверка: настоящее число рядом с реальной единицей — цело
+    assert notes.find_number_units("залил 4 литра 5W-40") == {("4", notes._canon_unit("л"))}
+
+
 def test_find_number_units_ignores_conjunctions_and_prepositions():
     assert notes.find_number_units("шли в 1992 и 1993 годах") == set()
     assert notes.find_number_units("выпускалась с 1998 по 2002 год") == set()
