@@ -48,12 +48,35 @@ FAQ_NOTE = """# Как поменять колодки
 Раз в 30 тысяч километров пробега.
 """
 
+NOTE_QUOTED = """---
+tid: 2
+---
+
+# Тема с цитированием
+
+##### Пост 200
+
+*evil · 27.03.2012 15:00:00 · #1*
+
+Передаточное отношение без разницы снимаш заднюю часть кпп и переставляеш в свою
+
+##### Пост 201
+
+*KOLESO · 27.03.2012 16:00:00 · #2*
+
+> evil пишет:
+> Передаточное отношение без разницы снимаш заднюю часть кпп и переставляеш в свою
+
+Согласен с evil, тоже так делал.
+"""
+
 
 @pytest.fixture
 def mirror(tmp_path):
     root = tmp_path / "Источники"
     root.mkdir()
     (root / "Тема 1.md").write_text(NOTE, encoding="utf-8")
+    (root / "Тема 2.md").write_text(NOTE_QUOTED, encoding="utf-8")
     (root / "Блог remont 42.md").write_text(BLOG_NOTE, encoding="utf-8")
     (root / "FAQ 5.md").write_text(FAQ_NOTE, encoding="utf-8")
     return root
@@ -182,17 +205,22 @@ def test_check_all_attaches_author_and_date_from_forum_post(mirror, conn):
     assert fact["дата"] == "11.10.2014"
 
 
-def test_check_all_falls_back_to_thread_starter_when_source_has_no_anchor(mirror, conn):
-    """Сноска на тему целиком (`[[Тема 1]]`, без якоря поста) — автор и дата
-    берутся у ПЕРВОГО сообщения темы (`threads`), а не у поста из якоря,
-    которого в источнике нет вовсе."""
+def test_source_without_anchor_never_reaches_attribution_even_with_thread_data_present(mirror, conn):
+    """Н2 ревью задачи 4: сноска на тему целиком (`Тема 1`, без якоря поста)
+    отвергается на этапе `check_one` (см. `test_source_without_anchor_is_
+    rejected_as_uncitable` ниже) — и поэтому НИКОГДА не доходит до
+    `_lookup_meta`, даже если в `threads` есть подходящая строка. Раньше
+    (до фикса) такой источник проходил и получал атрибуцию первого поста
+    темы независимо от того, из какого поста цитата взята на самом деле —
+    живой пример ревью: тема 25468, цитата из поста 223272 (alexk13)
+    получала подпись поста 186484 (STiAMV)."""
     conn.execute("INSERT INTO threads(tid, author, started_at) VALUES (1, 'ОсновательТемы', '2014-10-11')")
     conn.commit()
     raw = [{"источник": "Тема 1", "цитата": "Трубки нужны 3/16 дюйма", "суть": "диаметр"}]
     result = facts.check_all(raw, mirror, conn)
-    fact = result["проверено"][0]
-    assert fact["автор"] == "ОсновательТемы"
-    assert fact["дата"] == "11.10.2014"
+    assert result["проверено"] == []
+    assert len(result["отброшено"]) == 1
+    assert "якор" in result["отброшено"][0]["причина"].lower()
 
 
 def test_check_all_attaches_author_and_date_from_blog_post(mirror, conn):
@@ -253,3 +281,115 @@ def test_only_date_handles_already_ru_formatted_datetime():
 def test_only_date_handles_missing_value():
     assert facts._only_date(None) is None
     assert facts._only_date("") is None
+
+
+# --- ревью задачи 4: Н1, Н2, Н3, Н6, Н8 -------------------------------------
+
+
+def test_quoting_another_participants_words_is_rejected(mirror):
+    """Н1 (критично): форумная разметка `> <ник> пишет:` переносит в пост
+    KOLESO слова evil. Якорь при этом правильной формы — без вычистки
+    (см. `notes.FOREIGN_QUOTE`, коммит b14cb4dc) этот факт прошёл бы гейт с
+    подписью KOLESO (живой пример ревью — тема 10045, пост 302526)."""
+    fact = {"источник": "Тема 2#Пост 201",
+            "цитата": "снимаш заднюю часть кпп и переставляеш в свою", "суть": "x"}
+    ok, reason = facts.check_one(fact, mirror)
+    assert not ok
+    assert "генератор" in reason.lower()  # тот же класс отказа, что и текст генератора
+
+
+def test_quoting_the_quote_marker_itself_is_also_rejected(mirror):
+    """Та же находка: сама форумная разметка цитирования («evil пишет:»)
+    тоже не слова KOLESO и тоже не должна проходить."""
+    fact = {"источник": "Тема 2#Пост 201", "цитата": "evil пишет", "суть": "x"}
+    ok, reason = facts.check_one(fact, mirror)
+    assert not ok
+
+
+def test_own_words_next_to_a_quote_block_still_pass(mirror):
+    """Фикс Н1 не должен задевать честные слова автора СЕКЦИИ — они лежат
+    рядом с чужим цитируемым блоком, а не внутри него."""
+    fact = {"источник": "Тема 2#Пост 201", "цитата": "Согласен с evil, тоже так делал", "суть": "x"}
+    ok, reason = facts.check_one(fact, mirror)
+    assert ok, reason
+
+
+def test_source_without_anchor_is_rejected_as_uncitable(mirror):
+    """Н2: сноска на источник целиком остаётся законной ссылкой «см.
+    также» в прозе, но подтвердить дословную цитату ей нечем."""
+    fact = {"источник": "Тема 1", "цитата": "Трубки нужны 3/16 дюйма", "суть": "диаметр"}
+    ok, reason = facts.check_one(fact, mirror)
+    assert not ok
+    assert "якор" in reason.lower()
+
+
+def test_source_with_trailing_hash_and_no_anchor_is_rejected(mirror):
+    """Н2, подпункт 2: хвостовая пустая решётка молча означала «источник
+    целиком» — тот же дефект, что и полное отсутствие `#`."""
+    fact = {"источник": "Тема 1#", "цитата": "Трубки нужны 3/16 дюйма", "суть": "диаметр"}
+    ok, reason = facts.check_one(fact, mirror)
+    assert not ok
+    assert "якор" in reason.lower()
+
+
+def test_anchor_outside_the_closed_list_is_rejected(mirror):
+    """Н2, подпункт 3: форма якоря обязана входить в закрытый список видов
+    сносок (`docs/контракт-зеркала.md` §1) — заголовок-контейнер вроде
+    «Комментарии» (без номера, во множественном числе) якорем цитаты быть
+    не может, даже если он реально существует как заголовок в заметке."""
+    fact = {"источник": "Тема 1#Тормоза", "цитата": "Трубки нужны 3/16 дюйма", "суть": "диаметр"}
+    ok, reason = facts.check_one(fact, mirror)
+    assert not ok
+    assert "список" in reason.lower() or "закрыт" in reason.lower()
+
+
+def test_quote_shorter_than_minimum_length_is_rejected(mirror):
+    """Н6: связь цитаты с полем «суть» машине недоступна, а связь цитаты с
+    длиной — доступна. Двухсимвольная настоящая цитата с произвольной
+    сутью не должна становиться честным проверенным фактом."""
+    fact = {"источник": "Тема 1#Пост 100", "цитата": "мм",
+            "суть": "любое утверждение, которого в источнике нет"}
+    ok, reason = facts.check_one(fact, mirror)
+    assert not ok
+    assert "длин" in reason.lower()
+
+
+def test_quote_at_minimum_length_still_passes(mirror):
+    """Порог не должен резать честные короткие технические цитаты — только
+    вырожденный случай короче него."""
+    fact = {"источник": "Тема 1#Пост 100", "цитата": "3/16 дюйма", "суть": "диаметр"}  # 10 знаков
+    ok, reason = facts.check_one(fact, mirror)
+    assert ok, reason
+
+
+def test_check_all_never_trusts_author_or_date_supplied_by_the_incoming_fact(mirror, conn):
+    """Н3 (серьёзно): `автор`/`дата`, ЕСЛИ они пришли во входящем факте,
+    снимаются БЕЗУСЛОВНО — до ветки с `conn`, а не только когда `conn`
+    передан. Небезопасный режим не должен быть режимом по умолчанию."""
+    conn.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+                 "VALUES (100, 1, 'Razum', '2014-10-11 12:00:00', '', '')")
+    conn.commit()
+    raw = [{"источник": "Тема 1#Пост 100", "цитата": "Трубки нужны 3/16 дюйма",
+            "суть": "x", "автор": "ПОДДЕЛКА", "дата": "01.01.1999"}]
+
+    with_conn = facts.check_all(raw, mirror, conn)
+    assert with_conn["проверено"][0]["автор"] == "Razum"
+    assert with_conn["проверено"][0]["дата"] == "11.10.2014"
+
+    without_conn = facts.check_all(raw, mirror)
+    fact = without_conn["проверено"][0]
+    assert "автор" not in fact
+    assert "дата" not in fact
+
+
+def test_lookup_meta_scopes_post_lookup_by_tid_not_only_mid(mirror, conn):
+    """Н8 (мелочь, закрывается бесплатно): `mid` — первичный ключ `posts` и
+    сам по себе уникален глобально, но проверка не должна держаться только
+    на этом свойстве схемы (тот же класс несверенной перекрёстной связи,
+    из которой в Ф2 выросли расхождения). Пост mid=100 реально принадлежит
+    теме 1; источник заявляет тему 999 — атрибуция обязана отказать, а не
+    подставить автора чужой темы."""
+    conn.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+                 "VALUES (100, 1, 'Razum', '2014-10-11 12:00:00', '', '')")
+    conn.commit()
+    assert facts._lookup_meta("Тема 999#Пост 100", conn) == (None, None)
