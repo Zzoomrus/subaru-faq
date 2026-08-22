@@ -977,6 +977,91 @@ def test_find_number_units_atmosfernik_engine_type_is_not_folded_into_atm():
     assert notes.find_number_units("2.0 атмосферник") == {("2.0", "atmosfernik")}
 
 
+# --- Н25 ре-ревью: множитель («тысяча»/«миллион»/«миллиард») теряет ---------
+# единицу за собой не в двух названных формах, а во всём классе — прошедшая
+# подделка (деньги источника подтверждают пробег статьи), худшая находка
+# задачи: не отвергнутая честная статья, а пропущенная подмена.
+
+
+def test_find_number_units_multiplier_captures_unit_in_every_spelling():
+    """Диагноз: короткая ветка «тыс\\.?» стояла в альтернации ПЕРЕД длинной
+    «тысяч[а-я]*» — Python берёт первую подошедшую, а не самую длинную, и на
+    «тысяч» короткая ветка откусывала только «тыс», а «яч» доставалось
+    следующему `_UNIT_WORD` как «единица» — настоящая единица дальше
+    («км»/«рублей») терялась вовсе. Все написания множителя обязаны ловить
+    единицу одинаково — «тыс.», «тыс», «тысяч», «тыщ» дают ОДИН ключ."""
+    forms = ["тыс. км", "тыс км", "тысяч км", "тысячи км", "тыщ км", "тыщи км",
+             "тысяч километров"]
+    keys = {frozenset(notes.find_number_units("150 %s" % f)) for f in forms}
+    assert keys == {frozenset({("150", "tyskm")})}, keys
+
+
+def test_find_number_units_multiplier_distinguishes_money_from_mileage():
+    """Живая подделка Н25: источник — «ради 3-5 тысяч рублей» (деньги),
+    статья — «пробег... составлял 5 тысяч км» (пробег). Без фикса оба давали
+    один и тот же вырожденный ключ «tysyach» (единица терялась вовсе), и
+    цитата о деньгах молча подтверждала утверждение о пробеге."""
+    money = notes.find_number_units("ради 3-5 тысяч рублей")
+    mileage = notes.find_number_units("пробег этой машины составлял 5 тысяч км")
+    assert money == {("3", "tysrubley"), ("5", "tysrubley")}
+    assert mileage == {("5", "tyskm")}
+    assert not (mileage <= money), "утверждение о пробеге не должно подтверждаться цитатой о деньгах"
+
+
+def test_find_number_units_multiplier_alone_is_not_a_hard_unit():
+    """«Продал за 150 тысяч» — множитель БЕЗ единицы за ним, число значимо
+    само по себе (как цена/год), но НЕ единица измерения: обязано остаться
+    отличимым от «150 тысяч км» и уйти в `find_quantity_claims`, а не
+    молча потеряться и не стать вырожденной «единицей»."""
+    assert notes.find_number_units("продал за 150 тысяч") == set()
+    assert notes.find_number_units("отдам за 150 тыщ") == set()
+    assert notes.find_number_units("продал за 150 тысяч") != notes.find_number_units("150 тысяч км")
+    assert notes.find_quantity_claims("продал за 150 тысяч") == {"150"}
+    assert notes.find_quantity_claims("отдам за 150 тыщ") == {"150"}
+
+
+def test_find_number_units_multiplier_million_and_billion_forms():
+    # «руб»/«р» (сокращение) — «мягкое» исключение денег само по себе
+    # (`_QUANTITY_NOUNS`, Н16), поэтому «млн руб» уходит в quantity claims,
+    # а не в hard unit — это ПРЕЖНЕЕ, не задетое Н25 поведение (то же для
+    # «тыс. руб»). Полное слово «рублей»/«долларов» этим исключением не
+    # накрыто и остаётся честной единицей — на нём и сравниваем написания.
+    assert notes.find_number_units("2 млн рублей") == notes.find_number_units("2 миллиона рублей")
+    assert notes.find_number_units("2 млрд долларов") == notes.find_number_units("2 миллиарда долларов")
+    assert notes.find_number_units("2 млн долларов") != notes.find_number_units("2 млрд долларов")
+    assert notes.find_number_units("2 млн рублей") == {("2", "mlnrubley")}
+    assert notes.find_number_units("2 млрд долларов") == {("2", "mlrddollarov")}
+
+
+def test_find_number_units_multiplier_does_not_glue_a_random_word():
+    """«5 тысяч и 3 рубля» — «и» после множителя союз, не единица: не
+    должен склеиться в бессмысленный составной ключ, множитель остаётся
+    голым количеством (soft), а «3 рубля» — отдельная, честная единица."""
+    assert notes.find_number_units("5 тысяч и 3 рубля") == {("3", "rublya")}
+    assert notes.find_quantity_claims("5 тысяч и 3 рубля") == {"5"}
+
+
+def test_attached_lowercase_k_means_thousand_and_is_a_soft_claim():
+    """Н25: «"к" в значении тысячи, если встречается» — встречается (113
+    чистых живых вхождений, всегда слитно и строчной буквой). Слитное
+    написание — единственный надёжный сигнал, поэтому голая, отдельная
+    проверка, а не ветка в общей цепочке `_classify_unit`."""
+    assert notes.find_quantity_claims("пробег примерно 30к") == {"30"}
+    assert notes.find_quantity_claims("установка обошлась 14к руб") == {"14"}
+    assert notes.find_quantity_claims("на 5к-6к оборотах") == {"5", "6"}
+    assert notes.find_number_units("пробег примерно 30к") == set()
+
+
+def test_attached_lowercase_k_does_not_touch_kelvin_or_spaced_preposition():
+    """Обратная проверка: заглавная «К» (Кельвин/кило-, слитно) и предлог
+    «к» С ПРОБЕЛОМ («еду к 5 часам») остаются нетронутыми — разбор ведут
+    ОДНОВРЕМЕННО регистр буквы И слитность написания, а не один признак."""
+    assert notes.find_number_units("биксенон 4300К") == {("4300", "k")}
+    assert notes.find_number_units("должен выдавать 3,0 К Ом") == {("3.0", "k")}
+    assert notes.find_number_units("приехал к 5 часам") == {("5", "ch")}
+    assert notes.find_quantity_claims("приехал к 5 часам") == set()
+
+
 # --- Н16 ре-ревью: голое число рядом с количественным существительным ------
 # домена (год/лет/раз/шт/месяц/человек/деньги) — не единица, но САМО ЧИСЛО
 # обязано проверяться, иначе исключение становится лазейкой для подмены.
