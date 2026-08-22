@@ -60,6 +60,29 @@ tid: 2
 В: механическая 5-ти ступенчатая
 """
 
+# --- Тема 4: цитирование чужих слов внутри поста (для подделки Н9) --------
+THEME_4_QUOTED = """---
+tid: 4
+---
+
+# Обсуждение КПП
+
+##### Пост 400
+
+*evil · 27.03.2012 15:00:00 · #1*
+
+Передаточное отношение без разницы снимаш заднюю часть кпп и переставляеш в свою
+
+##### Пост 401
+
+*KOLESO · 27.03.2012 16:00:00 · #2*
+
+> evil пишет:
+> Передаточное отношение без разницы снимаш заднюю часть кпп и переставляеш в свою
+
+Согласен с evil, тоже так делал.
+"""
+
 # --- Тема 3: пустая тема форума — ни одного поста ---------------------------
 THEME_3_EMPTY = """---
 tid: 3
@@ -111,6 +134,7 @@ def mirror(tmp_path):
     (root / "Тема 1.md").write_text(THEME_1, encoding="utf-8")
     (root / "Тема 2.md").write_text(THEME_2_MULTILINE, encoding="utf-8")
     (root / "Тема 3.md").write_text(THEME_3_EMPTY, encoding="utf-8")
+    (root / "Тема 4.md").write_text(THEME_4_QUOTED, encoding="utf-8")
     (root / "FAQ 100.md").write_text(FAQ_100, encoding="utf-8")
     (root / "FAQ старый 9.md").write_text(FAQ_OLD_9, encoding="utf-8")
     (root / "Блог remont 77.md").write_text(BLOG_77_EXCERPT, encoding="utf-8")
@@ -127,6 +151,10 @@ def conn():
               "VALUES (101, 1, 'Anri', '2014-10-11 13:00:00', '', '')")
     c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
               "VALUES (200, 2, 'Antoha_samara', '2008-02-13 12:00:00', '', '')")
+    c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+              "VALUES (400, 4, 'evil', '2012-03-27 15:00:00', '', '')")
+    c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+              "VALUES (401, 4, 'KOLESO', '2012-03-27 16:00:00', '', '')")
     c.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text) "
               "VALUES ('bitrix', 100, 'Как часто менять масло?', "
               "'Рекомендуемый интервал замены масла 5000 км пробега.', "
