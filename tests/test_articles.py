@@ -1,4 +1,5 @@
 import json
+import os
 
 import pytest
 
@@ -382,14 +383,21 @@ def test_собрано_uses_explicit_meta_value_when_given():
     assert "собрано: 2026-08-21" in out
 
 
-def test_build_stamps_собрано_deterministically_and_rebuild_is_byte_identical(tmp_path):
-    """`build` обязан подставить `собрано` сам (не полагаясь на
-    `date.today()` внутри `render`), и повторная сборка БЕЗ изменения
-    черновика — байт-в-байт то же самое (Global Constraint №8)."""
+def test_build_stamps_собрано_from_draft_mtime_not_todays_date(tmp_path):
+    """R1 ре-ревью: старая версия теста создавала черновик тут же в тесте,
+    поэтому mtime файла совпадал с «сегодня» — мутация `date.fromtimestamp
+    (mtime)` -> `date.today()` не валила ни одного теста, хотя обе сборки
+    шли в один день. Выставляем черновику заведомо прошлую дату мутацией
+    файловой системы (`os.utime`) и утверждаем ИМЕННО её, а не «какую-то
+    дату» — так мутация на источник даты снова обнаруживается."""
     _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: Узел"])
+    draft_path = tmp_path / "articles" / "черновики" / "х.md"
+    os.utime(draft_path, (1_600_000_000, 1_600_000_000))  # 2020-09-13
     out_path = articles.build("х", tmp_path)
     text = out_path.read_text(encoding="utf-8")
-    assert "собрано:" in text
+    assert "собрано: 2020-09-13" in text
+    # Побитовость (Global Constraint №8): повторная сборка без изменения
+    # черновика (mtime не трогаем) — то же самое byte-в-byte.
     out_path2 = articles.build("х", tmp_path)
     assert out_path2.read_text(encoding="utf-8") == text
 
