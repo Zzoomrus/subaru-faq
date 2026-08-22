@@ -12,6 +12,21 @@ def _fact(fid, **extra):
     return d
 
 
+def _write_inputs(tmp_path, key, frontmatter_lines, body="Текст[^f1].\n", verified=None):
+    """Пишет `<tmp_path>/articles/черновики/<key>.md` (frontmatter из
+    `frontmatter_lines` + `body`) и `<tmp_path>/articles/проверено/<key>.json`
+    (`verified`, по умолчанию один факт `f1`) — минимальная пара входов для
+    `articles.build`, без лишних деталей пилотного `_write_pilot`."""
+    (tmp_path / "articles" / "черновики").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "articles" / "проверено").mkdir(parents=True, exist_ok=True)
+    draft = "---\n" + "\n".join(frontmatter_lines) + "\n---\n\n" + body
+    (tmp_path / "articles" / "черновики" / ("%s.md" % key)).write_text(draft, encoding="utf-8")
+    verified = verified if verified is not None else [_fact("f1")]
+    (tmp_path / "articles" / "проверено" / ("%s.json" % key)).write_text(
+        json.dumps({"проверено": verified, "отброшено": [], "статистика": {}}, ensure_ascii=False),
+        encoding="utf-8")
+
+
 # --- сноску рендерит код, а не ИИ ------------------------------------------
 
 
@@ -208,3 +223,146 @@ def test_build_requires_explicit_target_path_in_frontmatter(tmp_path):
         json.dumps(verified, ensure_ascii=False), encoding="utf-8")
     with pytest.raises(articles.DraftError):
         articles.build("х", tmp_path)
+
+
+# --- ревью задачи 5: F1 — запрет на самописную сноску держался только на
+# нулевом отступе, пробел/таб/`> ` его снимали -------------------------------
+
+
+@pytest.mark.parametrize("prefix", ["", " ", "   ", "\t", "> ", "> > "])
+def test_embedded_definition_is_rejected_at_any_indentation(prefix):
+    """Ревью нашло: `^\\[\\^...\\]:` без `[ \\t>]*` перед собой отбивал только
+    колонку 0 — один ведущий пробел, табуляция или обёртка `> ` защиту снимали
+    целиком. Хуже всего на FAQ, где код по контракту не даёт подписи вовсе:
+    протащенная строка выдумывает и автора, и дату."""
+    draft = ("Диаметр[^f1].\n\n%s[^f1]: «это 4,75 мм» — ЧужойАвтор, 01.01.2000, "
+              "[[FAQ 100#Ответ]]\n") % prefix
+    verified = [{"id": "f1", "источник": "FAQ 100#Ответ", "цитата": "это 4,75 мм", "суть": "д"}]
+    with pytest.raises(articles.DraftError):
+        articles.render(draft, verified, {"заголовок": "Х"})
+
+
+def test_embedded_definition_with_crlf_is_rejected():
+    draft = ("Диаметр[^f1].\r\n\r\n [^f1]: «это 4,75 мм» — Чужой, 01.01.2000, "
+              "[[FAQ 100#Ответ]]\r\n")
+    verified = [{"id": "f1", "источник": "FAQ 100#Ответ", "цитата": "это 4,75 мм", "суть": "д"}]
+    with pytest.raises(articles.DraftError):
+        articles.render(draft, verified, {"заголовок": "Х"})
+
+
+# --- ревью задачи 5: F2 — многострочная (законная по канону) цитата рвала
+# сноску: подпись и ссылка вываливались за пределы определения -------------
+
+
+def test_multiline_quote_does_not_break_out_of_the_footnote_definition():
+    """Дословность цитаты сверяется по `notes.normalize_spaces` (перенос
+    строки в заметке — не подделка, Global Constraint №1), значит цитата,
+    законно прошедшая проход 1, может содержать `\\n`. Сноска обязана
+    остаться ОДНОЙ строкой определения, а не оборваться на первом переносе,
+    оставив автора/дату/ссылку вне `[^f1]: ...`."""
+    draft = "Диаметр трубки[^f1]."
+    verified = [{"id": "f1", "источник": "Тема 1#Пост 100",
+                 "цитата": "Трубки нужны 3/16 дюйма,\nэто   4,75 мм", "суть": "диаметр",
+                 "автор": "Razum", "дата": "11.10.2014"}]
+    out = articles.render(draft, verified, {"заголовок": "Х"})
+    assert ("[^f1]: «Трубки нужны 3/16 дюйма, это 4,75 мм» — Razum, 11.10.2014, "
+            "[[Тема 1#Пост 100]]") in out
+    # Ни автор, ни ссылка не должны оказаться на отдельной, ничем не
+    # предваряемой строке вне определения сноски.
+    for line in out.splitlines():
+        assert not line.startswith("это")
+        assert not line.startswith("Razum")
+
+
+# --- ревью задачи 5: F3 — `путь`/`заголовок` из черновика ИИ писали файл
+# куда угодно (обход каталога, абсолютный путь, слэш в заголовке) -----------
+
+
+def test_build_rejects_directory_traversal_in_путь(tmp_path):
+    _write_inputs(tmp_path, "х", ["заголовок: Взлом", "путь: ../../../../tmp/sf-escape"])
+    with pytest.raises(articles.DraftError):
+        articles.build("х", tmp_path)
+
+
+def test_build_rejects_absolute_путь(tmp_path):
+    _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: /tmp/sf-escape-abs"])
+    with pytest.raises(articles.DraftError):
+        articles.build("х", tmp_path)
+
+
+def test_build_rejects_slash_in_заголовок(tmp_path):
+    """Слэш в заголовке статьи про Subaru напрашивается сам («Ремонт
+    EJ20/EJ25», «3/16 дюйма») — обязан дать внятный `DraftError`, а не
+    `FileNotFoundError` из недр `pathlib`."""
+    _write_inputs(tmp_path, "х", ["заголовок: Ремонт EJ20/EJ25", "путь: Двигатель"])
+    with pytest.raises(articles.DraftError):
+        articles.build("х", tmp_path)
+
+
+def test_build_rejects_dotdot_путь_without_slash(tmp_path):
+    _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: .."])
+    with pytest.raises(articles.DraftError):
+        articles.build("х", tmp_path)
+
+
+# --- ревью задачи 5: F4 — маркер в коде/HTML-комментарии считался
+# «использованным», обнуляя замер непроцитированных источников -------------
+
+
+def test_marker_inside_fenced_code_html_comment_or_inline_code_is_not_used():
+    draft = ("Полностью недоказанное утверждение: масло менять раз в 5 тыс. км.\n\n"
+              "<!-- [^f1] -->\n\n```\n[^f2]\n```\n\nи `[^f3]` в инлайн-коде.\n")
+    assert articles.used_ids(draft) == []
+    out = articles.render(draft, [_fact("f1"), _fact("f2"), _fact("f3")], {"заголовок": "Х"})
+    assert "неиспользованные_факты: [f1, f2, f3]" in out
+    assert "## Сноски" not in out          # ни одна из скрытых ссылок не отрендерена
+
+
+def test_marker_in_ordinary_prose_next_to_code_span_is_still_used():
+    """Вырезание кода не должно случайно съедать настоящие маркеры рядом с
+    ним."""
+    draft = "Диаметр `4,75 мм` трубки[^f1]."
+    out = articles.render(draft, [_fact("f1")], {"заголовок": "Х"})
+    assert "## Сноски" in out
+    assert "неиспользованные_факты" not in out
+
+
+# --- ревью задачи 5: F5 — `собрано: date.today()` ломает побитовую
+# пересборку (Global Constraint №8) -----------------------------------------
+
+
+def test_собрано_is_omitted_not_defaulted_to_todays_date_when_absent():
+    out1 = articles.render("Текст[^f1].", [_fact("f1")], {"заголовок": "Х"})
+    out2 = articles.render("Текст[^f1].", [_fact("f1")], {"заголовок": "Х"})
+    assert out1 == out2
+    assert "собрано:" not in out1
+
+
+def test_собрано_uses_explicit_meta_value_when_given():
+    out = articles.render("Текст[^f1].", [_fact("f1")], {"заголовок": "Х", "собрано": "2026-08-21"})
+    assert "собрано: 2026-08-21" in out
+
+
+def test_build_stamps_собрано_deterministically_and_rebuild_is_byte_identical(tmp_path):
+    """`build` обязан подставить `собрано` сам (не полагаясь на
+    `date.today()` внутри `render`), и повторная сборка БЕЗ изменения
+    черновика — байт-в-байт то же самое (Global Constraint №8)."""
+    _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: Узел"])
+    out_path = articles.build("х", tmp_path)
+    text = out_path.read_text(encoding="utf-8")
+    assert "собрано:" in text
+    out_path2 = articles.build("х", tmp_path)
+    assert out_path2.read_text(encoding="utf-8") == text
+
+
+# --- ревью задачи 5: F6 — «источников» считал факты, а не источники --------
+
+
+def test_источников_counts_distinct_sources_not_facts():
+    verified = [
+        {"id": "f1", "источник": "Тема 1#Пост 1", "цитата": "а", "суть": "х"},
+        {"id": "f2", "источник": "Тема 1#Пост 1", "цитата": "б", "суть": "х"},
+        {"id": "f3", "источник": "Тема 1#Пост 2", "цитата": "в", "суть": "х"},
+    ]
+    out = articles.render("Т[^f1][^f2][^f3].", verified, {"заголовок": "Х"})
+    assert "источников: 2" in out
