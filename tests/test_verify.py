@@ -276,6 +276,12 @@ def test_honest_article_passes(mirror, conn, tmp_path):
     assert v["ок"], v["проблемы"]
     assert v["источники_без_цитаты"] == []
 
+    # Н6 ре-ревью: с `verified` под рукой мера считается заново, не из
+    # frontmatter, — на честной статье результат обязан совпасть.
+    v_verified = verify.check(out_path, mirror, mirror, conn, result["проверено"])
+    assert v_verified["ок"], v_verified["проблемы"]
+    assert v_verified["источники_без_цитаты"] == []
+
 
 def test_honest_article_with_unused_fact_still_passes_but_reports_it(mirror, conn, tmp_path):
     """Неиспользованный (но честный) факт — не подделка, `ок` не должен
@@ -299,6 +305,60 @@ def test_honest_article_with_unused_fact_still_passes_but_reports_it(mirror, con
     v = verify.check(out_path, mirror, mirror, conn)
     assert v["ок"], v["проблемы"]
     assert v["источники_без_цитаты"] == ["f2"]
+
+    v_verified = verify.check(out_path, mirror, mirror, conn, result["проверено"])
+    assert v_verified["ок"], v_verified["проблемы"]
+    assert v_verified["источники_без_цитаты"] == ["f2"]
+
+
+# --- Н6 ре-ревью: мера охвата не является проверкой, если верить frontmatter
+
+
+def test_tampered_unused_facts_field_is_caught_when_verified_is_given(mirror, conn, tmp_path):
+    """Живая находка ревью (F4): снять строку `неиспользованные_факты` из
+    frontmatter — и мера молча показывает ноль, хотя факт реально не
+    использован. С `verified` под рукой это уже не измерение, а проверка."""
+    raw = [
+        {"источник": "Тема 1#Пост 100",
+         "цитата": "Трубки нужны 3/16 дюйма", "суть": "диаметр трубок"},
+        {"источник": "FAQ 100#Ответ",
+         "цитата": "Рекомендуемый интервал замены масла 5000 км пробега", "суть": "интервал масла"},
+    ]
+    result = facts.check_all(raw, mirror, conn)
+    text = ("---\ntype: статья\nисточников: 2\nсобрано: 2026-08-22\n---\n\n"
+            "# Зазоры\n\nТормозные трубки — 3/16 дюйма[^f1].\n\n"
+            "## Сноски\n\n[^f1]: «Трубки нужны 3/16 дюйма» — Razum, 11.10.2014, "
+            "[[Тема 1#Пост 100]]\n")
+    out_path = tmp_path / "статья.md"
+    out_path.write_text(text, encoding="utf-8")
+
+    without_verified = verify.check(out_path, mirror, mirror, conn)
+    assert without_verified["ок"], without_verified["проблемы"]
+    assert without_verified["источники_без_цитаты"] == [], (
+        "без verified проверка не может знать про снятую строку — не должна выдумывать ответ")
+
+    with_verified = verify.check(out_path, mirror, mirror, conn, result["проверено"])
+    assert not with_verified["ок"]
+    assert any("неиспользованные_факты" in p for p in with_verified["проблемы"])
+    assert with_verified["источники_без_цитаты"] == ["f2"]
+
+
+def test_inflated_sources_count_is_caught_when_verified_is_given(mirror, conn, tmp_path):
+    """Живая находка ревью (F5): `источников: 99` при одной сноске проходит
+    без `verified` — задача 5 отдельно чинила это завышение (F6/F6-бис) в
+    `articles.render`, но гейт задачи 6 его не сторожил вовсе."""
+    raw = [{"источник": "Тема 1#Пост 100", "цитата": "Трубки нужны 3/16 дюйма", "суть": "х"}]
+    result = facts.check_all(raw, mirror, conn)
+    text = ("---\ntype: статья\nисточников: 99\nсобрано: 2026-08-22\n---\n\n"
+            "# Зазоры\n\nТормозные трубки — 3/16 дюйма[^f1].\n\n"
+            "## Сноски\n\n[^f1]: «Трубки нужны 3/16 дюйма» — Razum, 11.10.2014, "
+            "[[Тема 1#Пост 100]]\n")
+    out_path = tmp_path / "статья.md"
+    out_path.write_text(text, encoding="utf-8")
+
+    result_check = verify.check(out_path, mirror, mirror, conn, result["проверено"])
+    assert not result_check["ок"]
+    assert any("источников" in p for p in result_check["проблемы"])
 
 
 # --- замечание тимлида (ре-ревью соседа): цитата в статье нормализована по

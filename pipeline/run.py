@@ -238,7 +238,10 @@ def _parser() -> argparse.ArgumentParser:
                         "<--articles-dir>/факты/<ключ>.json, пишет "
                         "<--articles-dir>/проверено/<ключ>.json; "
                         "для command=article: читает <--root>/articles/черновики/<ключ>.md "
-                        "и <--root>/articles/проверено/<ключ>.json")
+                        "и <--root>/articles/проверено/<ключ>.json; "
+                        "для command=verify: НЕОБЯЗАТЕЛЕН — если дан, читает "
+                        "<--articles-dir>/проверено/<ключ>.json и сверяет frontmatter "
+                        "«источников»/«неиспользованные_факты» с реальным подсчётом (Н6)")
     p.add_argument("--articles-dir", type=Path, default=DEFAULT_ARTICLES_DIR,
                    help="корень черновиков/фактов/проверенного статей Ф3 (по умолчанию %s)"
                         % DEFAULT_ARTICLES_DIR)
@@ -530,7 +533,22 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         conn = db.connect(args.db)
         db.init_schema(conn)
-        result = verify.check(args.article, args.wiki, args.wiki / args.mirror_dir, conn)
+        # Н6 ре-ревью задачи 6: без `verified` мера «источники без цитаты»
+        # была бы перепечаткой frontmatter, который пишет тот же процесс,
+        # что мог быть обойдён. `--key` необязателен (можно проверить
+        # произвольный .md, не связанный ни с одним ключом фактов) — тогда
+        # эта конкретная проверка (Н6) просто не выполняется, а не выдаёт
+        # заведомо недостоверное число.
+        verified = None
+        if args.key:
+            verified_path = args.articles_dir / "проверено" / (args.key + ".json")
+            if not verified_path.exists():
+                print("проверенные факты не найдены: %s (нужны для сверки поля «источников»/"
+                      "«неиспользованные_факты» — python -m pipeline.run facts --key %s)"
+                      % (verified_path, args.key))
+                return 2
+            verified = json.loads(verified_path.read_text(encoding="utf-8"))["проверено"]
+        result = verify.check(args.article, args.wiki, args.wiki / args.mirror_dir, conn, verified)
         for problem in result["проблемы"]:
             print("  -", problem)
         if result["источники_без_цитаты"]:
