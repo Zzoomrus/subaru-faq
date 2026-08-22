@@ -83,6 +83,24 @@ tid: 4
 Согласен с evil, тоже так делал.
 """
 
+# --- Тема 5: два абзаца, в каждом своё значение (Н11, второй раунд) --------
+# Для «обратной подделки» — склейки двух абзацев с ровно двумя значениями
+# суммарно (по требованию тимлида после замера живого корпуса).
+THEME_5_TWO_PARAGRAPHS = """---
+tid: 5
+---
+
+# Клиренс
+
+##### Пост 500
+
+*allrad · 20.02.2009 12:00:00 · #1*
+
+Клиренс спереди у седана 266мм.
+
+Клиренс сзади у вагона 279мм.
+"""
+
 # --- Тема 3: пустая тема форума — ни одного поста ---------------------------
 THEME_3_EMPTY = """---
 tid: 3
@@ -135,6 +153,7 @@ def mirror(tmp_path):
     (root / "Тема 2.md").write_text(THEME_2_MULTILINE, encoding="utf-8")
     (root / "Тема 3.md").write_text(THEME_3_EMPTY, encoding="utf-8")
     (root / "Тема 4.md").write_text(THEME_4_QUOTED, encoding="utf-8")
+    (root / "Тема 5.md").write_text(THEME_5_TWO_PARAGRAPHS, encoding="utf-8")
     (root / "FAQ 100.md").write_text(FAQ_100, encoding="utf-8")
     (root / "FAQ старый 9.md").write_text(FAQ_OLD_9, encoding="utf-8")
     (root / "Блог remont 77.md").write_text(BLOG_77_EXCERPT, encoding="utf-8")
@@ -155,6 +174,8 @@ def conn():
               "VALUES (400, 4, 'evil', '2012-03-27 15:00:00', '', '')")
     c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
               "VALUES (401, 4, 'KOLESO', '2012-03-27 16:00:00', '', '')")
+    c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+              "VALUES (500, 5, 'allrad', '2009-02-20 12:00:00', '', '')")
     c.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text) "
               "VALUES ('bitrix', 100, 'Как часто менять масло?', "
               "'Рекомендуемый интервал замены масла 5000 км пробега.', "

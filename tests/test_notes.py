@@ -698,6 +698,15 @@ def test_find_number_units_excludes_years_money_and_counts():
     assert notes.find_number_units("10 раз") == set()
 
 
+def test_find_number_units_excludes_english_ordinal_suffixes():
+    """Живая находка (Тема 10045, таблица передаточных чисел КПП,
+    скопированная из англоязычной спецификации): «Code 1st 2nd 3rd 4th 5th
+    6th Rev.» без исключения читалось бы как шесть разных «чисел с
+    единицей» («st», «nd», «rd», «th») — это порядковый суффикс
+    числительного, а не единица измерения."""
+    assert notes.find_number_units("Code 1st 2nd 3rd 4th 5th 6th Rev.") == set()
+
+
 def test_find_number_units_does_not_splice_sentence_after_abbreviation():
     """Общий паттерн «слово, точка, слово» откусил бы первое слово
     следующего предложения («руб. Итого» — не единица); составные формы
@@ -725,3 +734,36 @@ def test_find_number_units_recognizes_typographic_dash_range():
     требовал ровно `-` и обе стороны диапазона проходили не проверенными."""
     assert notes.find_number_units("7–4 мм") == {("7", "mm"), ("4", "mm")}
     assert notes.find_number_units("7—4 мм") == {("7", "mm"), ("4", "mm")}
+
+
+# --- границы абзаца (Н11 ре-ревью, второй раунд) — `quote_crosses_paragraph`
+
+
+def test_quote_crosses_paragraph_is_false_when_quote_fits_in_one_paragraph():
+    source = ("При 20 градусах сопротивление 3 Ом, при 50 градусах 5 Ом.\n\n"
+              "Клиренс спереди у седана 266мм.")
+    assert notes.quote_crosses_paragraph(
+        "При 20 градусах сопротивление 3 Ом, при 50 градусах 5 Ом.", source) is False
+
+
+def test_quote_crosses_paragraph_is_true_when_quote_spans_two_paragraphs():
+    source = "Клиренс спереди у седана 266мм.\n\nКлиренс сзади у вагона 279мм."
+    spliced = "Клиренс спереди у седана 266мм. Клиренс сзади у вагона 279мм."
+    assert notes.quote_crosses_paragraph(spliced, source) is True
+
+
+def test_quote_crosses_paragraph_ignores_whitespace_differences_within_a_paragraph():
+    """Перенос строки ВНУТРИ одной мысли (мягкий перенос markdown) — не
+    граница абзаца (Global Constraint фазы №1: перенос строки — не
+    подделка); только ПУСТАЯ строка разделяет абзацы."""
+    source = "Первая строка одной мысли,\nвторая строка той же мысли, 5 мм."
+    quote = "Первая строка одной мысли, вторая строка той же мысли, 5 мм."
+    assert notes.quote_crosses_paragraph(quote, source) is False
+
+
+def test_quote_crosses_paragraph_table_rows_without_blank_lines_are_one_paragraph():
+    """Живой случай (тема 10045, таблица передаточных чисел КПП): строки
+    таблицы разделены ОДИНОЧНЫМ переносом, без пустой строки между ними —
+    для этого правила это ОДИН абзац целиком, законный перечень."""
+    source = "Строка 1: 3.454 2.062 1.448\nСтрока 2: 3.083 2.062 1.545\nСтрока 3: 3.166 1.882 1.296"
+    assert notes.quote_crosses_paragraph(source, source) is False

@@ -88,7 +88,6 @@ def _parse_footnote_definitions(body: str) -> tuple[dict[str, dict], list[str]]:
 # сокращения «т. е.», «см.» рвут предложение на два, а маркер после точки
 # — по Н2/Н7 корню, единица должна определяться позицией МАРКЕРА, а не
 # пунктуацией).
-_PARA_SPLIT = re.compile(r"\n\s*\n")
 _LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+\.)\s+")
 _HEADING_LINE = re.compile(r"^#{1,6}\s+")
 _QUOTE_LINE = re.compile(r"^>+\s?")
@@ -108,7 +107,7 @@ def _blocks(text: str) -> list[str]:
     позиции маркеров (`_marker_segments`).
     """
     out: list[str] = []
-    for para in _PARA_SPLIT.split(text):
+    for para in notes.PARAGRAPH_SPLIT.split(text):
         lines = [l for l in para.split("\n") if l.strip()]
         if not lines:
             continue
