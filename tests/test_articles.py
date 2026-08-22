@@ -384,6 +384,18 @@ def test_marker_in_ordinary_prose_next_to_code_span_is_still_used():
     assert "неиспользованные_факты" not in out
 
 
+def test_marker_inside_obsidian_comment_is_not_used():
+    """F3-бис ре-ревью: `%%…%%` — родной комментарий Obsidian, в режиме
+    чтения невидим полностью (в отличие от HTML-комментария, который часть
+    визоров всё же показывает) — самый актуальный способ спрятать маркер, и
+    он не должен засчитываться как использование факта."""
+    draft = "Утверждение без опоры в прозе.\n\n%% [^f1] %%\n"
+    assert articles.used_ids(draft) == []
+    out = articles.render(draft, [_fact("f1")], {"заголовок": "Х"})
+    assert "неиспользованные_факты: [f1]" in out
+    assert "## Сноски" not in out
+
+
 # --- ревью задачи 5: F5 — `собрано: date.today()` ломает побитовую
 # пересборку (Global Constraint №8) -----------------------------------------
 

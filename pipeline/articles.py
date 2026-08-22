@@ -82,11 +82,18 @@ _EMBEDDED_DEFINITION = re.compile(r"\[\^[^\]]+\]:")
 _FENCED_CODE = re.compile(r"```.*?```", re.S)
 _HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
 _INLINE_CODE = re.compile(r"`[^`\n]*`")
+# F3-бис ре-ревью: `%%…%%` — родной комментарий Obsidian, в режиме чтения
+# невидим полностью (в отличие от HTML-комментария, который часть визоров
+# показывает как HTML). Маркер, спрятанный внутри такого комментария, читатель
+# не увидит никогда, значит и «использованным» его считать нельзя — тот же
+# довод, что для fenced-код-блока, инлайн-кода и HTML-комментария выше.
+_OBSIDIAN_COMMENT = re.compile(r"%%.*?%%", re.S)
 
 
 def _strip_non_prose(text: str) -> str:
     text = _FENCED_CODE.sub(" ", text)
     text = _HTML_COMMENT.sub(" ", text)
+    text = _OBSIDIAN_COMMENT.sub(" ", text)
     return _INLINE_CODE.sub(" ", text)
 
 
@@ -102,10 +109,10 @@ def used_ids(draft: str) -> list[str]:
     `test_every_footnote_definition_appears_once`: маркер, повторённый в
     прозе несколько раз, — не повод дублировать сноску).
 
-    Маркеры внутри fenced-код-блоков, инлайн-кода и HTML-комментариев не
-    считаются использованием (`_strip_non_prose`, F4 ревью) — читатель не
-    увидит там живой ссылки на источник, а значит утверждение ею и не
-    подкреплено.
+    Маркеры внутри fenced-код-блоков, инлайн-кода, HTML-комментариев и
+    комментариев Obsidian `%%…%%` не считаются использованием
+    (`_strip_non_prose`, F4/F3-бис ревью) — читатель не увидит там живой
+    ссылки на источник, а значит утверждение ею и не подкреплено.
     """
     seen: list[str] = []
     for m in _MARKER.finditer(_strip_non_prose(draft)):
