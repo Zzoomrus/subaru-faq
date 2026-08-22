@@ -707,6 +707,97 @@ def test_find_number_units_excludes_english_ordinal_suffixes():
     assert notes.find_number_units("Code 1st 2nd 3rd 4th 5th 6th Rev.") == set()
 
 
+# --- Н15 ре-ревью: служебные слова — закрытый класс, не список -------------
+
+
+def test_find_number_units_ignores_post_number_reference():
+    """Бриф прямо требует НЕ проверять номер поста — живая находка: без
+    запрета «в посте 104015 в теме» читалось как число «104015» с
+    «единицей» «в» (предлог)."""
+    assert notes.find_number_units("в посте 104015 в теме про VIN") == set()
+    assert notes.find_number_units("обсуждали в #104015 в теме") == set()
+
+
+def test_find_number_units_ignores_date_fragment():
+    """Дата — служебный штамп времени, не факт домена; без масштабного
+    запрета «13.02.2008» читалось как ДВА числа («13.02» затем «02.2008»),
+    и следующее слово («выложил») — как единица."""
+    assert notes.find_number_units("Таблицу 13.02.2008 выложил участник") == set()
+
+
+def test_find_number_units_ignores_month_names():
+    assert notes.find_number_units("Таблицу 13 февраля выложил") == set()
+    assert notes.find_number_units("это было в марте прошлого года") == set()
+
+
+def test_find_number_units_ignores_conjunctions_and_prepositions():
+    assert notes.find_number_units("шли в 1992 и 1993 годах") == set()
+    assert notes.find_number_units("выпускалась с 1998 по 2002 год") == set()
+
+
+def test_find_number_units_ignores_known_non_unit_designations():
+    """«4WD» — обозначение привода, не число с единицей «wd»."""
+    assert notes.find_number_units("У этой версии 4WD и механика") == set()
+
+
+# --- Н16 ре-ревью: голое число рядом с количественным существительным ------
+# домена (год/лет/раз/шт/месяц/человек/деньги) — не единица, но САМО ЧИСЛО
+# обязано проверяться, иначе исключение становится лазейкой для подмены.
+
+
+def test_find_quantity_claims_extracts_year_beside_excluded_word():
+    assert notes.find_quantity_claims("означает 1998 год") == {"1998"}
+
+
+def test_find_quantity_claims_extracts_duration_and_count():
+    assert notes.find_quantity_claims("Ресурс втулок 5 лет") == {"5"}
+    assert notes.find_quantity_claims("зазор в 9 раза больше") == {"9"}
+
+
+def test_find_quantity_claims_does_not_leak_into_find_number_units():
+    """Число рядом с «мягким» исключением НЕ становится парой
+    «число+единица» — `find_number_units` его не выдаёт вовсе, иначе
+    считалось бы дважды двумя разными проверками."""
+    assert notes.find_number_units("означает 1998 год") == set()
+
+
+def test_find_bare_numbers_finds_year_without_a_neighbouring_word():
+    """Сторона ИСТОЧНИКА: в цитате слова «год» рядом с числом может не
+    быть вовсе — контракт зеркала §1, «8 - Год выпуска (С-1992)», год
+    выпуска внутри скобок. `find_quantity_claims` тут ничего не найдёт
+    (нет количественного существительного), нужен `find_bare_numbers`."""
+    assert notes.find_quantity_claims("8 - Год выпуска (С-1992)") == set()
+    assert notes.find_bare_numbers("8 - Год выпуска (С-1992)") == {"8", "1992"}
+
+
+def test_find_bare_numbers_does_not_split_an_identifier():
+    """Та же защита от VIN/артикула, что и у `find_number_units`."""
+    assert notes.find_bare_numbers("артикул 22611AD982") == set()
+    assert notes.find_bare_numbers("VIN JF1GDDLF37G076103") == set()
+
+
+# --- Н17 ре-ревью: невидимые символы и разметка — по классу, не по перечню -
+
+
+def test_find_number_units_strips_any_unicode_format_character():
+    """Не три конкретных символа (Н8), а вся категория Unicode `Cf` —
+    SOFT HYPHEN, ZERO WIDTH NON-JOINER/JOINER тоже категория `Cf` и не
+    входили в старый перечень из трёх."""
+    assert notes.find_number_units("9­мм") == {("9", "mm")}  # SOFT HYPHEN
+    assert notes.find_number_units("9‌мм") == {("9", "mm")}  # ZWNJ
+    assert notes.find_number_units("9‍мм") == {("9", "mm")}  # ZWJ
+
+
+def test_find_number_units_strips_obsidian_highlight_and_strikethrough():
+    assert notes.find_number_units("==9== мм") == {("9", "mm")}
+    assert notes.find_number_units("~~9~~ мм") == {("9", "mm")}
+
+
+def test_find_number_units_strips_html_tags_and_nbsp_entity():
+    assert notes.find_number_units("<b>9</b> мм") == {("9", "mm")}
+    assert notes.find_number_units("9&nbsp;мм") == {("9", "mm")}
+
+
 def test_find_number_units_does_not_splice_sentence_after_abbreviation():
     """Общий паттерн «слово, точка, слово» откусил бы первое слово
     следующего предложения («руб. Итого» — не единица); составные формы

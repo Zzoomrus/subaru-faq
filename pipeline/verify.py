@@ -369,19 +369,43 @@ def check(article_path: Path, wiki_root: Path, mirror_root: Path, conn: sqlite3.
     # ещё один способ ошибиться, который потом придётся проверять отдельно).
     # Обходной путь у автора статьи есть: включить пересчитанное значение
     # прямо в цитату факта на проходе 1, а не только в прозу.
+    #
+    # Н16 ре-ревью: исключение (год/лет/раз/шт/месяц/человек/деньги — не
+    # единица измерения) само стало лазейкой в первой версии — число, за
+    # которым стоит исключённое слово, не проверялось НИКАК, и подмена года
+    # выпуска («8-й символ... 1998 год» при источнике «(С-1992)») проходила
+    # бы молча. `notes.find_quantity_claims` не требует слова «единицы»
+    # рядом (в цитате источника его может и не быть — «(С-1992)», а не
+    # «1992 год») — сверяется голое число.
     for block in _blocks(prose):
         for segment, marker_ids in _marker_segments(block):
+            quotes = [defs[fid]["цитата"] for fid in marker_ids if fid in defs]
+
             occurrences = notes.find_number_units(segment)
-            if not occurrences:
-                continue
-            covered: set[tuple[str, str]] = set()
-            for fid in marker_ids:
-                if fid in defs:
-                    covered |= notes.find_number_units(defs[fid]["цитата"])
-            for num, unit in sorted(occurrences - covered):
-                problems.append(
-                    "число «%s %s» в утверждении «%s» не встречается ни в одной сноске этого "
-                    "утверждения" % (num, unit, segment.strip()))
+            if occurrences:
+                covered: set[tuple[str, str]] = set()
+                for q in quotes:
+                    covered |= notes.find_number_units(q)
+                for num, unit in sorted(occurrences - covered):
+                    problems.append(
+                        "число «%s %s» в утверждении «%s» не встречается ни в одной сноске "
+                        "этого утверждения" % (num, unit, segment.strip()))
+
+            claims = notes.find_quantity_claims(segment)
+            if claims:
+                # Сторона ИСТОЧНИКА — `find_bare_numbers`, не `find_
+                # quantity_claims`: слова «год»/«раз» рядом с числом в
+                # ЦИТАТЕ может и не быть вовсе (контракт зеркала §1: «8 -
+                # Год выпуска (С-1992)» — год выпуска внутри скобок, без
+                # единого слова «год» рядом). Проверяется голое число.
+                covered_claims: set[str] = set()
+                for q in quotes:
+                    covered_claims |= notes.find_bare_numbers(q)
+                for num in sorted(claims - covered_claims):
+                    problems.append(
+                        "число «%s» в утверждении «%s» не встречается ни в одной сноске этого "
+                        "утверждения (год/срок/количество — тоже проверяемый факт, не только "
+                        "единица измерения)" % (num, segment.strip()))
 
     # 6. Источники, не процитированные ни разу — СЧИТАЕТСЯ ЗАНОВО по
     # `verified` (Н6 ре-ревью), а не перепечатывается из frontmatter.

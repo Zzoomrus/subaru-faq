@@ -101,6 +101,23 @@ tid: 5
 Клиренс сзади у вагона 279мм.
 """
 
+# --- Тема 6: год выпуска внутри скобок, без слова «год» рядом (Н16) --------
+# Живая форма контракта зеркала §1 — «8 - Год выпуска (С-1992)»: число
+# выпуска домена, но БЕЗ количественного существительного рядом с самим
+# числом в источнике (оно — в подписи-заголовке позиции, не рядом с «1992»).
+THEME_6_YEAR = """---
+tid: 6
+---
+
+# VIN позиции
+
+##### Пост 600
+
+*Antoha_samara · 13.02.2008 12:00:00 · #1*
+
+8 - Год выпуска (С-1992)
+"""
+
 # --- Тема 3: пустая тема форума — ни одного поста ---------------------------
 THEME_3_EMPTY = """---
 tid: 3
@@ -154,6 +171,7 @@ def mirror(tmp_path):
     (root / "Тема 3.md").write_text(THEME_3_EMPTY, encoding="utf-8")
     (root / "Тема 4.md").write_text(THEME_4_QUOTED, encoding="utf-8")
     (root / "Тема 5.md").write_text(THEME_5_TWO_PARAGRAPHS, encoding="utf-8")
+    (root / "Тема 6.md").write_text(THEME_6_YEAR, encoding="utf-8")
     (root / "FAQ 100.md").write_text(FAQ_100, encoding="utf-8")
     (root / "FAQ старый 9.md").write_text(FAQ_OLD_9, encoding="utf-8")
     (root / "Блог remont 77.md").write_text(BLOG_77_EXCERPT, encoding="utf-8")
@@ -176,6 +194,8 @@ def conn():
               "VALUES (401, 4, 'KOLESO', '2012-03-27 16:00:00', '', '')")
     c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
               "VALUES (500, 5, 'allrad', '2009-02-20 12:00:00', '', '')")
+    c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+              "VALUES (600, 6, 'Antoha_samara', '2008-02-13 12:00:00', '', '')")
     c.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text) "
               "VALUES ('bitrix', 100, 'Как часто менять масло?', "
               "'Рекомендуемый интервал замены масла 5000 км пробега.', "
@@ -290,6 +310,52 @@ def test_two_articles_sharing_a_title_collide_with_each_other(mirror, conn):
         result = verify.check(p, wiki_root, mirror, conn)
         assert not result["ок"], p
         assert any("совпадает с именем/алиасом заметки" in x for x in result["проблемы"])
+
+
+# --- Н15/Н17 ре-ревью: честная проза со служебными словами/разметкой рядом --
+# с числом не должна отвергаться — сквозной прогон через verify.check, не
+# только через find_number_units напрямую.
+
+
+def test_post_number_reference_beside_a_footnote_does_not_trigger_noise(mirror, conn):
+    """Живая находка Н15: «в посте 100 в теме» не должно стать «число 100
+    с единицей «в»» — номер поста бриф прямо требует не проверять."""
+    text = ("---\ntype: статья\nисточников: 1\nсобрано: 2026-08-22\n---\n\n"
+            "# Тема\n\nОбсуждение было в посте 100 в теме про VIN[^f1].\n\n"
+            "## Сноски\n\n[^f1]: «Трубки нужны 3/16 дюйма» — Razum, 11.10.2014, "
+            "[[Тема 1#Пост 100]]\n")
+    p = mirror.parent / "статья.md"
+    p.write_text(text, encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert result["ок"], result["проблемы"]
+
+
+def test_date_month_and_conjunction_beside_numbers_do_not_trigger_noise(mirror, conn):
+    """Живые находки Н15: дата, название месяца, союз/предлог рядом с
+    числом — служебная информация, не единица измерения."""
+    text = ("---\ntype: статья\nисточников: 1\nсобрано: 2026-08-22\n---\n\n"
+            "# Тема\n\nТаблицу 13.02.2008 выложил участник, а 13 февраля обсуждение "
+            "продолжилось: нужны трубки 3/16 дюйма[^f1].\n\n"
+            "## Сноски\n\n[^f1]: «Трубки нужны 3/16 дюйма» — Razum, 11.10.2014, "
+            "[[Тема 1#Пост 100]]\n")
+    p = mirror.parent / "статья2.md"
+    p.write_text(text, encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert result["ок"], result["проблемы"]
+
+
+def test_markdown_and_html_noise_around_number_does_not_break_coverage(mirror, conn):
+    """Живые находки Н17: выделение Obsidian, зачёркивание, HTML-тег и
+    `&nbsp;` вокруг числа — читатель видит обычное число, гейт обязан
+    видеть то же самое."""
+    text = ("---\ntype: статья\nисточников: 1\nсобрано: 2026-08-22\n---\n\n"
+            "# Тема\n\nЗазор ==3/16== дюйма, это <b>4,75</b>&nbsp;мм[^f1].\n\n"
+            "## Сноски\n\n[^f1]: «Трубки нужны 3/16 дюйма, это 4,75 мм» — Razum, "
+            "11.10.2014, [[Тема 1#Пост 100]]\n")
+    p = mirror.parent / "статья3.md"
+    p.write_text(text, encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert result["ок"], result["проблемы"]
 
 
 # --- контрольный случай: честная статья обязана пройти ----------------------
