@@ -39,6 +39,15 @@
                   готовую заметку в `<--root>/wiki/Статьи/<путь>/
                   <заголовок>.md` — сноску (ссылку и цитату) рендерит код
                   (`pipeline.articles.render`), не ИИ
+    verify        Ф3, задача 6: последний рубеж — перепроверяет ГОТОВУЮ
+                  статью (`--article`) заново, с нуля, независимо от того,
+                  как она была собрана (`pipeline.verify.check`): каждый
+                  маркер/сноска парные, ссылка резолвится через
+                  `check_mirror`, цитата дословна и источник цитируем
+                  (`facts.check_one`, включая дубли FAQ/выдержки блогов),
+                  подпись сноски совпадает с базой, число с единицей в
+                  предложении подтверждено сноской этого же предложения.
+                  Код возврата 1, если найдена хоть одна проблема
     assets index    добор Ф2: индексация CDX (тела не тянет, ~40 мин на 6008 URL)
     assets sieve    просев уже скачанного: заглушки хостингов (1x1 пиксель и
                     прочее, что валидно как картинка, но картинкой поста быть
@@ -121,7 +130,7 @@ from pathlib import Path
 
 from pipeline import (archive_assets, articles, assets_state, attachments, check_mirror, coverage, db,
                       facts, faq_dedup, fetch_assets, fetch_site, ingest, mirror, mirror_blog,
-                      mirror_faq, parse_blog, parse_faq)
+                      mirror_faq, parse_blog, parse_faq, verify)
 
 DEFAULT_PAGES = Path("data/raw/archive/pages")
 DEFAULT_MANIFEST = Path("data/raw/archive/manifest.jsonl")
@@ -160,7 +169,7 @@ def _parser() -> argparse.ArgumentParser:
         prog="python -m pipeline.run",
         description="Конвейер subaru-faq: сырой HTML архива -> SQLite -> зеркало Obsidian.")
     p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all", "assets", "site",
-                                        "faq", "blog", "dedup", "facts", "article"])
+                                        "faq", "blog", "dedup", "facts", "article", "verify"])
     p.add_argument("sub_action", nargs="?",
                    choices=["index", "download", "sieve", "build", "fetch", "load", "mirror"],
                    default=None,
@@ -234,6 +243,9 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--root", type=Path, default=DEFAULT_ROOT,
                    help="для command=article: корень проекта — <root>/articles и <root>/wiki "
                         "(по умолчанию текущий каталог %s; см. DEFAULT_ROOT)" % DEFAULT_ROOT)
+    p.add_argument("--article", type=Path, default=None,
+                   help="для command=verify: путь к ГОТОВОЙ статье "
+                        "(например wiki/Статьи/VIN/Расшифровка VIN Subaru.md)")
     return p
 
 
@@ -494,6 +506,37 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print("статья собрана:", out_path)
         return 0
+
+    if cmd == "verify":
+        # Задача 6: последний рубеж, независимый от того, как статья была
+        # собрана (спека §8 — проверяльщику, который не ловит подделку,
+        # верить нельзя, `pipeline.verify.check` перепроверяет с нуля).
+        if not args.article:
+            print("укажи путь к готовой статье: --article <путь> "
+                  "(например wiki/Статьи/VIN/Расшифровка VIN Subaru.md)")
+            return 2
+        if not args.article.exists():
+            print("статья не найдена: %s" % args.article)
+            return 2
+        # База нужна для подписи сноски (автор/дата — сверяется НЕЗАВИСИМО
+        # против базы, см. docstring `pipeline.verify.check`) и для
+        # цитируемости источника (дубль FAQ/выдержка блога) — без неё эти
+        # две проверки просто нечем выполнить, а не «пропустить молча».
+        if not args.db.exists():
+            print("база не найдена: %s (нужна для проверки подписи сноски и "
+                  "цитируемости источника — python -m pipeline.run ingest)" % args.db)
+            return 2
+        conn = db.connect(args.db)
+        db.init_schema(conn)
+        result = verify.check(args.article, args.wiki / args.mirror_dir, conn)
+        for problem in result["проблемы"]:
+            print("  -", problem)
+        if result["источники_без_цитаты"]:
+            print("источники без цитаты (не ошибка, мера по спеке §6):",
+                  result["источники_без_цитаты"])
+        print("проверка «%s»: %s (%d проблем)"
+              % (args.article, "OK" if result["ок"] else "ЕСТЬ ПРОБЛЕМЫ", len(result["проблемы"])))
+        return 0 if result["ок"] else 1
 
     if cmd == "site":
         if args.sub_action not in ("build", "fetch") or args.site_section is None:
