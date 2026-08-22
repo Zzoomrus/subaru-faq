@@ -130,6 +130,47 @@ def resolve_note(target: str, notes: dict[str, str], by_name: dict[str, list[str
     return by_name.get(target.rsplit("/", 1)[-1])
 
 
+# Строка фронтматтера `aliases: ["А", "Б"]` — YAML double-quoted список,
+# которым все три генератора зеркала (`mirror._yaml_dquote`) пишут
+# человекочитаемое имя заметки (название темы форума, вопрос FAQ, заголовок
+# записи блога). Ключ заметки (`Тема <TID>`/`FAQ <N>`/`Блог <слаг> <ID>`)
+# машинный и Obsidian по нему тоже резолвит, но человек в прозе статьи
+# скорее напишет alias («Провалы в работе ДВС»), чем «Тема 42753» — находка
+# Н12/Н14 ре-ревью задачи 6.
+_ALIASES_LINE = re.compile(r"^aliases:\s*\[(.*)\]\s*$", re.M)
+_DQUOTED_SCALAR = re.compile(r'"((?:[^"\\]|\\.)*)"')
+
+
+def parse_aliases(text: str) -> list[str]:
+    """Алиасы заметки из фронтматтера. Читает ТОЛЬКО фронтматтер (до первой
+    закрывающей `---`), не тело целиком — иначе строка `aliases:` внутри
+    цитаты чужого поста (маловероятно, но не исключено) считалась бы
+    настоящим фронтматтером."""
+    frontmatter = text
+    if text.startswith("---\n"):
+        end = text.find("\n---\n", 4)
+        if end != -1:
+            frontmatter = text[:end]
+    m = _ALIASES_LINE.search(frontmatter)
+    if not m:
+        return []
+    # Разэкранирование в одну замену `\X -> X` — верно для ОБЕИХ escape-форм
+    # `_yaml_dquote` разом (`\\` -> `\` и `\"` -> `"`), потому что кодирование
+    # само устроено как последовательность пар «бэкслеш + один символ».
+    return [re.sub(r"\\(.)", r"\1", m.group(1)) for m in _DQUOTED_SCALAR.finditer(m.group(1))]
+
+
+def build_alias_index(notes: dict[str, str]) -> dict[str, list[str]]:
+    """`casefold(alias) -> [ключи заметок с таким алиасом]` — регистр
+    неважен: Obsidian резолвит вики-ссылки без учёта регистра (находка Н12),
+    а `by_name`/`resolve_note` сравнивают точной строкой."""
+    index: dict[str, list[str]] = {}
+    for key, text in notes.items():
+        for alias in parse_aliases(text):
+            index.setdefault(alias.casefold(), []).append(key)
+    return index
+
+
 def build_heading_index(notes: dict[str, str]) -> dict[str, list[str]]:
     """Заголовки каждой заметки индекса `notes` (`build_notes_index`) — та
     же операция, что раньше жила инлайном внутри `check()`. Выделена, чтобы

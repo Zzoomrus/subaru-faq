@@ -131,3 +131,46 @@ def test_embed_resolves_by_filename_when_path_does_not_match_exactly(tmp_path):
     _note(tmp_path, "Тема 1.md", "##### Пост 100\n\n![[abc.jpg]]\n")
     _file(tmp_path, "assets/host/abc.jpg")
     assert check_mirror.check(tmp_path)["broken_embeds"] == []
+
+
+# --- alias-индекс (задача 6 Ф3, ре-ревью Н12/Н14) ---------------------------
+
+
+def test_parse_aliases_reads_single_alias():
+    text = '---\ntid: 1\naliases: ["Провалы в работе ДВС"]\n---\n\n# Тема 1\n'
+    assert check_mirror.parse_aliases(text) == ["Провалы в работе ДВС"]
+
+
+def test_parse_aliases_reads_multiple_and_unescapes_quotes_and_backslashes():
+    # Форма, которой `mirror._yaml_dquote` реально экранирует: `\\` первым,
+    # `"` вторым — разбор обязан развернуть это в исходную строку.
+    text = ('---\naliases: ["Вопрос со знаком \\"кавычки\\"", "Путь C:\\\\Temp"]'
+            '\n---\n\nbody')
+    assert check_mirror.parse_aliases(text) == ['Вопрос со знаком "кавычки"', "Путь C:\\Temp"]
+
+
+def test_parse_aliases_ignores_the_word_outside_frontmatter():
+    text = '---\ntid: 1\n---\n\nПост цитирует "aliases: [подделка]" внутри текста.\n'
+    assert check_mirror.parse_aliases(text) == []
+
+
+def test_parse_aliases_returns_empty_list_when_absent():
+    assert check_mirror.parse_aliases("---\ntid: 1\n---\n\nbody") == []
+
+
+def test_build_alias_index_is_case_insensitive():
+    notes = {"Тема 42753": '---\naliases: ["Провалы в работе ДВС"]\n---\n\nbody'}
+    index = check_mirror.build_alias_index(notes)
+    assert index["провалы в работе двс"] == ["Тема 42753"]
+    assert "Провалы в работе ДВС".casefold() in index
+
+
+def test_build_alias_index_collects_all_notes_sharing_one_alias():
+    # Живой замер ре-ревью: 116 alias уже неоднозначны сами по себе (один
+    # заголовок у нескольких заметок).
+    notes = {
+        "Тема 1": '---\naliases: ["Освещение"]\n---\n\nbody',
+        "Тема 2": '---\naliases: ["Освещение"]\n---\n\nbody',
+    }
+    index = check_mirror.build_alias_index(notes)
+    assert sorted(index["освещение"]) == ["Тема 1", "Тема 2"]
