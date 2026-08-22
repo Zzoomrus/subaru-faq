@@ -674,8 +674,13 @@ def test_find_number_units_recognizes_mileage_in_thousands_of_km():
 
 def test_find_number_units_recognizes_units_outside_old_closed_list():
     """Живая подделка ревью A1 (расход топлива) стояла на «литра», которого
-    не было в старом списке; % и л.с. — тоже реальные единицы домена."""
-    assert notes.find_number_units("8,5 литра") == {("8.5", notes._canon_unit("литра"))}
+    не было в старом списке; % и л.с. — тоже реальные единицы домена.
+
+    «Литра» сворачивается в ключ сокращения «л» таблицей синонимов (Н23
+    ре-ревью) — до неё это был отдельный ключ `litra`, что и позволяло
+    подделке, пересказывающей источник сокращением, уходить незамеченной
+    (см. Н23-тесты ниже)."""
+    assert notes.find_number_units("8,5 литра") == {("8.5", notes._canon_unit("л"))}
     assert notes.find_number_units("40%") == {("40", "%")}
     assert notes.find_number_units("100 л.с.") == {("100", notes._canon_unit("л.с."))}
 
@@ -875,6 +880,51 @@ def test_find_number_units_treats_typographic_and_ascii_space_as_the_same_number
     одинаково, иначе честное совпадение выглядело бы как расхождение."""
     assert notes.find_number_units("130\xa0000 км") == notes.find_number_units("130 000 км")
     assert notes.find_number_units("130\xa0000 км") == {("130000", "km")}
+
+
+# --- Н23 ре-ревью: сокращение и слово целиком — одна единица ---------------
+# ЕДИНСТВЕННЫЙ сознательно заведённый перечень в модуле (не класс/структура)
+# — довод ревьюера принят: пропуск здесь даёт ГРОМКОЕ ложное отклонение
+# честной статьи, а не молчаливую дыру для подделки (см. докстринг
+# `notes._UNIT_SYNONYMS`), поэтому асимметрия с остальными находками фазы
+# оправдана.
+
+
+def test_find_number_units_unifies_abbreviation_and_full_word():
+    """Проза статьи пишет сокращением, источник — словом целиком (или
+    наоборот) — обязаны дать один и тот же ключ, иначе честная статья,
+    пересказывающая цитату (обычное поведение ИИ-прозы), ложно отклоняется
+    («число не встречается ни в одной сноске»)."""
+    pairs = [
+        ("13,5 л", "13,5 литра"),
+        ("2 ч", "2 часа"),
+        ("90%", "90 процентов"),
+        ("100 км", "100 километров"),
+        ("5 мм", "5 миллиметров"),
+        ("80 кг", "80 килограммов"),
+        ("12 В", "12 вольт"),
+        ("5 А", "5 ампер"),
+    ]
+    for abbrev, word in pairs:
+        assert notes.find_number_units(abbrev) == notes.find_number_units(word), (abbrev, word)
+        assert notes.find_number_units(abbrev), abbrev  # обе стороны реально извлеклись, не совпали в set()
+
+
+def test_find_number_units_synonyms_do_not_merge_different_units():
+    """Обратная проверка, которую явно потребовал ре-ревью: таблица
+    синонимов не должна склеить РАЗНЫЕ величины — «м»/«мм», «с»/«ч»,
+    «кг»/«г» обязаны остаться разными ключами."""
+    assert notes.find_number_units("5 м") != notes.find_number_units("5 мм")
+    assert notes.find_number_units("5 ч") != notes.find_number_units("5 С")
+    assert notes.find_number_units("5 кг") != notes.find_number_units("5 г")
+    # и по значению, не только "не равно" — убедиться, что обе стороны вообще
+    # извлекаются (иначе `set() != set()` было бы False, а не доказательством)
+    assert notes.find_number_units("5 м") == {("5", "m")}
+    assert notes.find_number_units("5 мм") == {("5", "mm")}
+    assert notes.find_number_units("5 ч") == {("5", "ch")}
+    assert notes.find_number_units("5 С") == {("5", "s")}
+    assert notes.find_number_units("5 г") == {("5", "g")}
+    assert notes.find_number_units("5 кг") == {("5", "kg")}
 
 
 # --- Н16 ре-ревью: голое число рядом с количественным существительным ------
