@@ -223,39 +223,6 @@ def test_honest_article_with_unused_fact_still_passes_but_reports_it(mirror, con
     assert v["источники_без_цитаты"] == ["f2"]
 
 
-# --- юнит-тесты на числа с единицами (правила нормализации — бриф задачи 6) -
-
-
-def test_find_number_units_treats_comma_and_dot_as_equal():
-    assert verify.find_number_units("это 4,75 мм") == verify.find_number_units("это 4.75 мм")
-
-
-def test_find_number_units_ignores_internal_spaces():
-    assert verify.find_number_units("10 000 км") == {("10000", "km")}
-
-
-def test_find_number_units_treats_attached_and_separated_units_as_equal():
-    assert verify.find_number_units("11мм") == verify.find_number_units("11 мм")
-
-
-def test_find_number_units_treats_latin_and_cyrillic_units_as_equal():
-    assert verify.find_number_units("11 мм") == verify.find_number_units("11 mm")
-    assert verify.find_number_units("5 кг") == verify.find_number_units("5 kg")
-
-
-def test_find_number_units_splits_range_into_two_numbers():
-    assert verify.find_number_units("10-12 мм") == {("10", "mm"), ("12", "mm")}
-
-
-def test_find_number_units_compares_fraction_as_whole_string():
-    assert verify.find_number_units("3/16 дюйма") == {("3/16", verify._canon_unit("дюйма"))}
-
-
-def test_find_number_units_ignores_bare_numbers_without_unit():
-    """Номер поста, год, артикул — без единицы измерения не проверяются."""
-    assert verify.find_number_units("в 1992 году, пост #104015, артикул 22611AD982") == set()
-
-
 # --- замечание тимлида (ре-ревью соседа): цитата в статье нормализована по
 # пробелам, сверять её с телом источника нужно ЧЕРЕЗ ТУ ЖЕ нормализацию --
 

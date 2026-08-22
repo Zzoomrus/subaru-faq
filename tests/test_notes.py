@@ -604,3 +604,115 @@ def test_line_marker_does_not_exempt_a_real_module_constant_placeholder(tmp_path
     assert "(вложение удалено модератором)" in notes.citable(constants["LEAK"]), (
         "рубеж 2 обязан был бы поймать эту константу как невычищенную независимо "
         "от пометки — у настоящего генератора без паттерна под неё это и произошло бы")
+
+
+# --- числа с единицами измерения (задача 6 Ф3, `find_number_units`) --------
+#
+# Общая функция для `pipeline.facts` (потолок значений в цитате) и
+# `pipeline.verify` (проверка 5) — перенесена сюда из `verify.py` ре-ревью
+# задачи 6 (Н1/Н8/Н11): список ИСКЛЮЧЕНИЙ вместо списка разрешённого.
+
+
+def test_find_number_units_treats_comma_and_dot_as_equal():
+    assert notes.find_number_units("это 4,75 мм") == notes.find_number_units("это 4.75 мм")
+
+
+def test_find_number_units_ignores_internal_spaces():
+    assert notes.find_number_units("10 000 км") == {("10000", "km")}
+
+
+def test_find_number_units_treats_attached_and_separated_units_as_equal():
+    assert notes.find_number_units("11мм") == notes.find_number_units("11 мм")
+
+
+def test_find_number_units_treats_latin_and_cyrillic_units_as_equal():
+    assert notes.find_number_units("11 мм") == notes.find_number_units("11 mm")
+    assert notes.find_number_units("5 кг") == notes.find_number_units("5 kg")
+
+
+def test_find_number_units_splits_range_into_two_numbers():
+    assert notes.find_number_units("10-12 мм") == {("10", "mm"), ("12", "mm")}
+
+
+def test_find_number_units_compares_fraction_as_whole_string():
+    assert notes.find_number_units("3/16 дюйма") == {("3/16", notes._canon_unit("дюйма"))}
+
+
+def test_find_number_units_ignores_bare_numbers_without_unit():
+    """Номер поста, год — без единицы измерения не проверяются."""
+    assert notes.find_number_units("в 1992 году, пост #104015") == set()
+
+
+def test_find_number_units_does_not_split_an_alphanumeric_identifier():
+    """Н1-смежное: артикул/VIN — слитный идентификатор, а не «число с
+    единицей». Без запрета на цифру сразу после единицы «22611» + «AD» из
+    «22611AD982» читалось бы как число с единицей «AD»."""
+    assert notes.find_number_units("артикул 22611AD982") == set()
+    assert notes.find_number_units("VIN JF1GDDLF37G076103") == set()
+
+
+# --- Н1 ре-ревью: список ИСКЛЮЧЕНИЙ вместо списка разрешённого --------------
+
+
+def test_find_number_units_recognizes_mileage_in_thousands_of_km():
+    """«тыс. км» — главная единица пробега домена, старый закрытый список
+    (только «км») её не ловил вовсе (живая подделка ревью K3)."""
+    assert notes.find_number_units("30-50 тыс. км") == {("30", "tyskm"), ("50", "tyskm")}
+    # Три орфографических варианта одного и того же — один и тот же ключ.
+    assert (notes.find_number_units("150 тыс. км") == notes.find_number_units("150 тыс.км")
+            == notes.find_number_units("150 тыс км"))
+
+
+def test_find_number_units_recognizes_units_outside_old_closed_list():
+    """Живая подделка ревью A1 (расход топлива) стояла на «литра», которого
+    не было в старом списке; % и л.с. — тоже реальные единицы домена."""
+    assert notes.find_number_units("8,5 литра") == {("8.5", notes._canon_unit("литра"))}
+    assert notes.find_number_units("40%") == {("40", "%")}
+    assert notes.find_number_units("100 л.с.") == {("100", notes._canon_unit("л.с."))}
+
+
+def test_find_number_units_recognizes_inch_fraction_with_quote_mark():
+    """Бриф: дробь `3/16` сравнивается как строка целиком — форма с
+    дюймовой кавычкой (`3/16"`, 68 вхождений в живом корпусе) раньше не
+    ловилась вовсе (единица не входила в закрытый список)."""
+    assert notes.find_number_units('3/16"') == {("3/16", '"')}
+
+
+def test_find_number_units_excludes_years_money_and_counts():
+    """Год, деньги, штуки, разы — явные исключения (не единицы измерения),
+    а НЕ молчаливый пропуск: список расширяется одной строкой, если найдётся
+    ещё один частый нарушитель."""
+    assert notes.find_number_units("в 1992 году") == set()
+    assert notes.find_number_units("5000 руб.") == set()
+    assert notes.find_number_units("5000 тыс.руб") == set()
+    assert notes.find_number_units("3 шт.") == set()
+    assert notes.find_number_units("10 раз") == set()
+
+
+def test_find_number_units_does_not_splice_sentence_after_abbreviation():
+    """Общий паттерн «слово, точка, слово» откусил бы первое слово
+    следующего предложения («руб. Итого» — не единица); составные формы
+    перечислены явно и такого не делают."""
+    assert notes.find_number_units("5000 руб. Итого потратил много") == set()
+
+
+# --- Н8 ре-ревью: инлайн-разметка и невидимые символы не должны глушить проверку
+
+
+def test_find_number_units_ignores_markdown_emphasis_around_number_or_unit():
+    assert notes.find_number_units("**9** мм") == {("9", "mm")}
+    assert notes.find_number_units("*9* мм") == {("9", "mm")}
+    assert notes.find_number_units("9 *мм*") == {("9", "mm")}
+    assert notes.find_number_units("**9 мм**") == {("9", "mm")}
+
+
+def test_find_number_units_ignores_invisible_separators():
+    assert notes.find_number_units("9​мм") == {("9", "mm")}  # zero width space
+    assert notes.find_number_units("9⁠ мм") == {("9", "mm")}  # word joiner
+
+
+def test_find_number_units_recognizes_typographic_dash_range():
+    """Типографское тире в диапазоне (не ASCII-дефис) — раньше `_RANGE`
+    требовал ровно `-` и обе стороны диапазона проходили не проверенными."""
+    assert notes.find_number_units("7–4 мм") == {("7", "mm"), ("4", "mm")}
+    assert notes.find_number_units("7—4 мм") == {("7", "mm"), ("4", "mm")}

@@ -26,7 +26,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from . import articles, check_mirror, facts
+from . import articles, check_mirror, facts, notes
 
 # --- определения сносок в ГОТОВОЙ статье -------------------------------------
 #
@@ -43,6 +43,13 @@ _SOURCE_IN_REST = re.compile(r"\[\[([^\]]+)\]\]\s*$")
 def _parse_footnote_definitions(body: str) -> tuple[dict[str, dict], list[str]]:
     """Определения сносок готовой статьи -> `{id: {"цитата", "источник",
     "строка"}}` + список проблем формата (ссылки нет вовсе, id повторён).
+
+    `body` обязан быть УЖЕ пропущен через `articles._strip_non_prose` (Н3
+    ре-ревью задачи 6): без этого определение, спрятанное в кодблоке,
+    инлайн-коде или комментарии (`` ``` ``, `` ` ``, `<!-- -->`, `%%…%%`),
+    попадает в `defs` как настоящее, хотя читатель в Obsidian такой сноски
+    не увидит вовсе — асимметрия с `articles.used_ids` (та же зачистка уже
+    применяется к маркерам, но не к определениям) и есть находка Н3.
 
     Не привязано к разделу «## Сноски» — сканирует ВЕСЬ текст: подделка
     вправе разместить поддельное определение где угодно, а не только в
@@ -66,92 +73,89 @@ def _parse_footnote_definitions(body: str) -> tuple[dict[str, dict], list[str]]:
 
 # --- числа с единицами измерения ---------------------------------------------
 #
-# Правила нормализации — бриф задачи 6, дословно: запятая/точка
-# равнозначны, внутренние пробелы числа игнорируются, единица приклеена или
-# отделена ОДНИМ пробелом, латиница/кириллица единицы равнозначны, диапазон
-# `10-12 мм` — два числа, дробь `3/16` — строка целиком, число БЕЗ единицы
-# (номер поста, год, артикул) не проверяется вовсе.
+# Извлечение чисел и канонизация единиц — `notes.find_number_units`, общая
+# функция с `pipeline.facts` (потолок числа значений в одной цитате, Н11
+# ре-ревью): числа с единицами измерения — самое опасное место техбазы для
+# подмены, значит два потребителя одного правила обязаны ходить одной
+# функцией (см. её докстринг про Н1 — список исключений, а не разрешённого).
 #
-# Список единиц — ЗАКРЫТЫЙ и сознательно консервативный: любое слово после
-# числа не годится в единицы (иначе «1992 год» стало бы «числом с единицей
-# „год“» и потребовало бы дословного «1992 год» в сноске — ложная
-# находка на честной статье, год цитировать не нужно по брифу).
-_UNITS_RAW = (
-    "мм", "см", "км", "кг", "мл", "атм", "бар", "нм", "градус", "градуса", "градусов",
-    "дюйм", "дюйма", "дюймов",
-    "mm", "cm", "km", "kg", "ml", "atm", "bar", "nm", "psi", "rpm", "hp", "cc",
-)
-_UNIT_ALT = "|".join(sorted({re.escape(u) for u in _UNITS_RAW}, key=len, reverse=True))
-_NUM = r"\d[\d\s]*(?:[.,]\d+)?"
-_FRACTION = r"\d+\s*/\s*\d+"
-_RANGE = re.compile(r"(?P<n1>%s)\s*-\s*(?P<n2>%s)\s*(?P<unit>%s)\b" % (_NUM, _NUM, _UNIT_ALT), re.IGNORECASE)
-_SINGLE = re.compile(r"(?P<num>%s|%s)\s?(?P<unit>%s)\b" % (_FRACTION, _NUM, _UNIT_ALT), re.IGNORECASE)
-
-# Транслитерация кириллица -> латиница для сравнения единицы вне
-# зависимости от алфавита («mm» == «мм», «kg» == «кг» — бриф задачи 6).
-# Стандартная научная транслитерация одной буквы в одну — не визуальное
-# сходство (у визуального «р»~«p» смысл был бы другим — «бар» стал бы
-# «баp», а не «bar»).
-_CYR_TO_LAT = str.maketrans({
-    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ж": "zh", "з": "z",
-    "и": "i", "й": "y", "к": "k", "л": "l", "м": "m", "н": "n", "о": "o", "п": "p",
-    "р": "r", "с": "s", "т": "t", "у": "u", "ф": "f", "х": "h", "ц": "c", "ч": "ch",
-    "ш": "sh", "щ": "sch", "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
-})
-
-
-def _canon_unit(unit: str) -> str:
-    return unit.strip().lower().translate(_CYR_TO_LAT)
-
-
-def _canon_number(raw: str) -> str:
-    raw = raw.strip()
-    if "/" in raw:
-        return raw.replace(" ", "")
-    return raw.replace(" ", "").replace(",", ".")
-
-
-def find_number_units(text: str) -> set[tuple[str, str]]:
-    """Числа с единицами измерения в `text`, канонизированные для сравнения.
-
-    Симметричная функция — применяется и к предложению прозы, и к цитате
-    сноски ОДНИМ и тем же кодом, а не двумя копиями одного правила: иначе
-    они разойдутся молча (тот же урок Ф2, что и у `notes.normalize_spaces`).
-    Диапазон `10-12 мм` даёт ДВЕ пары — `("10","mm")` и `("12","mm")`,
-    каждая обязана найтись отдельно (бриф задачи 6).
-    """
-    found: set[tuple[str, str]] = set()
-    spans: list[tuple[int, int]] = []
-    for m in _RANGE.finditer(text):
-        spans.append((m.start(), m.end()))
-        unit = _canon_unit(m.group("unit"))
-        found.add((_canon_number(m.group("n1")), unit))
-        found.add((_canon_number(m.group("n2")), unit))
-
-    def _inside_range(pos: int) -> bool:
-        return any(a <= pos < b for a, b in spans)
-
-    for m in _SINGLE.finditer(text):
-        if _inside_range(m.start()):
-            continue
-        found.add((_canon_number(m.group("num")), _canon_unit(m.group("unit"))))
-    return found
-
-
+# Здесь, в verify.py, задача другая — не РАСПОЗНАТЬ число с единицей (это
+# уже умеет `find_number_units`), а разбить ГОТОВУЮ СТАТЬЮ на самостоятельные
+# «утверждения», для каждого из которых есть СВОЙ набор маркеров: пункт
+# списка, ячейка таблицы, строка заголовка, строка коллаута/цитаты и
+# сегмент прозы между соседними маркерами — самостоятельные единицы
+# проверки (находка Н2), а не «предложение» по точке (Н7 ре-ревью: русские
+# сокращения «т. е.», «см.» рвут предложение на два, а маркер после точки
+# — по Н2/Н7 корню, единица должна определяться позицией МАРКЕРА, а не
+# пунктуацией).
 _PARA_SPLIT = re.compile(r"\n\s*\n")
-_SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
+_LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+\.)\s+")
+_HEADING_LINE = re.compile(r"^#{1,6}\s+")
+_QUOTE_LINE = re.compile(r"^>+\s?")
+_TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
+_TABLE_SEPARATOR = re.compile(r"^\s*\|?[\s:|-]+\|?\s*$")
 
 
-def _sentences(text: str) -> list[str]:
-    """Предложения прозы — абзац за абзацем, заголовки и коллауты-строки
-    генератора (`>`, `#`) исключены: это не слова ИИ о фактах, а разметка."""
+def _blocks(text: str) -> list[str]:
+    """Делит прозу на независимые «утверждения» по разметке, а не по
+    абзацам-предложениям (Н2): пункт списка и ячейка таблицы — каждый
+    самостоятелен (ложь в одной строке списка не должна прикрываться
+    сноской из другой), заголовок и строка коллаута/цитаты — тоже не
+    «не проза», как было раньше (`_sentences` до этой правки пропускала
+    их целиком по префиксу `#`/`>`), а такая же проверяемая единица.
+    Обычный абзац (в т.ч. перенесённый по строкам мягким переносом
+    markdown) остаётся ОДНИМ блоком — дробит его дальше не пунктуация, а
+    позиции маркеров (`_marker_segments`).
+    """
     out: list[str] = []
     for para in _PARA_SPLIT.split(text):
-        para = para.strip()
-        if not para or para.startswith("#") or para.startswith(">"):
+        lines = [l for l in para.split("\n") if l.strip()]
+        if not lines:
             continue
-        out.extend(s.strip() for s in _SENT_SPLIT.split(para) if s.strip())
+        if all(_TABLE_ROW.match(l) for l in lines):
+            for line in lines:
+                if _TABLE_SEPARATOR.match(line):
+                    continue
+                for cell in line.strip().strip("|").split("|"):
+                    cell = cell.strip()
+                    if cell:
+                        out.append(cell)
+            continue
+        if all(_LIST_ITEM.match(l) for l in lines):
+            out.extend(_LIST_ITEM.sub("", l.strip()) for l in lines)
+            continue
+        if all(_HEADING_LINE.match(l) for l in lines):
+            out.extend(_HEADING_LINE.sub("", l.strip()) for l in lines)
+            continue
+        if all(_QUOTE_LINE.match(l) for l in lines):
+            out.extend(_QUOTE_LINE.sub("", l.strip()) for l in lines)
+            continue
+        out.append(" ".join(l.strip() for l in lines))
     return out
+
+
+_MARKER = re.compile(r"\[\^([^\]\s]+)\]")
+
+
+def _marker_segments(block: str) -> list[tuple[str, list[str]]]:
+    """Делит `block` на сегменты по позициям маркеров: сегмент — от конца
+    предыдущего маркера (или начала блока) до конца очередного маркера,
+    плюс хвост после последнего маркера БЕЗ маркера вовсе. Так число,
+    стоящее в блоке без единой сноски рядом (`C1`/`C2`.. ре-ревью — вторая
+    половина списка/абзаца без своего маркера), не получает прикрытия от
+    маркера, стоящего в другом месте того же блока — а маркер, поставленный
+    ПОСЛЕ точки (`I3` ре-ревью — `«2 мм. [^f1]»`), не отрывается от числа,
+    которое подтверждает: деление идёт по маркеру, а не по пунктуации.
+    """
+    segments: list[tuple[str, list[str]]] = []
+    pos = 0
+    for m in _MARKER.finditer(block):
+        segments.append((block[pos:m.end()], [m.group(1)]))
+        pos = m.end()
+    tail = block[pos:]
+    if tail.strip() or not segments:
+        segments.append((tail, []))
+    return segments
 
 
 def check(article_path: Path, mirror_root: Path, conn: sqlite3.Connection) -> dict:
@@ -168,9 +172,22 @@ def check(article_path: Path, mirror_root: Path, conn: sqlite3.Connection) -> di
     mirror_root = Path(mirror_root)
 
     try:
-        meta, body = articles._parse_draft(article_path)
+        meta, raw_body = articles._parse_draft(article_path)
     except articles.DraftError as e:
         return {"ок": False, "проблемы": [str(e)], "источники_без_цитаты": []}
+
+    # Н3 ре-ревью задачи 6: определение сноски, спрятанное в кодблоке,
+    # инлайн-коде или комментарии (`` ``` ``/`` ` ``/`<!-- -->`/`%%…%%`),
+    # раньше попадало в `defs` как настоящее — читатель в Obsidian такой
+    # сноски не увидит вовсе (кодблок печатает её буквально, комментарий не
+    # рендерится), а гейт говорил «ок». `articles._strip_non_prose` — та же
+    # зачистка, что уже применяется к маркерам (`used_ids`); асимметрия
+    # между двумя половинами ОДНОЙ проверки была самой находкой (Global
+    # Constraint №3 запрещает ровно это, только оба потребителя тут — в
+    # одном модуле). Зачищается ВЕСЬ текст статьи один раз, до разбора и
+    # определений, и чисел, и ссылок — не только определений: маркер и
+    # число в кодблоке (Н7, `I6`) читателю тоже не видны.
+    body = articles._strip_non_prose(raw_body)
 
     problems: list[str] = []
 
@@ -190,15 +207,29 @@ def check(article_path: Path, mirror_root: Path, conn: sqlite3.Connection) -> di
         problems.append("определение сноски [^%s] не используется ни одним маркером текста" % fid)
 
     # 2. Ссылка резолвится через check_mirror (готовый резолв, не своя
-    # цепочка — Global Constraint фазы №3). Сканирует ВЕСЬ текст, а не
-    # только источники сносок: прозе ничто не мешает содержать ещё и
-    # самостоятельные вики-ссылки («смотри также»), которые `facts.check_one`
-    # ниже никогда не увидит (он получает только источники ИЗ определений).
+    # цепочка — Global Constraint фазы №3), ЯКОРЬ — тоже (Н4 ре-ревью: до
+    # этой правки от ссылки в ПРОЗЕ бралась только цель, якорь
+    # выбрасывался — битый/чужой/перекрёстный якорь у ссылки вне сноски
+    # проходил молча, хотя `check_mirror.check` для заметок зеркала
+    # ровно это умеет; `anchor_exists`/`build_heading_index`/
+    # `build_block_index` — та же функция, вынесенная из `check()` этим же
+    # ре-ревью). Сканирует ВЕСЬ текст, а не только источники сносок: прозе
+    # ничто не мешает содержать ещё и самостоятельные вики-ссылки
+    # («смотри также»), которые `facts.check_one` ниже никогда не увидит
+    # (он получает только источники ИЗ определений).
     notes_index, by_name = check_mirror.build_notes_index(mirror_root)
-    for target, _anchor in check_mirror.LINK.findall(body):
+    headings = check_mirror.build_heading_index(notes_index)
+    blocks = check_mirror.build_block_index(notes_index)
+    for target, anchor in check_mirror.LINK.findall(body):
         target = target.strip()
-        if target and not check_mirror.resolve_note(target, notes_index, by_name):
+        if not target:
+            continue
+        resolved = check_mirror.resolve_note(target, notes_index, by_name)
+        if not resolved:
             problems.append("ссылка [[%s]] не резолвится ни в одну заметку зеркала" % target)
+            continue
+        if anchor and not check_mirror.anchor_exists(resolved, anchor[1:], headings, blocks):
+            problems.append("ссылка [[%s%s]] — заметка есть, а якорь не найден" % (target, anchor))
 
     # 2-бис. Имя статьи (= её файл, `articles.build` пишет `<заголовок>.md`)
     # НЕ совпадает с именем ни одной заметки-источника. `check_mirror.check`
@@ -246,23 +277,27 @@ def check(article_path: Path, mirror_root: Path, conn: sqlite3.Connection) -> di
                 "сноска [^%s]: подпись и/или ссылка не совпадают с тем, что база знает про "
                 "источник (ожидалось «%s», в статье «%s»)" % (fid, expected, info["строка"]))
 
-    # 5. Каждое число с единицей измерения в предложении обязано найтись
-    # хотя бы в одной сноске ЭТОГО предложения — подмену цифр (самое
+    # 5. Каждое число с единицей измерения в УТВЕРЖДЕНИИ обязано найтись
+    # хотя бы в одной сноске ЭТОГО утверждения — подмену цифр (самое
     # опасное для техбазы) не ловит ничего из проверок выше: и дословная
     # цитата, и подпись могут быть настоящими у СОСЕДНЕГО факта, который
-    # просто оказался в одном предложении с искажённым числом.
-    for sentence in _sentences(prose):
-        occurrences = find_number_units(sentence)
-        if not occurrences:
-            continue
-        covered: set[tuple[str, str]] = set()
-        for fid in articles.used_ids(sentence):
-            if fid in defs:
-                covered |= find_number_units(defs[fid]["цитата"])
-        for num, unit in sorted(occurrences - covered):
-            problems.append(
-                "число «%s %s» в предложении «%s» не встречается ни в одной сноске этого "
-                "предложения" % (num, unit, sentence))
+    # просто оказался рядом с искажённым числом. «Утверждение» — пункт
+    # списка, ячейка таблицы, строка заголовка/коллаута или сегмент прозы
+    # между соседними маркерами (`_blocks`/`_marker_segments`, Н2/Н7
+    # ре-ревью) — независимо от разметки, а не абзац, разрезанный по точке.
+    for block in _blocks(prose):
+        for segment, marker_ids in _marker_segments(block):
+            occurrences = notes.find_number_units(segment)
+            if not occurrences:
+                continue
+            covered: set[tuple[str, str]] = set()
+            for fid in marker_ids:
+                if fid in defs:
+                    covered |= notes.find_number_units(defs[fid]["цитата"])
+            for num, unit in sorted(occurrences - covered):
+                problems.append(
+                    "число «%s %s» в утверждении «%s» не встречается ни в одной сноске этого "
+                    "утверждения" % (num, unit, segment.strip()))
 
     return {
         "ок": not problems,
