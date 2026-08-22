@@ -207,6 +207,23 @@ tid: 11
 Продаю. Пробег 187 тысяч км, торг ради 3-5 тысяч рублей уместен.
 """
 
+# --- Тема 12: живой источник дефекта 6 пилота статей (Тема 14487#Пост 87648,
+# статья «Плохой запуск двигателя») — таблица «температура -> сопротивление»,
+# маркер сноски автор поставил в ячейку СОПРОТИВЛЕНИЯ, а число температуры
+# стоит в СОСЕДНЕЙ ячейке той же строки без собственного маркера.
+THEME_12_TABLE = """---
+tid: 12
+---
+
+# Датчик охлаждающей жидкости
+
+##### Пост 1200
+
+*Kolos · 27.11.2007 12:00:00 · #1*
+
+при 20 градусах он должен выдавать 3,0 К Ом, при 50 - 0,7-1,0 К Ом, а при 80 градусах (нормальной рабочей температуре ОЖ) - 0,3-0,4 К Ом
+"""
+
 # --- Тема 3: пустая тема форума — ни одного поста ---------------------------
 THEME_3_EMPTY = """---
 tid: 3
@@ -266,6 +283,7 @@ def mirror(tmp_path):
     (root / "Тема 9.md").write_text(THEME_9_MILEAGE, encoding="utf-8")
     (root / "Тема 10.md").write_text(THEME_10_TORQUE_WAIT, encoding="utf-8")
     (root / "Тема 11.md").write_text(THEME_11_PRICE_MILEAGE, encoding="utf-8")
+    (root / "Тема 12.md").write_text(THEME_12_TABLE, encoding="utf-8")
     (root / "FAQ 100.md").write_text(FAQ_100, encoding="utf-8")
     (root / "FAQ старый 9.md").write_text(FAQ_OLD_9, encoding="utf-8")
     (root / "Блог remont 77.md").write_text(BLOG_77_EXCERPT, encoding="utf-8")
@@ -300,6 +318,8 @@ def conn():
               "VALUES (1000, 10, 'Egorov', '2013-04-12 12:00:00', '', '')")
     c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
               "VALUES (1100, 11, 'Grom78', '2016-06-03 12:00:00', '', '')")
+    c.execute("INSERT INTO posts(mid, tid, author, posted_at, text, markdown) "
+              "VALUES (1200, 12, 'Kolos', '2007-11-27 12:00:00', '', '')")
     c.execute("INSERT INTO faq(engine, nr, question, answer_md, answer_text) "
               "VALUES ('bitrix', 100, 'Как часто менять масло?', "
               "'Рекомендуемый интервал замены масла 5000 км пробега.', "
@@ -525,6 +545,96 @@ def test_multiplier_mileage_claim_matches_only_the_mileage_citation(mirror, conn
     p.write_text(text, encoding="utf-8")
     result = verify.check(p, mirror, mirror, conn)
     assert result["ок"], result["проблемы"]
+
+
+# --- дефект 6 пилота статей: утверждение в таблице — СТРОКА, не ЯЧЕЙКА -----
+#
+# Живая находка на уже исправленной (дефект 1) статье «Плохой запуск
+# двигателя»: автор поставил маркер сноски в СТРОКУ, как и требуется, но
+# положил его в ячейку «Сопротивление», а не «Температура» — обе ячейки
+# описывают ОДНО утверждение источника («при 20 градусах он должен
+# выдавать 3,0 К Ом»), просто разнесённое по колонкам таблицы. До фикса
+# `_blocks` дробил строку на самостоятельные ячейки-«утверждения» — ячейка
+# без маркера («при 20 градусах») подмену не поймала, а число «20» в ней
+# отклонялось как «не встречается ни в одной сноске», хотя дословно стоит
+# в цитате того же факта, просто в ДРУГОЙ ячейке той же строки.
+
+_TABLE_ARTICLE_TEMPLATE = ("---\ntype: статья\nисточников: 1\nсобрано: 2026-08-22\n---\n\n"
+                            "# Тема\n\n"
+                            "| Температура | Сопротивление |\n"
+                            "|---|---|\n"
+                            "%s"
+                            "\n## Сноски\n\n[^f1]: «при 20 градусах он должен выдавать 3,0 К Ом, "
+                            "при 50 - 0,7-1,0 К Ом, а при 80 градусах (нормальной рабочей "
+                            "температуре ОЖ) - 0,3-0,4 К Ом» — Kolos, 27.11.2007, "
+                            "[[Тема 12#Пост 1200]]\n")
+
+
+def test_table_row_with_marker_in_one_cell_covers_the_whole_row(mirror, conn):
+    """Живая находка (дефект 6, статья «Плохой запуск двигателя»): маркер
+    стоит только в ячейке «Сопротивление», а «Температура» — соседняя
+    ячейка ТОЙ ЖЕ строки, без своего маркера. Обязана пройти: строка —
+    одно утверждение, число температуры дословно есть в цитате f1.
+
+    Взяты строки 1 и 3 живой таблицы (20° и 80°) — в цитате у ОБОИХ значений
+    слово «градусах» стоит явно. Средняя строка (50°) в цитате написана
+    эллипсисом («при 50 -», без повторного «градусах» — обычная русская
+    экономия при перечислении через запятую) — это ОТДЕЛЬНЫЙ, не дефекта-6
+    пробел (проверено на реальной статье: с этим фиксом она падает РОВНО на
+    числе «50», см. отчёт), не подмешиваем его в тест на дефект 6."""
+    rows = ("| при 20 градусах | 3,0 К Ом [^f1] |\n"
+            "| при 80 градусах (нормальная рабочая температура ОЖ) | 0,3-0,4 К Ом [^f1] |\n")
+    text = _TABLE_ARTICLE_TEMPLATE % rows
+    p = mirror.parent / "статья-таблица-честная.md"
+    p.write_text(text, encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert result["ок"], result["проблемы"]
+
+
+def test_table_header_row_is_not_a_checkable_statement(mirror, conn):
+    """Строка заголовка («Температура | Сопротивление») — названия колонок,
+    не факт из источника; не обязана иметь маркер и не должна попадать в
+    число «утверждений без сноски»."""
+    rows = "| при 20 градусах | 3,0 К Ом [^f1] |\n"
+    text = _TABLE_ARTICLE_TEMPLATE % rows
+    p = mirror.parent / "статья-таблица-заголовок.md"
+    p.write_text(text, encoding="utf-8")
+    result = verify.check(p, mirror, mirror, conn)
+    assert result["ок"], result["проблемы"]
+
+
+def test_table_row_without_any_marker_still_flags_its_number():
+    """Обратная проверка: строка таблицы совсем без маркера — не лазейка.
+    Число в ней всё равно обязано попасть в замечания, иначе таблица без
+    единой сноски прошла бы молча."""
+    text = ("---\ntype: статья\nисточников: 0\nсобрано: 2026-08-22\n---\n\n"
+            "# Тема\n\n| Температура | Сопротивление |\n|---|---|\n"
+            "| при 20 градусах | 3,0 К Ом |\n")
+    problems = []
+    prose = text.split("## Сноски")[0]
+    for block, atomic in verify._blocks(prose):
+        segments = [(block, verify._MARKER.findall(block))] if atomic else verify._marker_segments(block)
+        for segment, marker_ids in segments:
+            occurrences = verify.notes.find_number_units(segment)
+            if occurrences and not marker_ids:
+                problems.append(segment)
+    assert problems, "строка таблицы без маркера обязана дать замечание, а не молчание"
+
+
+def test_table_marker_in_either_cell_covers_numbers_in_both_cells():
+    """Обратная проверка направления: маркер, поставленный в ЛЮБУЮ ячейку
+    строки, покрывает числа во ВСЕХ её ячейках — не только в своей."""
+    row_marker_in_first_cell = "| при 20 градусах [^f1] | 3,0 К Ом |\n"
+    row_marker_in_second_cell = "| при 20 градусах | 3,0 К Ом [^f1] |\n"
+    for rows in (row_marker_in_first_cell, row_marker_in_second_cell):
+        prose = ("# Тема\n\n| Температура | Сопротивление |\n|---|---|\n" + rows)
+        blocks = verify._blocks(prose)
+        # ровно один атомарный блок-строка (заголовок пропущен), и маркер
+        # покрывает оба числа независимо от того, в какой ячейке он стоит
+        [(block, atomic)] = [b for b in blocks if verify._MARKER.search(b[0])]
+        assert atomic, rows
+        found = verify.notes.find_number_units(block)
+        assert found == {("20", verify.notes._canon_unit("град")), ("3.0", verify.notes._canon_unit("кОм"))}, (rows, found)
 
 
 # --- контрольный случай: честная статья обязана пройти ----------------------

@@ -95,9 +95,9 @@ _TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
 _TABLE_SEPARATOR = re.compile(r"^\s*\|?[\s:|-]+\|?\s*$")
 
 
-def _blocks(text: str) -> list[str]:
+def _blocks(text: str) -> list[tuple[str, bool]]:
     """Делит прозу на независимые «утверждения» по разметке, а не по
-    абзацам-предложениям (Н2): пункт списка и ячейка таблицы — каждый
+    абзацам-предложениям (Н2): пункт списка и СТРОКА таблицы — каждый
     самостоятелен (ложь в одной строке списка не должна прикрываться
     сноской из другой), заголовок и строка коллаута/цитаты — тоже не
     «не проза», как было раньше (`_sentences` до этой правки пропускала
@@ -105,31 +105,61 @@ def _blocks(text: str) -> list[str]:
     Обычный абзац (в т.ч. перенесённый по строкам мягким переносом
     markdown) остаётся ОДНИМ блоком — дробит его дальше не пунктуация, а
     позиции маркеров (`_marker_segments`).
+
+    Возвращает пары `(текст, atomic)`. `atomic=True` — ТОЛЬКО у строки
+    таблицы (дефект 6, пилот статей Ф3): раньше единицей утверждения была
+    ЯЧЕЙКА, а не строка, — «| при 20 градусах | 3,0 К Ом [^f7] |» дробилось
+    на два независимых «утверждения», и ячейка «при 20 градусах» осталась
+    БЕЗ маркера, хотя автор поставил его в СТРОКУ, просто в другую колонку
+    той же строки (обе ячейки описывают ОДНО утверждение источника,
+    разнесённое по столбцам таблицы — так человек и пишет такие строки).
+    Число «20» без прикрывающего маркера отклонялось как «не встречается ни
+    в одной сноске», хотя дословно стоит в цитате того же факта. Для
+    строки-блока `check()` строит РОВНО ОДИН сегмент из ВСЕХ маркеров
+    строки (а не через `_marker_segments`, который делит по позиции
+    маркера — правильное правило для списка/прозы, но здесь дало бы то же
+    расщепление ещё раз, просто внутри одной строки, если маркеров в ней
+    больше одного) — маркер в любой ячейке покрывает числа во всех ячейках
+    строки. Строка совсем без маркера всё равно становится сегментом
+    (`marker_ids=[]`) — молчания без единой сноски это не открывает.
+
+    Строка ЗАГОЛОВКА таблицы (первая до строки-разделителя `|---|---|`) и
+    сама строка-разделитель — не факт источника, а имена колонок; в
+    `out` не попадают вовсе (не становятся утверждением, которое обязано
+    иметь сноску). `atomic=False` — у всех остальных видов (список,
+    заголовок документа, цитата, обычный абзац): дробятся дальше позициями
+    маркеров, как раньше — это НЕ то же самое послабление, что у таблицы,
+    просто оно им не нужно: у списка/заголовка/цитаты нет родного «одно
+    утверждение источника, разнесённое по нескольким типографским
+    колонкам», которое есть только у строки таблицы.
     """
-    out: list[str] = []
+    out: list[tuple[str, bool]] = []
     for para in notes.PARAGRAPH_SPLIT.split(text):
         lines = [l for l in para.split("\n") if l.strip()]
         if not lines:
             continue
         if all(_TABLE_ROW.match(l) for l in lines):
-            for line in lines:
+            sep_idx = next((i for i, l in enumerate(lines) if _TABLE_SEPARATOR.match(l)), None)
+            for i, line in enumerate(lines):
                 if _TABLE_SEPARATOR.match(line):
                     continue
-                for cell in line.strip().strip("|").split("|"):
-                    cell = cell.strip()
-                    if cell:
-                        out.append(cell)
+                if sep_idx is not None and i < sep_idx:
+                    continue  # строка заголовка — имена колонок, не факт
+                cells = [c.strip() for c in line.strip().strip("|").split("|")]
+                row = " ".join(c for c in cells if c)
+                if row:
+                    out.append((row, True))
             continue
         if all(_LIST_ITEM.match(l) for l in lines):
-            out.extend(_LIST_ITEM.sub("", l.strip()) for l in lines)
+            out.extend((_LIST_ITEM.sub("", l.strip()), False) for l in lines)
             continue
         if all(_HEADING_LINE.match(l) for l in lines):
-            out.extend(_HEADING_LINE.sub("", l.strip()) for l in lines)
+            out.extend((_HEADING_LINE.sub("", l.strip()), False) for l in lines)
             continue
         if all(_QUOTE_LINE.match(l) for l in lines):
-            out.extend(_QUOTE_LINE.sub("", l.strip()) for l in lines)
+            out.extend((_QUOTE_LINE.sub("", l.strip()), False) for l in lines)
             continue
-        out.append(" ".join(l.strip() for l in lines))
+        out.append((" ".join(l.strip() for l in lines), False))
     return out
 
 
@@ -377,8 +407,13 @@ def check(article_path: Path, wiki_root: Path, mirror_root: Path, conn: sqlite3.
     # бы молча. `notes.find_quantity_claims` не требует слова «единицы»
     # рядом (в цитате источника его может и не быть — «(С-1992)», а не
     # «1992 год») — сверяется голое число.
-    for block in _blocks(prose):
-        for segment, marker_ids in _marker_segments(block):
+    for block, atomic in _blocks(prose):
+        # Строка таблицы (`atomic=True`) — ОДИН сегмент из ВСЕХ маркеров
+        # блока целиком (дефект 6): маркер в любой ячейке покрывает числа
+        # во всех ячейках строки, а не только «после себя» по позиции, как
+        # у `_marker_segments` (см. докстринг `_blocks`).
+        segments = [(block, _MARKER.findall(block))] if atomic else _marker_segments(block)
+        for segment, marker_ids in segments:
             quotes = [defs[fid]["цитата"] for fid in marker_ids if fid in defs]
 
             occurrences = notes.find_number_units(segment)
