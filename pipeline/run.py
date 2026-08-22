@@ -11,7 +11,9 @@
                   включает форум, FAQ и блоги — см. `faq`/`blog` ниже; после
                   загрузки восстанавливает состояние добора Ф2 из манифеста
                   `--assets-manifest`/`--assets-root` — см. задачу 8 ниже)
-    coverage      отчёт покрытия в CSV + сводка в stdout
+    coverage      отчёт покрытия форума в CSV + сводка в stdout, плюс (Ф3,
+                  задача 7) покрытие FAQ/блогов и доля источников пилота,
+                  ни разу не процитированных статьями `wiki/Статьи`
     mirror        сгенерировать зеркало `wiki/Источники` (форум + FAQ + блоги)
     check         проверка целостности всей вики (код возврата 1 при находках)
     all           всё перечисленное подряд
@@ -147,6 +149,12 @@ DEFAULT_FAQ_MIRROR_DIRNAME = "FAQ"
 # Подкаталог зеркала блогов ВНУТРИ --mirror-dir (задача 7, тот же приём,
 # что у FAQ) — `wiki/Источники/Блоги/`.
 DEFAULT_BLOG_MIRROR_DIRNAME = "Блоги"
+# Подкаталог статей (Ф3, задача 5/7) ВНУТРИ --wiki — `wiki/Статьи/`, тот
+# же путь, что строит `articles.build` (`root / "wiki" / "Статьи"`, там
+# захардкожен намеренно — контракт функции). Команда `coverage` сканирует
+# его же для `coverage.citation_coverage`, поэтому имя — константа
+# здесь, а не второй буквальный литерал.
+DEFAULT_ARTICLES_MIRROR_DIRNAME = "Статьи"
 DEFAULT_ASSETS_MANIFEST = Path("data/assets/manifest.jsonl")
 DEFAULT_ASSETS_ROOT = Path("data/assets/files")
 DEFAULT_SITE_ROOT = Path("data/raw/site")
@@ -646,6 +654,22 @@ def main(argv: list[str] | None = None) -> int:
         rows = coverage.report(conn)
         coverage.to_csv(rows, args.csv)
         print("покрытие:", coverage.summary(rows), "->", args.csv)
+        # Задача 7 Ф3 (бэклог Ф2 п.2): `report`/`summary` выше считают
+        # только форум — тема единственный вид источника с "ожидаемым"
+        # числом постов для сверки. FAQ/блоги считаются отдельно.
+        print("покрытие faq/блогов:", coverage.faq_blog_coverage(conn))
+        # Доля источников пилота, ни разу не процитированных (спека §10) —
+        # знаменатель строит `citable_sources` (пустые темы форума, дубли
+        # FAQ и выдержки блогов уже исключены; из одних картинок исключены
+        # тоже — они в строке выше, отдельно, не вина ИИ), сканируется
+        # дерево `wiki/Статьи`, независимо от того, сколько статей уже
+        # собрано (сейчас — единицы, доля будет маленькой, и это ожидаемо
+        # на пилоте, а не дефект).
+        sources = coverage.citable_sources(conn)
+        cited = coverage.citation_coverage(args.wiki / DEFAULT_ARTICLES_MIRROR_DIRNAME, sources)
+        print("цитирование источников: процитировано %d, не процитировано %d из %d "
+              "(доля непроцитированных %.4f)"
+              % (cited["процитировано"], cited["не процитировано"], len(sources), cited["доля"]))
 
     if cmd in ("mirror", "all"):
         faq_mirror_path = mirror_path / DEFAULT_FAQ_MIRROR_DIRNAME
