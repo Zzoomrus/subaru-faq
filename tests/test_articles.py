@@ -174,6 +174,7 @@ DRAFT_WITH_META = """---
 узел: тормоза
 путь: Тормоза
 модель: [bc-bj, gc8]
+собрано: 2026-08-21
 ---
 
 Диаметр трубки — 4,75 мм[^f1].
@@ -211,7 +212,7 @@ def test_build_returns_path_relative_to_root_argument_not_resolved(tmp_path):
     `root / ...`, ломалась на расхождении корней."""
     actual_root = tmp_path / "актуальный-корень"
     actual_root.mkdir()
-    _write_inputs(actual_root, "х", ["заголовок: Х", "путь: Узел"])
+    _write_inputs(actual_root, "х", ["заголовок: Х", "путь: Узел", "собрано: 2026-08-21"])
     root_link = tmp_path / "ссылка-на-корень"
     root_link.symlink_to(actual_root, target_is_directory=True)
     out_path = articles.build("х", root_link)
@@ -335,13 +336,15 @@ def test_multiline_quote_does_not_break_out_of_the_footnote_definition():
 
 
 def test_build_rejects_directory_traversal_in_путь(tmp_path):
-    _write_inputs(tmp_path, "х", ["заголовок: Взлом", "путь: ../../../../tmp/sf-escape"])
+    _write_inputs(tmp_path, "х",
+                  ["заголовок: Взлом", "путь: ../../../../tmp/sf-escape", "собрано: 2026-08-21"])
     with pytest.raises(articles.DraftError):
         articles.build("х", tmp_path)
 
 
 def test_build_rejects_absolute_путь(tmp_path):
-    _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: /tmp/sf-escape-abs"])
+    _write_inputs(tmp_path, "х",
+                  ["заголовок: Х", "путь: /tmp/sf-escape-abs", "собрано: 2026-08-21"])
     with pytest.raises(articles.DraftError):
         articles.build("х", tmp_path)
 
@@ -350,13 +353,14 @@ def test_build_rejects_slash_in_заголовок(tmp_path):
     """Слэш в заголовке статьи про Subaru напрашивается сам («Ремонт
     EJ20/EJ25», «3/16 дюйма») — обязан дать внятный `DraftError`, а не
     `FileNotFoundError` из недр `pathlib`."""
-    _write_inputs(tmp_path, "х", ["заголовок: Ремонт EJ20/EJ25", "путь: Двигатель"])
+    _write_inputs(tmp_path, "х",
+                  ["заголовок: Ремонт EJ20/EJ25", "путь: Двигатель", "собрано: 2026-08-21"])
     with pytest.raises(articles.DraftError):
         articles.build("х", tmp_path)
 
 
 def test_build_rejects_dotdot_путь_without_slash(tmp_path):
-    _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: .."])
+    _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: ..", "собрано: 2026-08-21"])
     with pytest.raises(articles.DraftError):
         articles.build("х", tmp_path)
 
@@ -368,7 +372,7 @@ def test_build_second_barrier_catches_symlink_escaping_wiki_stati(tmp_path):
     Ссылка` не содержит ни одного разделителя, значит первая проверка его
     пропускает; если `Ссылка` — симлинк ВНУТРИ `wiki/Статьи`, ведущий наружу
     дерева, поймать обход обязан именно рубеж."""
-    _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: Ссылка"])
+    _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: Ссылка", "собрано: 2026-08-21"])
     articles_dir = tmp_path / "wiki" / "Статьи"
     articles_dir.mkdir(parents=True)
     outside = tmp_path / "снаружи"
@@ -429,35 +433,33 @@ def test_собрано_uses_explicit_meta_value_when_given():
 
 
 # --- ревью задачи 5: R3 — фолбэк на mtime черновика убран целиком, `собрано`
-# берётся только из явного поля frontmatter (та же схема, что у `путь`,
-# только необязательная) --------------------------------------------------
+# берётся только из явного поля frontmatter; уточнение бригадира ПОСЛЕ первой
+# версии фикса — отсутствие поля ошибка (`DraftError`), а не молчаливый
+# пропуск строки: та же схема, что у `путь`, и обязательная в том же смысле,
+# не опциональная -----------------------------------------------------------
 #
 # Примечание об истории покрытия (R1 ре-ревью). До R3 `build` подставлял
 # `собрано` из mtime черновика, если поле не было задано явно, и тест на это
 # создавал черновик тут же в тесте — mtime файла совпадал с «сегодня», и
 # мутация `date.fromtimestamp(mtime)` -> `date.today()` не валила НИ ОДНОГО
 # теста (проверено руками, см. коммит на R1). R3 убирает саму ветку с mtime:
-# у "источника даты" в `build` больше нет альтернативы явному полю, значит и
-# проверять нужно не «какая именно дата», а то, что НИКАКОЙ неявный источник
-# (ни mtime, ни `date.today()`) не просачивается — тест ниже ловит и
-# повторное появление ветки с mtime, и появление `date.today()`.
+# у "источника даты" в `build` больше нет альтернативы явному полю — как и у
+# `путь`, отсутствие поля обязано быть ошибкой, а не давать какой-либо иной
+# результат.
 
 
-def test_build_never_defaults_собрано_from_mtime_or_today(tmp_path):
-    """Явное поле — единственный источник `собрано` в `build`. Заведомо
-    старый mtime черновика — стресс-тест на этот факт: если бы `build`
-    (снова) подставлял дату из mtime или из «сейчас», строка `собрано:`
-    появилась бы в выводе, хотя черновик её не назначал."""
+def test_build_requires_explicit_собрано_field_even_with_a_usable_mtime(tmp_path):
+    """Явное поле — единственный источник `собрано` в `build`, и его
+    отсутствие — `DraftError`, а не молчаливый пропуск строки (уточнение
+    бригадира: спека перечисляет `собрано` в составе полей статьи по
+    контракту, а не как опцию). Заведомо старый, вполне пригодный на вид
+    mtime черновика — стресс-тест на то, что build не соблазняется взять
+    дату оттуда вместо явного поля."""
     _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: Узел"])
     draft_path = tmp_path / "articles" / "черновики" / "х.md"
     os.utime(draft_path, (1_600_000_000, 1_600_000_000))  # 2020-09-13, заведомо не сегодня
-    out_path = articles.build("х", tmp_path)
-    text = out_path.read_text(encoding="utf-8")
-    assert "собрано:" not in text
-    # Побитовость (Global Constraint №8) при этом не страдает: без даты
-    # вовсе повторная сборка тем более byte-в-byte идентична.
-    out_path2 = articles.build("х", tmp_path)
-    assert out_path2.read_text(encoding="utf-8") == text
+    with pytest.raises(articles.DraftError):
+        articles.build("х", tmp_path)
 
 
 def test_build_uses_only_the_explicit_собрано_field_ignoring_mtime(tmp_path):

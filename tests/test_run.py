@@ -590,7 +590,8 @@ def test_article_command_builds_note_from_draft_and_verified_facts(tmp_path, cap
     (tmp_path / "articles" / "черновики").mkdir(parents=True)
     (tmp_path / "articles" / "проверено").mkdir(parents=True)
     (tmp_path / "articles" / "черновики" / "тормоза.md").write_text(
-        "---\nзаголовок: Тормозные трубки\nузел: тормоза\nпуть: Тормоза\n---\n\n"
+        "---\nзаголовок: Тормозные трубки\nузел: тормоза\nпуть: Тормоза\n"
+        "собрано: 2026-08-21\n---\n\n"
         "Диаметр трубки — 4,75 мм[^f1].\n",
         encoding="utf-8")
     verified = {"проверено": [{"id": "f1", "источник": "Тема 42335#Пост 248484",
