@@ -259,6 +259,16 @@ def test_citation_coverage_uncited_source_lands_in_list(tmp_path):
     assert result["доля"] == 1.0
 
 
+def test_citation_coverage_deduplicates_repeated_source_in_denominator(tmp_path):
+    """`sources` может прийти с повтором (конкатенация нескольких
+    запросов) — источник не становится двумя источниками только потому,
+    что назван в списке дважды."""
+    result = coverage.citation_coverage(tmp_path, ["Тема 1", "Тема 1", "Тема 2"])
+    assert result["не процитировано"] == 2
+    assert result["список"] == ["Тема 1", "Тема 2"]
+    assert result["доля"] == 1.0
+
+
 def test_citation_coverage_empty_source_list_gives_zero_share_not_error(tmp_path):
     result = coverage.citation_coverage(tmp_path, [])
     assert result == {"процитировано": 0, "не процитировано": 0, "доля": 0.0, "список": []}
