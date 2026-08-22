@@ -32,6 +32,13 @@
                   заметки + автор/дата из `--db`), пишет `<--articles-dir>/
                   проверено/<--key>.json` — отброшенные факты остаются в
                   том же файле, не теряются
+    article       Ф3, задача 5, проход 2: читает `<--root>/articles/
+                  черновики/<--key>.md` (проза ИИ с маркерами `[^f1]` +
+                  frontmatter заголовок/путь/узел/модель) и `<--root>/
+                  articles/проверено/<--key>.json` (выход `facts`), пишет
+                  готовую заметку в `<--root>/wiki/Статьи/<путь>/
+                  <заголовок>.md` — сноску (ссылку и цитату) рендерит код
+                  (`pipeline.articles.render`), не ИИ
     assets index    добор Ф2: индексация CDX (тела не тянет, ~40 мин на 6008 URL)
     assets sieve    просев уже скачанного: заглушки хостингов (1x1 пиксель и
                     прочее, что валидно как картинка, но картинкой поста быть
@@ -112,9 +119,9 @@ import logging
 import sys
 from pathlib import Path
 
-from pipeline import (archive_assets, assets_state, attachments, check_mirror, coverage, db, facts,
-                      faq_dedup, fetch_assets, fetch_site, ingest, mirror, mirror_blog, mirror_faq,
-                      parse_blog, parse_faq)
+from pipeline import (archive_assets, articles, assets_state, attachments, check_mirror, coverage, db,
+                      facts, faq_dedup, fetch_assets, fetch_site, ingest, mirror, mirror_blog,
+                      mirror_faq, parse_blog, parse_faq)
 
 DEFAULT_PAGES = Path("data/raw/archive/pages")
 DEFAULT_MANIFEST = Path("data/raw/archive/manifest.jsonl")
@@ -137,6 +144,15 @@ DEFAULT_SITE_MANIFEST = Path("data/raw/site/manifest-site.jsonl")
 # <ключ>.json` (вход, проход 1 — выдача ИИ) -> `<articles-dir>/проверено/
 # <ключ>.json` (выход `facts.check_all`, задача 5 читает его как вход).
 DEFAULT_ARTICLES_DIR = Path("articles")
+# Корень проекта для команды `article` (задача 5): `pipeline.articles.build`
+# фиксирует оба пути от ОДНОГО корня (`<root>/articles/…`, `<root>/wiki/
+# Статьи/…`) — это его контракт (см. докстринг `articles.build`), поэтому
+# команда не собирает их из `--articles-dir`/`--wiki` по отдельности (те
+# двух разных корней не подразумевают вовсе — совпадение значений по
+# умолчанию с `DEFAULT_ARTICLES_DIR`/`DEFAULT_WIKI` не повод молча считать
+# их равными общему корню, если пользователь переопределит только один из
+# двух флагов).
+DEFAULT_ROOT = Path(".")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -144,7 +160,7 @@ def _parser() -> argparse.ArgumentParser:
         prog="python -m pipeline.run",
         description="Конвейер subaru-faq: сырой HTML архива -> SQLite -> зеркало Obsidian.")
     p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all", "assets", "site",
-                                        "faq", "blog", "dedup", "facts"])
+                                        "faq", "blog", "dedup", "facts", "article"])
     p.add_argument("sub_action", nargs="?",
                    choices=["index", "download", "sieve", "build", "fetch", "load", "mirror"],
                    default=None,
@@ -209,10 +225,15 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--key", default=None,
                    help="для command=facts: ключ статьи — читает "
                         "<--articles-dir>/факты/<ключ>.json, пишет "
-                        "<--articles-dir>/проверено/<ключ>.json")
+                        "<--articles-dir>/проверено/<ключ>.json; "
+                        "для command=article: читает <--root>/articles/черновики/<ключ>.md "
+                        "и <--root>/articles/проверено/<ключ>.json")
     p.add_argument("--articles-dir", type=Path, default=DEFAULT_ARTICLES_DIR,
                    help="корень черновиков/фактов/проверенного статей Ф3 (по умолчанию %s)"
                         % DEFAULT_ARTICLES_DIR)
+    p.add_argument("--root", type=Path, default=DEFAULT_ROOT,
+                   help="для command=article: корень проекта — <root>/articles и <root>/wiki "
+                        "(по умолчанию текущий каталог %s; см. DEFAULT_ROOT)" % DEFAULT_ROOT)
     return p
 
 
@@ -454,6 +475,24 @@ def main(argv: list[str] | None = None) -> int:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print("факты:", result["статистика"], "->", out_path)
+        return 0
+
+    if cmd == "article":
+        # Проход 2 фазы Ф3 (задача 5): читает черновик прозы ИИ + проверенные
+        # факты прохода 1 (`facts.check_all`) и пишет готовую заметку в
+        # `wiki/Статьи`. Сноску (ссылку и цитату) рендерит `pipeline.articles`
+        # из данных факта, а не парсит из черновика — см. докстринг модуля.
+        if not args.key:
+            print("укажи ключ статьи: --key <ключ> "
+                  "(читает <--root>/articles/черновики/<ключ>.md "
+                  "и <--root>/articles/проверено/<ключ>.json)")
+            return 2
+        try:
+            out_path = articles.build(args.key, args.root)
+        except (FileNotFoundError, articles.DraftError) as e:
+            print("ОШИБКА:", e)
+            return 2
+        print("статья собрана:", out_path)
         return 0
 
     if cmd == "site":

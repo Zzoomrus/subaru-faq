@@ -581,3 +581,59 @@ def test_facts_command_requires_existing_db(tmp_path, capsys):
                    "--db", str(tmp_path / "missing.sqlite"), "--wiki", str(tmp_path / "wiki")])
     assert rc == 2
     assert "не найдена" in capsys.readouterr().out
+
+
+# --- команда article (Ф3, задача 5, проход 2) -------------------------------
+
+
+def test_article_command_builds_note_from_draft_and_verified_facts(tmp_path, capsys):
+    (tmp_path / "articles" / "черновики").mkdir(parents=True)
+    (tmp_path / "articles" / "проверено").mkdir(parents=True)
+    (tmp_path / "articles" / "черновики" / "тормоза.md").write_text(
+        "---\nзаголовок: Тормозные трубки\nузел: тормоза\nпуть: Тормоза\n---\n\n"
+        "Диаметр трубки — 4,75 мм[^f1].\n",
+        encoding="utf-8")
+    verified = {"проверено": [{"id": "f1", "источник": "Тема 42335#Пост 248484",
+                                "цитата": "это 4,75 мм", "суть": "диаметр",
+                                "автор": "Razum", "дата": "11.10.2014"}],
+                "отброшено": [], "статистика": {"всего": 1, "прошло": 1, "отброшено": 0}}
+    (tmp_path / "articles" / "проверено" / "тормоза.json").write_text(
+        json.dumps(verified, ensure_ascii=False), encoding="utf-8")
+
+    rc = run.main(["article", "--key", "тормоза", "--root", str(tmp_path)])
+    assert rc == 0
+
+    out_path = tmp_path / "wiki" / "Статьи" / "Тормоза" / "Тормозные трубки.md"
+    assert out_path.exists()
+    text = out_path.read_text(encoding="utf-8")
+    assert "[^f1]: «это 4,75 мм» — Razum, 11.10.2014, [[Тема 42335#Пост 248484]]" in text
+    assert "статья собрана:" in capsys.readouterr().out
+
+
+def test_article_command_requires_key(tmp_path, capsys):
+    rc = run.main(["article", "--root", str(tmp_path)])
+    assert rc == 2
+    assert "--key" in capsys.readouterr().out
+
+
+def test_article_command_reports_missing_draft_without_traceback(tmp_path, capsys):
+    (tmp_path / "articles" / "проверено").mkdir(parents=True)
+    rc = run.main(["article", "--key", "нет-такого", "--root", str(tmp_path)])
+    assert rc == 2
+    assert "ОШИБКА" in capsys.readouterr().out
+
+
+def test_article_command_reports_missing_target_path_without_traceback(tmp_path, capsys):
+    """Черновик без явного `путь` во frontmatter — `DraftError`, не трейсбек
+    и не молчаливое угадывание папки узла (см. докстринг `articles.build`)."""
+    (tmp_path / "articles" / "черновики").mkdir(parents=True)
+    (tmp_path / "articles" / "проверено").mkdir(parents=True)
+    (tmp_path / "articles" / "черновики" / "х.md").write_text(
+        "---\nзаголовок: Х\nузел: тормоза\n---\n\nТекст[^f1].\n", encoding="utf-8")
+    (tmp_path / "articles" / "проверено" / "х.json").write_text(
+        json.dumps({"проверено": [{"id": "f1", "источник": "Тема 1#Пост 1",
+                                    "цитата": "текст", "суть": "х"}]}, ensure_ascii=False),
+        encoding="utf-8")
+    rc = run.main(["article", "--key", "х", "--root", str(tmp_path)])
+    assert rc == 2
+    assert "ОШИБКА" in capsys.readouterr().out
