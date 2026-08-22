@@ -994,6 +994,72 @@ def test_find_number_units_atmosfernik_engine_type_is_not_folded_into_atm():
     assert notes.find_number_units("2.0 атмосферник") == {("2.0", "atmosfernik")}
 
 
+# --- дефект 8, категория 2: реальные, но никогда не регистрировавшиеся ----
+# единицы (скан живого корпуса, порог >50 вхождений)
+
+
+def test_find_number_units_recognizes_centimeter_abbreviation_and_full_word():
+    """«см» (сантиметр) — 463 живых вхождения, никогда не регистрировался
+    (не было конфликта сокращение/слово)."""
+    assert notes.find_number_units("зазор 5 см") == notes.find_number_units("зазор 5 сантиметров")
+    assert notes.find_number_units("зазор 5 см") == {("5", notes._canon_unit("см"))}
+
+
+def test_find_number_units_recognizes_meter_abbreviation_and_full_word():
+    """«м» (метр) — 177+69 живых вхождений, никогда не регистрировался.
+    Обратная проверка: остаётся отличим от «мин» (Н24) и от предлога «в»."""
+    assert notes.find_number_units("длина 5 м") == notes.find_number_units("длина 5 метров")
+    assert notes.find_number_units("5 м") != notes.find_number_units("5 мин")
+    assert notes.find_number_units("5 м") == {("5", notes._canon_unit("м"))}
+
+
+def test_find_number_units_recognizes_bare_ohm_without_kilo_prefix():
+    """«Ом» голым словом, без приставки «к» (в отличие от дефекта 1,
+    «кОм») — «12 Ом», 84 живых вхождения. Регистрируется в таблице
+    синонимов (готовя опознание для дефекта 8, где неопознанная единица
+    даёт мягкую заявку) — до этой правки «Ом» не был ЗНАЧЕНИЕМ таблицы
+    синонимов вовсе, хотя уже классифицировался настоящей единицей."""
+    assert notes.find_number_units("сопротивление 12 Ом") == {("12", notes._canon_unit("Ом"))}
+    assert notes.find_number_units("сопротивление 12 Ом") != notes.find_number_units("сопротивление 12 кОм")
+    assert notes._canon_unit("Ом") in notes._UNIT_SYNONYMS.values()
+
+
+def test_find_number_units_recognizes_newton_meter_torque():
+    """«Нм» (момент затяжки в ньютон-метрах) — 63 живых вхождения,
+    обычно слитно. Регистрируется в таблице синонимов тем же способом,
+    что «Ом» выше (готовя опознание для дефекта 8)."""
+    assert notes.find_number_units("момент затяжки 279Нм") == {("279", notes._canon_unit("Нм"))}
+    assert notes.find_number_units("момент 7,4 нм") == {("7.4", notes._canon_unit("Нм"))}
+    assert notes._canon_unit("Нм") in notes._UNIT_SYNONYMS.values()
+
+
+def test_find_number_units_recognizes_horsepower_without_dots_and_as_sil():
+    """«93 лс» (без точек) и «93 сил» (разговорное) — обе формы мощности,
+    91 и 88 живых вхождений, сворачиваются в тот же ключ, что «93 л.с.»
+    (уже распознавалось структурно, `_COMPOUND_UNITS`)."""
+    ls = notes._canon_unit("л.с.")
+    assert notes.find_number_units("двигатель 93 л.с.") == {("93", ls)}
+    assert notes.find_number_units("двигатель 93 лс") == {("93", ls)}
+    assert notes.find_number_units("двигатель 93 сил") == {("93", ls)}
+
+
+def test_find_number_units_recognizes_cyrillic_drive_type_marker_as_non_unit():
+    """«4вд»/«2вд» — кириллическая форма привода («4WD»/«2WD», уже
+    исключены), 102 живых вхождения, не единица измерения вовсе."""
+    assert notes.find_number_units("покупаю только 4вд версию") == set()
+    assert notes.find_number_units("продаю 2вд седан") == set()
+
+
+def test_find_number_units_recognizes_bare_rpm_without_slash_min():
+    """«работает на 3500 оборотах» — обороты двигателя без явного «/мин»,
+    83 живых вхождения; сворачивается в тот же ключ, что «3500 об/мин»
+    (уже распознавалось структурно)."""
+    ob_min = notes._canon_unit("об") + "/" + notes._canon_unit("мин")
+    assert notes.find_number_units("на холостых 1000 оборотов") == {("1000", ob_min)}
+    assert notes.find_number_units("на холостых 1000 об/мин") == notes.find_number_units(
+        "на холостых 1000 оборотов")
+
+
 def test_find_number_units_recognizes_kilo_ohm_written_with_internal_space():
     """Живая находка пилота статей (Тема 14487#Пост 87648): источник пишет
     «при 20 градусах он должен выдавать 3,0 К Ом» — с пробелом между «К» и
