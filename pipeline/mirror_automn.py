@@ -215,6 +215,20 @@ def _cell_text(cell) -> str:
         if node.name == "br":
             parts.append(" ")
             return
+        if node.name in ("sup", "sub"):
+            # Сноска-надстрочник вида `1420<sup>1)</sup>` в исходнике стоит
+            # ВПЛОТНУЮ к числу без пробела (найдено верификацией на живом
+            # корпусе — 16 из 805 страниц, спецификации размеров кузова):
+            # без разделителя цифра надстрочника склеивается с концом
+            # настоящего значения («1440, 1420¹⁾» -> «14201)» -> регэксп
+            # числа читает это как ОДНО число 14201, вместо 1420 и отдельной
+            # сноски). Пробел с обеих сторон гасит слипание, не трогая сам
+            # текст надстрочника.
+            parts.append(" ")
+            for child in node.children:
+                walk(child)
+            parts.append(" ")
+            return
         if node.name == "a" and node.get("href"):
             text = node.get_text(" ", strip=True)
             parts.append(text or node["href"])
@@ -335,6 +349,15 @@ def _render(node, parts: list[str], ctx: _Ctx) -> None:
         return
     if name == "table":
         _render_table(node, parts, ctx)
+        return
+    if name in ("sup", "sub"):
+        # Тот же риск слипания числа со сноской-надстрочником, что и в
+        # ячейке таблицы данных (см. `_cell_text`) — здесь тот же приём:
+        # пробел с обеих сторон, не текст.
+        parts.append(" ")
+        for child in node.children:
+            _render(child, parts, ctx)
+        parts.append(" ")
         return
     if name in _BLOCK_TAGS:
         parts.append("\n\n")

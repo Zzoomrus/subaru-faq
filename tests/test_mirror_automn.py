@@ -119,6 +119,29 @@ def test_note_anchor_contract_is_exactly_h1_and_text_heading(tmp_path):
     assert _anchor_lines(md) == ["# 11.13 Процедура", "## Текст"]
 
 
+def test_promised_footnote_resolves_through_check_mirror(tmp_path):
+    """Второй, более важный способ проверки контракта якоря (докстринг
+    `docs/контракт-зеркала.md`, §1: «второй способ важнее первого») — не
+    только буквальное наличие заголовка в тексте, а то, что сноска РОВНО
+    ТОГО вида, который напишет статья, разрешается `check_mirror.check` в
+    собранном дереве вики: 0 битых ссылок/якорей/задвоенных якорей/вставок."""
+    pages_dir, manifest = _write_corpus(tmp_path, [
+        ("http://automn.ru/subaru-legacy-outback/a.html", "a.html",
+         _page("11.13 Процедура", "<p>Текст процедуры.</p>")),
+    ])
+    wiki = tmp_path / "wiki"
+    mirror_automn.write_all(pages_dir, manifest, wiki / "Источники" / "Руководство")
+    article_dir = wiki / "Статьи"
+    article_dir.mkdir(parents=True)
+    (article_dir / "Проба.md").write_text(
+        "Ссылка на страницу целиком: [[Руководство Legacy Outback 11.13 Процедура]].\n"
+        "Ссылка на тело: [[Руководство Legacy Outback 11.13 Процедура#Текст]].\n",
+        encoding="utf-8")
+    found = check_mirror.check(wiki)
+    assert found == {"broken_links": [], "broken_anchors": [],
+                      "duplicate_anchors": [], "broken_embeds": []}
+
+
 # --- таблицы: данные -> markdown, разметка -> поток ------------------------
 
 def test_data_table_becomes_markdown_pipe_table_without_losing_numbers():
@@ -137,6 +160,22 @@ def test_data_table_becomes_markdown_pipe_table_without_losing_numbers():
     assert lines[1].replace(" ", "").startswith("|---")
     assert "25" in lines[2] and "108" not in lines[2]
     assert "108" in lines[3] and "25" not in lines[3]
+
+
+def test_footnote_superscript_does_not_merge_into_the_number():
+    """Живая находка верификации на реальном корпусе (1 страница из 805,
+    спецификации размеров кузова): исходник ставит сноску-надстрочник
+    ВПЛОТНУЮ к числу без пробела — `1420<sup>1)</sup>`. Без разделителя
+    цифра сноски дописывается к концу настоящего значения и регэксп числа
+    читает «14201» как одно число вместо «1420» + отдельная сноска «1)» —
+    ровно тот класс потери, которого требование задачи прямо опасается."""
+    body = "<table><tr><td>1440, 1420<sup>1)</sup></td><td>2</td></tr>" \
+           "<tr><td>3</td><td>4</td></tr></table>"
+    html = _page("8.1 Спецификации", body)
+    page = mirror_automn.parse_page(html, "http://automn.ru/subaru-legacy-outback/x.html")
+    md = page["body_md"]
+    assert "14201" not in md
+    assert "1420" in md
 
 
 def test_colspan_and_rowspan_are_expanded_without_losing_values():
