@@ -832,21 +832,36 @@ _SINGLE = re.compile(
 _ATTACHED_THOUSAND_K = re.compile(r"%s(?P<num>%s)к%s" % (_NOT_LETTER_BEHIND, _NUM, _NOT_LETTER_AHEAD))
 
 
-def _extract_candidates(text: str) -> list[tuple[tuple[str, ...], str, str | None]]:
+def _extract_candidates(text: str) -> list[tuple[tuple[str, ...], str, str | None, bool]]:
     """Все числовые кандидаты `text` (после `_strip_number_noise`) —
-    список `(числа, единица-как-написана, классификация)`, классификация —
-    результат `_classify_unit` (`None`/`"soft"`/`"strict"`). Диапазон даёт
-    кортеж из ДВУХ чисел, одиночное — из ОДНОГО. Общее сканирование для
-    `find_number_units` и `find_quantity_claims` (Н16 ре-ревью) — одна
-    цепочка регэкспов на два потребителя, а не две копии одного разбора.
+    список `(числа, единица-как-написана, классификация, слитность)`,
+    классификация — результат `_classify_unit` (`None`/`"soft"`/`"strict"`).
+    Диапазон даёт кортеж из ДВУХ чисел, одиночное — из ОДНОГО. Общее
+    сканирование для `find_number_units` и `find_quantity_claims` (Н16
+    ре-ревью) — одна цепочка регэкспов на два потребителя, а не две копии
+    одного разбора.
+
+    Четвёртый элемент, «слитность» (`glued`), — истина, если между
+    последней цифрой числа и первым символом `unit` в исходном тексте нет
+    НИ ОДНОГО символа (даже одного пробела): `_SINGLE`/`_RANGE` ловят
+    единицу и через пробел («4 kgf»), и слитно («4kgf») ОДНИМ и тем же
+    `\\s?` — сама классификация (`_classify_unit`) об этом различии не
+    знает, ей передаётся только текст токена. Нужен `find_quantity_claims`
+    (см. её докстринг про глухую приклейку неопознанного слова) — тот же
+    риск, что уже разведён у `find_bare_numbers`/`_glued_word_is_safe`:
+    цифровой хвост VIN/артикула, слитно приклеенный к другому числу,
+    отличим от настоящего значения ТОЛЬКО по слитности, не по содержимому
+    слова. `_ATTACHED_THOUSAND_K` слитна по построению регэкспа (между
+    числом и «к» нет `\\s` вовсе), поэтому для неё `glued` всегда `True`.
     """
     text = _strip_number_noise(text)
-    out: list[tuple[tuple[str, ...], str, str | None]] = []
+    out: list[tuple[tuple[str, ...], str, str | None, bool]] = []
     spans: list[tuple[int, int]] = []
     for m in _RANGE.finditer(text):
         spans.append((m.start(), m.end()))
         cls = _classify_unit(m.group("unit"))
-        out.append(((_canon_number(m.group("n1")), _canon_number(m.group("n2"))), m.group("unit"), cls))
+        glued = m.start("unit") == m.end("n2")
+        out.append(((_canon_number(m.group("n1")), _canon_number(m.group("n2"))), m.group("unit"), cls, glued))
 
     def _inside_range(pos: int) -> bool:
         return any(a <= pos < b for a, b in spans)
@@ -855,7 +870,8 @@ def _extract_candidates(text: str) -> list[tuple[tuple[str, ...], str, str | Non
         if _inside_range(m.start()):
             continue
         cls = _classify_unit(m.group("unit"))
-        out.append(((_canon_number(m.group("num")),), m.group("unit"), cls))
+        glued = m.start("unit") == m.end("num")
+        out.append(((_canon_number(m.group("num")),), m.group("unit"), cls, glued))
 
     # «30к» слитно (Н25 ре-ревью) — отдельный проход (см. докстринг
     # `_ATTACHED_THOUSAND_K`), не конкурирует с `_SINGLE` за один и тот же
@@ -865,7 +881,7 @@ def _extract_candidates(text: str) -> list[tuple[tuple[str, ...], str, str | Non
     # этот проход добавляет РЯДОМ второй, «мягкий» кандидат на ТО ЖЕ
     # число, который потребители (в отличие от строгого) не отбрасывают.
     for m in _ATTACHED_THOUSAND_K.finditer(text):
-        out.append(((_canon_number(m.group("num")),), "к", "soft"))
+        out.append(((_canon_number(m.group("num")),), "к", "soft", True))
     return out
 
 
@@ -1191,7 +1207,7 @@ def find_number_units(text: str) -> set[tuple[str, str]]:
     множитель — не единица измерения, а число само по себе значимо.
     """
     found: set[tuple[str, str]] = set()
-    for numbers, unit, cls in _extract_candidates(text):
+    for numbers, unit, cls, _glued in _extract_candidates(text):
         if cls is not None:
             continue
         canon_unit = _unit_identity(unit)
@@ -1215,10 +1231,35 @@ def find_quantity_claims(text: str) -> set[str]:
     утверждения ту же голую строку числа (без требования, чтобы рядом было
     слово «год» — его, в отличие от единицы измерения, автор источника мог
     и не написать).
+
+    Асимметрия числа-нашедшего-два-разных-разбора (живая находка, статья
+    «Передаточные числа коробок и редукторов Subaru», ключ
+    `коробки-редукторы`, 108 ложных замечаний на одной статье): «Viscous
+    (4kgf) Open»/«6MT Transmission» — число СЛИТНО (без пробела) приклеено
+    к неопознанному слову («kgf», «MT» — не единица из `_UNIT_SYNONYMS`, не
+    служебное слово, не количественное существительное домена). По
+    умолчанию (дефект 8, см. `_classify_unit`) такое неопознанное слово
+    даёт "soft" вне зависимости от того, был ли пробел перед ним — этот
+    дефолт был откалиброван на прозу («живучи», «летом» — слово ПОСЛЕ
+    пробела, случайное слово прозы рядом со случайным числом, риск
+    подделки маленький). Слитное написание — СОВСЕМ другой риск: именно
+    признак «цифра, к которой без пробела приклеены буквы» — сигнатура
+    хвоста VIN/артикула, и `find_bare_numbers` эту слитную форму намеренно
+    НЕ подтверждает, если слово не входит в тот же закрытый список, что
+    `_glued_word_is_safe` (см. её докстринг — ослаблять эту защиту нельзя).
+    Поэтому заявка прозы для СЛИТНОГО неопознанного слова сужена до того
+    же закрытого списка, какой источник способен подтвердить: число со
+    слитным неопознанным хвостом просто не становится заявкой (не
+    `find_bare_numbers` расширяется под прозу, а прозы — под то, что
+    источник может проверить). Слово ЧЕРЕЗ пробел («2.2 живучи») —
+    прежнее поведение, оно тут не тронуто: там риска приклейки к
+    идентификатору нет, есть настоящий пробел между числом и словом.
     """
     claims: set[str] = set()
-    for numbers, unit, cls in _extract_candidates(text):
+    for numbers, unit, cls, glued in _extract_candidates(text):
         if cls != "soft":
+            continue
+        if glued and not _glued_word_is_safe(unit):
             continue
         claims.update(numbers)
     return claims
