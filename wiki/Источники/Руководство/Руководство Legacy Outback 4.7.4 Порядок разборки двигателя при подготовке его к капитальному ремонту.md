@@ -20,7 +20,7 @@ aliases: ["4.7.4 Порядок разборки двигателя при по�
               Прежде чем закреплять двигатель на стенде, необходимо снять с него
               маховик/приводной диск и задний сальник.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap02/tiff-2/44-1a.jpg)
+![[assets/857f128379d9303f.jpg]]
 
 (изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap02/tiff-2/44-1b.jpg)
 

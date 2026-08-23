@@ -23,7 +23,7 @@ aliases: ["4.5.3 Снятие и установка шкива коленчат�
               вала от проворачивания производится при помощи специального инструмента
               (ST 499977300 - модели 2.0 л или ST 499977100 - модели 2.5 л).
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap02/tiff-2/7-2a_1.jpg)
+![[assets/dfc6e3798b8ec022.jpg]]
 
 (изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap02/tiff-2/7-2b_1.jpg)
 

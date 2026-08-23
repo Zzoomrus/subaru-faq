@@ -13,7 +13,7 @@ aliases: ["5.3.8 Компрессор К/В - конструкция и прин
 
 Конструкция компрессора К/В
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/20-1.jpg)
+![[assets/ad8dff317c6eee60.jpg]]
 
 1 — Передняя головка
 

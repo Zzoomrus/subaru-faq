@@ -29,7 +29,7 @@ aliases: ["4.6.4 Снятие и установка крышек привода 
 
 Крышки привода ГРМ
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap02/tiff-2/25-1.jpg)
+![[assets/39da470827db4731.jpg]]
 
  1 — Передняя крышка
 

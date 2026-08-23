@@ -27,7 +27,7 @@ aliases: ["6.3.5 Снятие и установка компонентов си�
               3. На моделях с каталитическим преобразователем отсоедините электропроводку
               от докаталитического лямбда-зонда.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/26-3a.jpg)
+![[assets/3ec9469a8e1f9232.jpg]]
 
 (изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/26-3b.jpg)
 

@@ -62,7 +62,7 @@ Subaru.
 
 Сведения о диагностических приборах
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/shablon/sistema-upravlenia-dv/0001_cirovoi-multimetr.jpg)
+![[assets/99728e7094610fee.jpg]]
 
 Проверка исправности функционирования компонентов
         систем управления двигателем и снижения токсичности отработавших газов

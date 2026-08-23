@@ -20,7 +20,7 @@ aliases: ["5.3.19 Проверка исправности функциониро
               произведите проверку исправности функционирования последнего при
               помощи тестера.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/31-2a.jpg)
+![[assets/97cb88df6827ef0a.jpg]]
 
 (изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/31-2b.jpg)
 

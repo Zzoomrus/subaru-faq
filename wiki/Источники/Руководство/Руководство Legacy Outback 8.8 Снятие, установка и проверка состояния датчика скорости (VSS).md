@@ -35,7 +35,7 @@ aliases: ["8.8 Снятие, установка и проверка состоя
 
 ПРОВЕРКА
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06/pict/063a.jpg)
+![[assets/17237ea75a36aad6.jpg]]
 
 | ПОРЯДОК ВЫПОЛНЕНИЯ |
 | --- |

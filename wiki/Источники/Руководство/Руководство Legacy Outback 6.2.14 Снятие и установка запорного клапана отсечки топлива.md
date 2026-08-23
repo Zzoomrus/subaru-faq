@@ -22,7 +22,7 @@ aliases: ["6.2.14 Снятие и установка запорного клап
               2. Отпустите хомут и отсоедините от клапана отсечки топлива шланг
               испарительной линии.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/16-2a.jpg)
+![[assets/7a9ed856a2aa9923.jpg]]
 
 (изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/16-2b.jpg)
 

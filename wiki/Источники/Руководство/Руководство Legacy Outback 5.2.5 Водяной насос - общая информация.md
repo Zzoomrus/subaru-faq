@@ -13,7 +13,7 @@ aliases: ["5.2.5 Водяной насос - общая информация"]
 
 Насосная сборка 4-цилиндрового двигателя
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/6-1a.jpg)
+![[assets/da1bb17aa5764dbb.jpg]]
 
  1 — Приводной шкив
 

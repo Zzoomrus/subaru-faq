@@ -13,7 +13,7 @@ aliases: ["5.2.6 Проверка исправности функциониро�
 
 Конструкция термостата
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/7-1.jpg)
+![[assets/b08f8d96cc97c0f7.jpg]]
 
  1 — Клапан
 
