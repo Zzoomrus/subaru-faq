@@ -32,7 +32,7 @@ aliases: ["14.20 Снятие проверка и установка перек�
 
 Таблица 32
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/tables/12-t32.jpg)
+![[assets/697af741a5bffbe4.jpg]]
 
 УСТАНОВКА
 

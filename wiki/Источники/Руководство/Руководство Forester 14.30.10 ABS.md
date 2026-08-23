@@ -11,4 +11,4 @@ aliases: ["14.30.10 ABS"]
 
 ABS
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/002.jpg)
+![[assets/0d20f0943518f2c1.jpg]]

@@ -11,4 +11,4 @@ aliases: ["14.37.39 Обогрев сидений"]
 
 Обогрев сидений
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0039.jpg)
+![[assets/c460fee516bb73ac.jpg]]

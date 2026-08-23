@@ -21,7 +21,7 @@ aliases: ["14.1 Спецификации"]
 
 ![[assets/f0d92fe146c40ac8.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subar-instr/269.jpg)
+![[assets/db55e9e96ed7fba2.jpg]]
 
 | Осветительный прибор | Осветительный прибор | Тип лампы | Рабочие характеристики |
 | --- | --- | --- | --- |
@@ -42,17 +42,17 @@ aliases: ["14.1 Спецификации"]
 
 Предохранители
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subar-instr/284.jpg)
+![[assets/152e2ff18325f79b.jpg]]
 
 Схема размещения предохранителей в салонном
         монтажном блоке
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subar-instr/267.jpg)
+![[assets/56ad051e0a671d44.jpg]]
 
 Размещение коробки предохранителей под
         капотом
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subar-instr/286.jpg)
+![[assets/e2135ae472ce925b.jpg]]
 
 Схема размещения предохранителей в монтажном
         блоке двигательного отсека

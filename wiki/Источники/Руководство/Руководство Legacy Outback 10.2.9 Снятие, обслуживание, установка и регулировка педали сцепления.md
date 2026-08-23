@@ -19,7 +19,7 @@ aliases: ["10.2.9 Снятие, обслуживание, установка и 
 
 Педаль сцепления установлена на общем кронштейне с педалью ножного тормоза
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/060.jpg)
+![[assets/72dc0beeeda3057a.jpg]]
 
  1 — Педаль сцепления
 
@@ -33,7 +33,7 @@ aliases: ["10.2.9 Снятие, обслуживание, установка и 
 
 Конструкция педали сцепления
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/061.jpg)
+![[assets/172ec15b09f4b3f8.jpg]]
 
  1 — Приводной трос противооткатного устройства
 
@@ -43,7 +43,7 @@ aliases: ["10.2.9 Снятие, обслуживание, установка и 
 
 Детали конструкции педального привода сцепления
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/062.jpg)
+![[assets/84c9a4efbc0099c6.jpg]]
 
  A — Исполнительный шток
 
@@ -55,7 +55,7 @@ C — Пружинный фиксатор
 
 Элементы крепления педали сцепления
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/070.jpg)
+![[assets/edcc0cec6c1fa06c.jpg]]
 
  A — Стопорные кольца
 
@@ -69,7 +69,7 @@ D — Втулка
 
 Снятие педали сцепления
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/072.jpg)
+![[assets/98ad4917d09b0cf0.jpg]]
 
  А — Педаль сцепления
 
@@ -77,7 +77,7 @@ D — Втулка
 
 Компоненты сборки педали сцепления
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/073.jpg)
+![[assets/4bdb2e333654cd0b.jpg]]
 
  A — Стопорное кольцо
 
@@ -93,7 +93,7 @@ E — Шток S
 
 Проверка бокового люфта педали сцепления
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/079.jpg)
+![[assets/fe6000b0481cb7b7.jpg]]
 
  А — Педаль сцепления
 

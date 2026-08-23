@@ -23,7 +23,7 @@ aliases: ["10.3.7 Проверка состояния и замена перед
 
               4. Отпустите стояночный тормоз.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/169.jpg)
+![[assets/51db4d3935942e80.jpg]]
 
 5. Выверните сливную пробку
                     и слейте из дифференциала трансмиссионное масло, затем установите
@@ -40,31 +40,31 @@ aliases: ["10.3.7 Проверка состояния и замена перед
 8. Снимите карданный вал (см. Раздел
 Снятие, проверка состояния и установка компонентов карданного вала).
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/170.jpg)
+![[assets/770dcb33b08523d9.jpg]]
 
 9. Удерживая соединительный
                     фланец ключом ST 498427200, отпустите самоконтрящуюся гайку.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/171.jpg)
+![[assets/ad04d1326c393fb9.jpg]]
 
 10. Отдайте гайки защиты.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/172.jpg)
+![[assets/45a0e123dade0410.jpg]]
 
 11. Снимите защитный экран
                     топливного бака.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/173.jpg)
+![[assets/b8c9ca5f3208f569.jpg]]
 
 12. При помощи съемника ST
                     399703602 отделите соединительный фланец.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/174.jpg)
+![[assets/8f7dfbd299de5fa7.jpg]]
 
 13. При помощи съемника ST
                     499705401 извлеките сальник.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap07/pict/175.jpg)
+![[assets/4974eddd874d82bd.jpg]]
 
 14. Установка нового сальник
                     производится при помощи оправки ST 498447120.

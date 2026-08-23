@@ -18,11 +18,11 @@ aliases: ["5.2.7 Проверка исправности функциониро�
 
 Схема подключения главного вентилятора на моделях 3.0 л 2001 г.вып.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-2b.jpg)
+![[assets/78538ff428de6e63.jpg]]
 
 Схема подключения главного вентилятора на моделях 3.0 л 2002 г.вып.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-2s.jpg)
+![[assets/abf5b87e5085afde.jpg]]
 
 |  | При горячем двигателе вентилятор системы охлаждения может активироваться в любой момент времени, - соблюдайте крайнюю осторожность! |
 | --- | --- |
@@ -73,7 +73,7 @@ aliases: ["5.2.7 Проверка исправности функциониро�
 Шаг 4 (Проверка состояния приводного электромотора
               вентилятора)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-7.jpg)
+![[assets/005159fd621cb151.jpg]]
 
  Подсоедините батарею непосредственно
                     к контактному разъему F17 электромотора (положительный полюс
@@ -217,7 +217,7 @@ aliases: ["5.2.7 Проверка исправности функциониро�
 
               Шаг 7 (Проверка состояния приводного электромотора вентилятора)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-28.jpg)
+![[assets/4065b6de61efece6.jpg]]
 
  Подсоедините батарею непосредственно
                     к контактному разъему F17 электромотора (положительный полюс
@@ -496,9 +496,9 @@ aliases: ["5.2.7 Проверка исправности функциониро�
               вентилятора, на моделях 3.0 л отсоедините также электропроводку
               от вспомогательного вентилятора.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-72a.jpg)
+![[assets/6520e91980a45f34.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-72b.jpg)
+![[assets/10a1da8a4f2e0e3b.jpg]]
 
 5. Опустите автомобиль на землю.
 
@@ -507,22 +507,22 @@ aliases: ["5.2.7 Проверка исправности функциониро�
 
               7. Отсоедините переливной шланг.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-75a.jpg)
+![[assets/76275925b7728a07.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-75b.jpg)
+![[assets/704ba625c2749a2a.jpg]]
 
 8. Снимите расширительный бачок системы охлаждения.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-76a.jpg)
+![[assets/b133ace1e5040282.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-76b.jpg)
+![[assets/b3aa6735c0a63516.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-77.jpg)
+![[assets/6f91c83262070f0d.jpg]]
 
 9. На моделях 3.0 л отсоедините
                     от радиатора впускные шланги.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-78.jpg)
+![[assets/a2810da0a9072bc9.jpg]]
 
 10. На моделях 2.0 и 2.5 л
                     выверните крепежные болты и снимите сборку главного вентилятора.
@@ -532,15 +532,15 @@ aliases: ["5.2.7 Проверка исправности функциониро�
               место сборку главного вентилятора, поднимите ее и извлеките из двигательного
               отсека.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-79a.jpg)
+![[assets/376deafe89334a4f.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-79b.jpg)
+![[assets/da660eb664946859.jpg]]
 
 Разборка и сборка
 
  ПОРЯДОК ВЫПОЛНЕНИЯ
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-80.jpg)
+![[assets/3499eed28484df93.jpg]]
 
 1. При помощи острогубцев отпустите
                     фиксатор крепления контактного разъема приводного электромотора
@@ -548,16 +548,16 @@ aliases: ["5.2.7 Проверка исправности функциониро�
 
 2. Отпустите гайку крепления крыльчатки.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-81a.jpg)
+![[assets/f58179d29c3af3d3.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-81b.jpg)
+![[assets/098fc02cc1515013.jpg]]
 
               3. Выверните крепежные болты/винты и снимите электромотор привода
               вентилятора с кожуха.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-82a.jpg)
+![[assets/0786f17dfdf25b5e.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-82b.jpg)
+![[assets/267ca9acae44df4b.jpg]]
 
 4. Сборка производится в обратном порядке. Проследите, чтобы весь
               крепеж был затянут с требуемым усилием (см. Спецификации и сопроводительные
@@ -573,11 +573,11 @@ aliases: ["5.2.7 Проверка исправности функциониро�
 
 Схема подключения главного вентилятора на моделях 3.0 л 2001 г.вып.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-2b.jpg)
+![[assets/78538ff428de6e63.jpg]]
 
 Схема подключения главного вентилятора на моделях 3.0 л 2002 г.вып.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/8-2s.jpg)
+![[assets/abf5b87e5085afde.jpg]]
 
 Модели 2.0 и 2.5 л
 

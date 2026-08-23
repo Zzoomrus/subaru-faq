@@ -72,17 +72,17 @@ aliases: ["5.2.8 Обслуживание, снятие и установка р
               от двигателя . На моделях 3.0 л отсоедините от радиатора впускные
               шланги.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/9-17a.jpg)
+![[assets/1af3556f81ec0188.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/9-17b.jpg)
+![[assets/8e41ab0db3bde0b2.jpg]]
 
 13. Снимите кронштейны верхних опор радиатора.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/9-18a.jpg)
+![[assets/e85830690ac420d8.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/9-18b.jpg)
+![[assets/2b3c641370d0b88d.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/9-19.jpg)
+![[assets/ff9a2e9dd5b3043d.jpg]]
 
 14. Высвободите из фиксатора
                     на радиаторе шланг системы гидроусиления руля.
@@ -90,11 +90,11 @@ aliases: ["5.2.8 Обслуживание, снятие и установка р
 15. Слегка приподнимите радиаторную сборку, сдвиньте ее влево,
               затем извлеките из двигательного отсека.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/9-20a.jpg)
+![[assets/bf2943d940b3d62a.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/9-20b.jpg)
+![[assets/1ad34976b4e533ae.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/9-21.jpg)
+![[assets/66cce50513500a80.jpg]]
 
 16. Установка производится
                     в обратном порядке, - предварительно удостоверьтесь в наличии

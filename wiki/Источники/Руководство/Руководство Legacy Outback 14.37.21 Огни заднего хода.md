@@ -11,4 +11,4 @@ aliases: ["14.37.21 Огни заднего хода"]
 
 Огни заднего хода
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0021.jpg)
+![[assets/0b33bd05f616b654.jpg]]

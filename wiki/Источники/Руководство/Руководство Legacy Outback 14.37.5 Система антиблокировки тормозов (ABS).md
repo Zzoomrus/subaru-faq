@@ -11,8 +11,8 @@ aliases: ["14.37.5 Система антиблокировки тормозов 
 
 Система антиблокировки тормозов (ABS)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0005-01.jpg)
+![[assets/ea41862fcc8fd340.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0005-02.jpg)
+![[assets/a24f0ce79b04a300.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0005-03.jpg)
+![[assets/952fa3f7315019c8.jpg]]

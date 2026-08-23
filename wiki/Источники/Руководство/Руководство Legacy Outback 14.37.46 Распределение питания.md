@@ -11,10 +11,10 @@ aliases: ["14.37.46 Распределение питания"]
 
 Распределение питания
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0001-01.jpg)
+![[assets/576910db566dcdc1.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0001-02.jpg)
+![[assets/d1a26715d7ef7af1.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0001-03.jpg)
+![[assets/71b69126993bb881.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0001-04.jpg)
+![[assets/549b75f109b7bab1.jpg]]

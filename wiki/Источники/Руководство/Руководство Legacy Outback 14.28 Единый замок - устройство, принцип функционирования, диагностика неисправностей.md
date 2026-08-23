@@ -24,7 +24,7 @@ aliases: ["14.28 Единый замок - устройство, принцип 
 
 Принципиальная схема единого замка
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/12-02.jpg)
+![[assets/85ad3e9e8ba5e0f9.jpg]]
 
  1 — Модуль управления
 

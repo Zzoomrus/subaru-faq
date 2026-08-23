@@ -11,10 +11,10 @@ aliases: ["14.30.1 Система распределения питания"]
 
 Система распределения питания
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/021.jpg)
+![[assets/43a967107fbce24f.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/022.jpg)
+![[assets/cd89f9564e432f23.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/023.jpg)
+![[assets/5dfca56dc442b33b.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/024.jpg)
+![[assets/5ad238cf311bfc75.jpg]]

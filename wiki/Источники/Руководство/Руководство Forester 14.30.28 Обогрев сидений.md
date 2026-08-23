@@ -11,4 +11,4 @@ aliases: ["14.30.28 Обогрев сидений"]
 
 Обогрев сидений
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/027.jpg)
+![[assets/5bf35517d7ee1528.jpg]]

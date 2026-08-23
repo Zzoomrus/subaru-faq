@@ -25,23 +25,23 @@ aliases: ["11.30 Снятие, установка и проверка испра
 3. Снимите защитный экран топливного
                     бака.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap08/pict/173.jpg)
+![[assets/d9cd5b2ebf0083b6.jpg]]
 
 4. Отсоедините электропроводку
                     колесного датчика.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap08/pict/174.jpg)
+![[assets/55e020b4fe7654c8.jpg]]
 
 5. Отпустите промежуточный
                     фиксатор крепления жгута электропроводки датчика на кузовном
                     элементе.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap08/pict/175-177.jpg)
+![[assets/0489f1e7a3e0d358.jpg]]
 
 6. Выверните болты крепления
                     опорных кронштейнов жгута.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap08/pict/178.jpg)
+![[assets/6b5c181b7bf067ab.jpg]]
 
 7. Снимите датчик ABS с рычага
                     подвески, - не тяните датчик за жгут электропроводки, постарайтесь

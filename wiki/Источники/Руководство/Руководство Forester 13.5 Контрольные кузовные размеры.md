@@ -36,7 +36,7 @@ aliases: ["13.5 Контрольные кузовные размеры"]
 
 Кузов и днище
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/dopp/5-1-17(kuzov-i-dnishe).jpg)
+![[assets/48071ee49af07135.jpg]]
 
 Двери
 
@@ -73,9 +73,9 @@ aliases: ["13.5 Контрольные кузовные размеры"]
 
 Багажник
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/dopp/5-1-21.jpg)
+![[assets/22d3e60ed22950f6.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/dopp/5-1-20(bagaznik).jpg)
+![[assets/d0bf886e76f097d7.jpg]]
 
 | Между точками | Размер, мм | Между точками | Размер, мм |
 | --- | --- | --- | --- |

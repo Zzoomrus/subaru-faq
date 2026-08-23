@@ -11,4 +11,4 @@ aliases: ["14.30.16 Комбинация приборов"]
 
 Комбинация приборов
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/019.jpg)
+![[assets/c4aaf2d44ae0ec95.jpg]]

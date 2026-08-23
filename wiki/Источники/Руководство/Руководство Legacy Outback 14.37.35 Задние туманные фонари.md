@@ -11,4 +11,4 @@ aliases: ["14.37.35 Задние туманные фонари"]
 
 Задние туманные фонари
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0035.jpg)
+![[assets/0b419624b542f972.jpg]]

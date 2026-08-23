@@ -66,7 +66,7 @@ aliases: ["5.3.14 Проверка состояния, снятие и уста�
               3. Снимите воздухозаборник (см. Раздел
 Обслуживание компонентов впускного воздушного тракта).
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/26-7.jpg)
+![[assets/c784d95e8df214d7.jpg]]
 
 4. Отсоедините от компрессорной
                     сборки шланги высокого и низкого давления.
@@ -85,11 +85,11 @@ aliases: ["5.3.14 Проверка состояния, снятие и уста�
 
               8. Выверните болты крепления опорного кронштейна.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/26-11a.jpg)
+![[assets/ce97a85baf614652.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/26-11b.jpg)
+![[assets/2ac91e99e8aae6d5.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap03/pict/26-12.jpg)
+![[assets/8774ea736df7f8fe.jpg]]
 
 9. Отпустите крепежные болты
                     и снимите компрессорную сборку с кронштейна.

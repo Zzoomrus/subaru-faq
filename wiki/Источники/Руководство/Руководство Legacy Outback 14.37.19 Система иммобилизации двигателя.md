@@ -13,8 +13,8 @@ aliases: ["14.37.19 Система иммобилизации двигателя
 
 4-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0019-01.jpg)
+![[assets/6acf1b0e8d3650f0.jpg]]
 
 6-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0019-02.jpg)
+![[assets/ad50ca8c2ca9db87.jpg]]

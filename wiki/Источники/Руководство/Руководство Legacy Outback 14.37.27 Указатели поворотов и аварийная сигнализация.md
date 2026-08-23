@@ -11,6 +11,6 @@ aliases: ["14.37.27 Указатели поворотов и аварийная 
 
 Указатели поворотов и аварийная сигнализация
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0027-01.jpg)
+![[assets/dff45da03c21af00.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0027-02.jpg)
+![[assets/18aa0b4ab970316b.jpg]]

@@ -30,4 +30,4 @@ aliases: ["3.22 Проверка состояния защитных чехло�
 
 ![[assets/7ecb9211bbb7594b.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/dopp/1-5-27.jpg)
+![[assets/a2213bea1f27a84e.jpg]]

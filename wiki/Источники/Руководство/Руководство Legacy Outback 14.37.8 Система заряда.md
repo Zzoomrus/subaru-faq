@@ -11,4 +11,4 @@ aliases: ["14.37.8 Система заряда"]
 
 Система заряда
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0008.jpg)
+![[assets/5698dd5a58149344.jpg]]

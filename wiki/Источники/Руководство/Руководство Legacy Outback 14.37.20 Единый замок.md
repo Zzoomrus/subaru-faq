@@ -11,8 +11,8 @@ aliases: ["14.37.20 Единый замок"]
 
 Единый замок
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0020-01.jpg)
+![[assets/c195ad372771bae7.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0020-02.jpg)
+![[assets/895303c8b25aedab.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0020-03.jpg)
+![[assets/431d1526a30c08d9.jpg]]

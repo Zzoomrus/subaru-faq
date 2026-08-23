@@ -22,13 +22,13 @@ aliases: ["9.5 Диагностика отказов АТ"]
 
 ![[assets/602c12d6af4de2fd.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/263--4.jpg)
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/263--5.jpg)
+![[assets/3067a2b1c07b4c9d.jpg]]
+![[assets/a2be7f4c30dd588d.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/263--2.jpg)
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/263--6.jpg)
+![[assets/71f2ac796d78e293.jpg]]
+![[assets/603706d5a2ed4e53.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/263--3.jpg)
+![[assets/6a544a7b633d97ab.jpg]]
 
 1 — Модуль управления двигателем (ECM)
 
@@ -57,7 +57,7 @@ aliases: ["9.5 Диагностика отказов АТ"]
 установки клапанов см. в Разделе
 Электрогидравлическая система управления - общая информация, назначение основных элементов)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/278.jpg)
+![[assets/42b9062f568e3ddd.jpg]]
 
  1 — Электромагнитный клапан 1
 
@@ -78,7 +78,7 @@ aliases: ["9.5 Диагностика отказов АТ"]
 
 Функциональная схема сигналов ввода-вывода TCM
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/282.jpg)
+![[assets/1118451d97c81d47.jpg]]
 
  1 — TCM
 
@@ -199,12 +199,12 @@ aliases: ["9.5 Диагностика отказов АТ"]
 Функциональная схема сигналов ввода-вывода TCM и карта идентификации контактных
 клемм электрических разъемов представлены на иллюстрациях.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/281.jpg)
+![[assets/9b116ac3e83c85b5.jpg]]
 
 Эталонные диаграммы сигналов ввода-вывода TCM для моделей с VDC представлены на
 иллюстрации.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/283.jpg)
+![[assets/f331435fa629924e.jpg]]
 
 Выключите зажигание и проверьте напряжение на клемме № 1 разъема В56 - номинальное
 значение составляет 10 ÷ 13 В.
@@ -455,7 +455,7 @@ Diagnostic Code(s)}), - подтвердите выбор нажатием кл�
 проверьте его цепь на наличие признаков короткого замыкания, произведите необходимые
 исправления.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/288.jpg)
+![[assets/7c1c552df0fdaf2d.jpg]]
 
 Очистка памяти процессора
 

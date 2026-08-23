@@ -42,7 +42,7 @@ aliases: ["14.35 Снятие, установка и проверка состо
 
               2. Отсоедините контактный разъем и клемму жгута электропроводки.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/16-10.jpg)
+![[assets/a16729a7a948d118.jpg]]
 
 3. Выверните крепежные винты
                     и снимите сборку антенного усилителя.
@@ -58,11 +58,11 @@ aliases: ["14.35 Снятие, установка и проверка состо
  1. Измерьте сопротивление антенного усилителя. Сравните
             результаты измерения с данными таблицы.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/tables/12-t42.jpg)
+![[assets/6d85248afd3efaa6.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/16-11.jpg)
+![[assets/5fc86eb66b1f3bb0.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/16-12.jpg)
+![[assets/8338b76a95844917.jpg]]
 
 2. Неисправный усилитель замените
 
@@ -73,10 +73,10 @@ aliases: ["14.35 Снятие, установка и проверка состо
  1. Измерьте сопротивление антенного усилителя.
               Сравните результаты измерения с данными таблицы.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/tables/12-t43.jpg)
+![[assets/b93afd7d5067854c.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/16-13.jpg)
+![[assets/7eeaa22b1921924c.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/16-14.jpg)
+![[assets/4cce867b7794b706.jpg]]
 
 2. Неисправный усилитель замените

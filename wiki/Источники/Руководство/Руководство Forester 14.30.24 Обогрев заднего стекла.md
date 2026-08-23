@@ -11,4 +11,4 @@ aliases: ["14.30.24 Обогрев заднего стекла"]
 
 Обогрев заднего стекла
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/007.jpg)
+![[assets/5fa43f58549a44bf.jpg]]

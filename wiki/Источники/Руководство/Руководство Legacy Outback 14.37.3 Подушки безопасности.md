@@ -13,16 +13,16 @@ aliases: ["14.37.3 Подушки безопасности"]
 
 4-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0003-01.jpg)
+![[assets/85b15abf56ed829d.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0003-02.jpg)
+![[assets/f3198f28bb86e06b.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0003-03.jpg)
+![[assets/0581c8fad5d2bb49.jpg]]
 
 6-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0003-04.jpg)
+![[assets/59e155c2e752c4f0.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0003-05.jpg)
+![[assets/1f0bf59e6d390bdc.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0003-06.jpg)
+![[assets/b7c21e91281f84e4.jpg]]

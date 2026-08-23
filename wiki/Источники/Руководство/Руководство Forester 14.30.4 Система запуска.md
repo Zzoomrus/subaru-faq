@@ -11,4 +11,4 @@ aliases: ["14.30.4 Система запуска"]
 
 Система запуска
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/032.jpg)
+![[assets/23c8fe53c21e831f.jpg]]

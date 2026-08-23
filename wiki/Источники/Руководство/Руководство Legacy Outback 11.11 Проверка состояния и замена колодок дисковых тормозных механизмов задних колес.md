@@ -18,4 +18,4 @@ aliases: ["11.11 Проверка состояния и замена колод�
 
 ![[assets/fcbaffbe55a69acc.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap08/pict/068.jpg)
+![[assets/8ebc2615a0a381b7.jpg]]

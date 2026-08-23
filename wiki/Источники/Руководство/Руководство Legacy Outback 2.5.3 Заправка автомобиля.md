@@ -45,13 +45,13 @@ aliases: ["2.5.3 Заправка автомобиля"]
 
 ![[assets/92fd2aaa680e2671.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/228.jpg)
+![[assets/30ddfd27b6da3248.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/229.jpg)
+![[assets/a47c02df293c1847.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/230.jpg)
+![[assets/652d0b65f89fd3fa.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/231.jpg)
+![[assets/acf9cb6ea9bf399a.jpg]]
 
 Медленно повернув налево, снимите крышку
         с заливной горловины.

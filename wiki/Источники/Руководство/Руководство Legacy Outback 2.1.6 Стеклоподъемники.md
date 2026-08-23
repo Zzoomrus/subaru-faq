@@ -40,9 +40,9 @@ aliases: ["2.1.6 Стеклоподъемники"]
 автоматический перевод стекла в закрытое положение (остановка может быть произведена
 путем легкого нажатия клавиши).
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/tifs/0005_glavn.perekl.steklopodemn.jpg)
+![[assets/0ce65fb0a89a55c8.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/tifs/0006_upravl.steklopod.-s-glavn.perekl.jpg)
+![[assets/a1b15a3d8f55f5be.jpg]]
 
 1 — Переключатель стеклоподъемника левой задней двери
 

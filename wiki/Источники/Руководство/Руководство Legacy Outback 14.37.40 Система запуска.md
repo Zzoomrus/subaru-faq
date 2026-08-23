@@ -11,4 +11,4 @@ aliases: ["14.37.40 Система запуска"]
 
 Система запуска
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0040.jpg)
+![[assets/916c97e16340ee54.jpg]]

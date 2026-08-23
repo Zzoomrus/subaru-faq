@@ -13,8 +13,8 @@ aliases: ["14.37.26 Стоп-сигналы"]
 
 Модели Седан
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0026-01.jpg)
+![[assets/a1254a42dda44431.jpg]]
 
 Модели Универсал
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0026-02.jpg)
+![[assets/e3cbd1017d0e3645.jpg]]

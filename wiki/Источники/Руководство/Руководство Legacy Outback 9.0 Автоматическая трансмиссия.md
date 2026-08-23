@@ -26,7 +26,7 @@ aliases: ["9.0 Автоматическая трансмиссия"]
 
 Конструкция АТ МРТ-моделей
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/001.jpg)
+![[assets/788e5260be344cc9.jpg]]
 
  1 — Блокирующий демпфер
 
@@ -103,7 +103,7 @@ aliases: ["9.0 Автоматическая трансмиссия"]
 
 Конструкция АТ VTD-моделей
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap06-1/pict/002.jpg)
+![[assets/c621d604dc575a7d.jpg]]
 
  1 — Блокирующий демпфер
 

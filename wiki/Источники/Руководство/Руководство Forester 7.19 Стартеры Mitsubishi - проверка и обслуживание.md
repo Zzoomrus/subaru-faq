@@ -53,7 +53,7 @@ aliases: ["7.19 Стартеры Mitsubishi - проверка и обслужи
 
 Конструкция стартера Mitsubishi MIT77181
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subaru-la/182.jpg)
+![[assets/daf7e5f54663c4c6.jpg]]
 
  1  —
         Втулка
@@ -93,7 +93,7 @@ aliases: ["7.19 Стартеры Mitsubishi - проверка и обслужи
 
 Проверка исправности функционирования сборки тягового реле
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subaru-la/182-1.jpg)
+![[assets/570226c47dee47b2.jpg]]
 
  1  —
         Клемма С
@@ -115,7 +115,7 @@ aliases: ["7.19 Стартеры Mitsubishi - проверка и обслужи
 
 Проверка величины вылета ведущей шестерни
 
- (изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subaru-la/183.jpg)
+ ![[assets/b481894a1d8a94e6.jpg]]
 
  1  —
         Шестерня
@@ -136,7 +136,7 @@ aliases: ["7.19 Стартеры Mitsubishi - проверка и обслужи
 
 Снятие щеткодержателя
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subaru-la/184.jpg)
+![[assets/c3a2c8fd6fc35c7c.jpg]]
 
  1  —
         Щеткодержатель
@@ -145,7 +145,7 @@ aliases: ["7.19 Стартеры Mitsubishi - проверка и обслужи
 
 Снятие якоря и статора
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subaru-la/185.jpg)
+![[assets/a41e3b3200e71433.jpg]]
 
  1  —
         Передний кронштейн
@@ -158,7 +158,7 @@ aliases: ["7.19 Стартеры Mitsubishi - проверка и обслужи
 
 Извлечение компонентов планетарного редуктора
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subaru-la/186.jpg)
+![[assets/4c867c5589db37fe.jpg]]
 
  1  —
         Пластина
@@ -201,7 +201,7 @@ aliases: ["7.19 Стартеры Mitsubishi - проверка и обслужи
 3. Удостоверьтесь в отсутствии проводимости
             между щеткодержателем и его пластиной.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subaru-la/187.jpg)
+![[assets/36abf910ed1b5020.jpg]]
 
 4. Измерьте развиваемое щеточными пружинами
             усилие. Сравните результаты измерений с требованиями Спецификаций

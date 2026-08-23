@@ -33,9 +33,9 @@ aliases: ["11.19 Проверка состояния и замена гибки�
 
                     2 — Тормозная трубка
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap08/pict/104.jpg)
+![[assets/0438a5a86ce555f5.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap08/pict/105.jpg)
+![[assets/f240a71525d85f40.jpg]]
 
 2. Высвободите шланг из опорного кронштейна и снимите его с автомобиля.
 

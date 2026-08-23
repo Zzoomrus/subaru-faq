@@ -26,9 +26,9 @@ aliases: ["14.37.1 Схемы электрических соединений"]
 Принцип обозначения цветов и конструкции электропроводки на схемах электрических
 соединений показан на иллюстрациях.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/18-02.jpg)
+![[assets/69314e9f6ae9a9cd.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/18-04.jpg)
+![[assets/f12831b242f1f287.jpg]]
 
 L = Синий
 
@@ -67,9 +67,9 @@ L = Синий
   заземление). При этом точка зазмеления идентифицируется литерным кодом, помещенным
   под значком заземления.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/18-06.jpg)
+![[assets/9c5e7312f6ac57d6.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/18-07.jpg)
+![[assets/92569ffd4a08deba.jpg]]
 
 Контактные разъемы
 

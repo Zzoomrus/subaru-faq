@@ -11,6 +11,6 @@ aliases: ["14.30.2 Точки заземления"]
 
 Точки заземления
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/014.jpg)
+![[assets/27baa45f2d899783.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/015.jpg)
+![[assets/822122c22c8b5333.jpg]]

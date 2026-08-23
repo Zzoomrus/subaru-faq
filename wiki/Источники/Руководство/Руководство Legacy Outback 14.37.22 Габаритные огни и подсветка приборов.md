@@ -13,16 +13,16 @@ aliases: ["14.37.22 Габаритные огни и подсветка приб
 
 4-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0022-01.jpg)
+![[assets/a50cdc9d84247e28.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0022-02.jpg)
+![[assets/c1c9852edd6d8d48.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0022-03.jpg)
+![[assets/d7659d857647833a.jpg]]
 
 6-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0022-04.jpg)
+![[assets/4c98dcc1dd62a0ac.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0022-05.jpg)
+![[assets/8fe7c2f4c4f2293f.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0022-06.jpg)
+![[assets/59377939f07f3c02.jpg]]

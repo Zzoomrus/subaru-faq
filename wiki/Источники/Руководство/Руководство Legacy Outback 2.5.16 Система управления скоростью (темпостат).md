@@ -35,7 +35,7 @@ aliases: ["2.5.16 Система управления скоростью (тем
 
 ![[assets/fa20f7d23393dce7.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/tifs/0039_glavnyi-vykluchaktel-tempostata.jpg)
+![[assets/e5c96ce28b76ab2e.jpg]]
 
 Управление функционированием темпостата
 

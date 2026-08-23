@@ -511,7 +511,7 @@ aliases: ["12.1 Спецификации"]
 
  215/60R16 95V
 
- (изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap09/tiff/pict/0033spec.jpg)
+ ![[assets/da1c1029555010e0.jpg]]
 
   Контрольные размеры колесного диска
 

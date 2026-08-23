@@ -13,8 +13,8 @@ aliases: ["14.37.23 Противотуманные фары"]
 
 4-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0023-01.jpg)
+![[assets/40d852f529b3aeb8.jpg]]
 
 6-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0023-02.jpg)
+![[assets/e3f4b1c3831ac35f.jpg]]

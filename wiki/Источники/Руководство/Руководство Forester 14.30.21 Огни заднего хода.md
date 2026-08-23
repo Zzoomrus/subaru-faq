@@ -11,4 +11,4 @@ aliases: ["14.30.21 Огни заднего хода"]
 
 Огни заднего хода
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/012.jpg)
+![[assets/9f2f3d8d807c910b.jpg]]

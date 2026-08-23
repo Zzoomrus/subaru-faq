@@ -35,13 +35,13 @@ aliases: ["4.5.17 Замена опор подвески силового агр
 1. Схема организации подвески силового агрегата представлена
             на иллюстрациях.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap02/tiff-2/21-1a.jpg)
+![[assets/62a03df58f2f792a.jpg]]
 
 1 — Резиновая подушка
 
                     2 — Кронштейны
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap02/tiff-2/21-1b.jpg)
+![[assets/36a4de14ab72c1bd.jpg]]
 
 1 — Подушка
 

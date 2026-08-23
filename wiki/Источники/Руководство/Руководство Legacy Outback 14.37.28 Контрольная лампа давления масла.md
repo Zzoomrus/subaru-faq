@@ -11,4 +11,4 @@ aliases: ["14.37.28 Контрольная лампа давления масл�
 
 Контрольная лампа давления масла
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0028.jpg)
+![[assets/be76d2ce96aae2d1.jpg]]

@@ -11,4 +11,4 @@ aliases: ["14.37.31 Электропривод сидений"]
 
 Электропривод сидений
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0031.jpg)
+![[assets/c8e57cc6f68162dd.jpg]]

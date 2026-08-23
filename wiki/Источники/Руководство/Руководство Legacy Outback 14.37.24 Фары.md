@@ -11,4 +11,4 @@ aliases: ["14.37.24 Фары"]
 
 Фары
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0024.jpg)
+![[assets/df98f7f49434b68f.jpg]]

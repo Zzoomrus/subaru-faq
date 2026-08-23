@@ -11,4 +11,4 @@ aliases: ["14.37.41 Электропривод верхнего люка"]
 
 Электропривод верхнего люка
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0041.jpg)
+![[assets/6d91b4f28e0b807c.jpg]]

@@ -85,7 +85,7 @@ OBD II
 Детали установки впускного трубопровода на моделях 2.0 и 2.5 л, оборудованных
 OBD Subaru
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-1b.jpg)
+![[assets/1388447e29a81aee.jpg]]
 
  1 — Уплотнительная прокладка
         правой секции впускного трубопровода
@@ -148,7 +148,7 @@ OBD Subaru
 
 Детали установки впускного трубопровода на моделях 3.0 л (OBD II)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-1c.jpg)
+![[assets/275a8d027cdff01d.jpg]]
 
  1 — Демпферный клапан топливного
         тракта
@@ -226,39 +226,39 @@ OBD Subaru
 
             4. Отсоедините электропроводку от свечей зажигания.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-9.jpg)
+![[assets/4afe968e41a3d888.jpg]]
 
 5. Отсоедините от впускного
                     трубопровода шланг PCV.
 
             6. Отсоедините от корпуса дросселя шланги охладительного тракта.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-11.jpg)
+![[assets/2bf93c269ab8af1e.jpg]]
 
 7. Отсоедините шланг вакуумного
                     усилителя тормозов.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-12.jpg)
+![[assets/a2145a726f2a2804.jpg]]
 
 8. Снимите правую монтажную
                     скобу воздухоочистителя и опорный кронштейн жгута электропроводки
                     двигателя. Рассоедините разъемы подключения электропроводки
                     двигателя к проложенному по переборке моторного отсека жгуту.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-13a.jpg)
+![[assets/b8f4af0b476f1072.jpg]]
 
 9. Отсоедините электропроводку
                     от датчиков температуры охлаждающей жидкости (ECT), детонации
                     (KS), положения коленчатого (CKP) и распределительного (CMP)
                     валов и датчика-выключателя давления масла.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-13b.jpg)
+![[assets/11f2227d40d7ef55.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-13c.jpg)
+![[assets/1a606d782bc925cb.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-13d.jpg)
+![[assets/8b833b23ff47ded4.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-13e.jpg)
+![[assets/cf91f369d8c2ec12.jpg]]
 
             10. Отсоедините от трубок шланги топливных линий, - во избежание разбрызгивания
             топлива оборачивайте отпускаемые штуцерные разъемы ветошью.
@@ -266,9 +266,9 @@ OBD Subaru
             11. Выверните крепежные болты и извлеките сборку впускного трубопровода
             из двигательного отсека.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-15a.jpg)
+![[assets/34624a4f6bf558f6.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-15b.jpg)
+![[assets/1f7a8ff86a8ba7f5.jpg]]
 
 Модели 3.0 л
 
@@ -284,12 +284,12 @@ OBD Subaru
               и, не отсоединяя от нее гидравлические линии, отложите на брызговик
               правого крыла, предварительно подстелив ветошь.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-19.jpg)
+![[assets/609c124d58583c57.jpg]]
 
 4. Выверните болты крепления
                     резервуара жидкости омывания стекол.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-20.jpg)
+![[assets/9df5d635561b5451.jpg]]
 
 5. Отсоедините электропроводку
                     от электромоторов насосов подачи жидкости на переднее и заднее
@@ -298,35 +298,35 @@ OBD Subaru
  6. Отсоедините шланг от насоса подачи жидкости на заднее стекло,
               - открытый конец штуцера сразу же закупорьте.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-22.jpg)
+![[assets/690dfda6fd8df986.jpg]]
 
 7. Снимите резервуар и подвяжите
                     его к левой петле капота.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-23.jpg)
+![[assets/88bb8160cd1cebd1.jpg]]
 
 8. Отсоедините от крышки головки
                     цилиндров шланги PCV.
 
  9. Отсоедините шланги охладительного тракта от корпуса дросселя.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-25.jpg)
+![[assets/501fd07bf6d73635.jpg]]
 
 10. Отсоедините шланг вакуумного
                     усилителя тормозов.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-26.jpg)
+![[assets/93e0ae31d95b3ae5.jpg]]
 
 11. Снимите трубку и клапан
                     EGR, - постарайтесь не уронить уплотнительные прокладки.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-27.jpg)
+![[assets/f70cfd08a5fb3162.jpg]]
 
 12. Рассоедините разъемы подключения
                     электропроводки двигателя к проложенному по переборке моторного
                     отсека жгуту.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-28.jpg)
+![[assets/82d508e9173d9bdd.jpg]]
 
 13. Отсоедините от впускного
                     трубопровода шину заземления силового агрегата.
@@ -338,11 +338,11 @@ OBD Subaru
               15. Отсоедините шину заземления от протектора левой топливной магистрали,
               затем снимите протектор.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-30a.jpg)
+![[assets/63be74639a6f3e16.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-30b.jpg)
+![[assets/d56876116ac34b80.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-31.jpg)
+![[assets/d9394a89065fce4f.jpg]]
 
 16. Отсоедините шланг подачи
                     дополнительного воздуха (А), затем выверните болты (В) крепления
@@ -351,17 +351,17 @@ OBD Subaru
               17. Отсоедините шину заземления и снимите протектор правой топливной
               магистрали.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-32a.jpg)
+![[assets/90ad041e352e95d6.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-32b.jpg)
+![[assets/f6bcf3b31fa2bfa7.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-33.jpg)
+![[assets/0b6fe5e2aae7c9f2.jpg]]
 
 18. Отсоедините шланг подачи
                     дополнительного воздуха (А), затем выверните болты (В) крепления
                     правой топливной магистрали к головке цилиндров.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-34.jpg)
+![[assets/8cbc5bcedaa3a537.jpg]]
 
 19. Выверните крепежные болты
                     к головкам цилиндров и снимите сборку впускного трубопровода.
@@ -372,40 +372,40 @@ OBD Subaru
 
  ПОРЯДОК ВЫПОЛНЕНИЯ
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-35.jpg)
+![[assets/5f3e837ddcb3a1af.jpg]]
 
 1. Отсоедините от впускного
                     трубопровода шину заземления.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-36.jpg)
+![[assets/26e384d5f45b3eb0.jpg]]
 
 2. Отсоедините электропроводку
                     от сборки модуля зажигания.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-37.jpg)
+![[assets/5cc7f0ee167cd806.jpg]]
 
 3. Выверните крепежные болты
                     и снимите сборку модуля зажигания.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-38.jpg)
+![[assets/c7f9aee8730dedef.jpg]]
 
 4. Отсоедините электропроводку
                     от датчика температуры/давления всасываемого воздуха (IAT).
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-39.jpg)
+![[assets/c35fe086f592d38a.jpg]]
 
 5. Выверните крепежные болты
                     и снимите сборку датчика IAT.
 
  6. Cнимите сборку корпуса дросселя.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-41.jpg)
+![[assets/596da48e639b49c0.jpg]]
 
 7. Отсоедините электропроводку
                     от клапана подмешивания воздуха к инжекторам. Выверните крепежные
                     болты и снимите сборку клапана с впускного трубопровода.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-42.jpg)
+![[assets/af9f84cb7e74663b.jpg]]
 
 8. Отсоедините от трубопровода
                     вакуумный шланг регулятора давления.
@@ -413,43 +413,43 @@ OBD Subaru
  9. Если не проделали этого на этапе демонтажа, снимите протекторы
               топливных магистралей.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-43a.jpg)
+![[assets/30939b24f9c1c2a5.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-43b.jpg)
+![[assets/c5d6d337fa781d9c.jpg]]
 
 10. Отсоедините электропроводку от топливных инжекторов и электромагнитного
               клапана продувки угольного адсорбера.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-44a.jpg)
+![[assets/8e9f01287409ac61.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-44b.jpg)
+![[assets/e477b29466d18d6b.jpg]]
 
 11. Отсоедините перепускной шланг от электромагнитного клапана
               продувки адсорбера.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-46.jpg)
+![[assets/a3acab49a82a01a0.jpg]]
 
 12. Снимите хомуты (А) и опорные
                     кронштейны (В) крепления на впускном трубопроводе жгута электропроводки
                     двигателя. Снимите жгут электропроводки.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-47.jpg)
+![[assets/13c110402c47a4f1.jpg]]
 
 13. Выверните крепежный болт
                     и снимите электромагнитный клапан продувки угольного адсорбера.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-48.jpg)
+![[assets/ec224eb734ac5f1d.jpg]]
 
 14. Выверните болты крепления
                     к впускному трубопроводу топливных трубок.
 
  15. Извлеките фиксаторы и снимите топливные инжекторы.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-49a.jpg)
+![[assets/ef0d524d1397287c.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-49b.jpg)
+![[assets/ac7efb4ea7db49d2.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-50.jpg)
+![[assets/673264d866320f1b.jpg]]
 
 16. Отсоедините от впускного
                     трубопровода перепускные воздушные шланги.
@@ -457,11 +457,11 @@ OBD Subaru
 17. Отпустите крепежные хомуты топливных шлангов и снимите сборки
               топливных магистралей.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-51a.jpg)
+![[assets/fb2d3763b5675786.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-51b.jpg)
+![[assets/f09d32dc2676588a.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-52.jpg)
+![[assets/f748837c3819969f.jpg]]
 
 18. Выверните крепежный болт
                     и снимите с впускного трубопровода сборку топливных линий
@@ -471,16 +471,16 @@ OBD Subaru
 
  ПОРЯДОК ВЫПОЛНЕНИЯ
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-53.jpg)
+![[assets/f617aaeabb671144.jpg]]
 
 1. Cнимите сборку корпуса дросселя.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-54.jpg)
+![[assets/c4bac05ddf29bf37.jpg]]
 
 2. Вывернув крепежные болты,
                     снимите индукционный клапан.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-55.jpg)
+![[assets/ae7c4294470e6b3b.jpg]]
 
 3. Отсоедините электропроводку
                     от управляющего электромагнита индукционного клапана, выверните
@@ -489,32 +489,32 @@ OBD Subaru
  4. Отсоединив электропроводку, снимите электромагнитный клапан
               управления продувкой угольного адсорбера и клапан EGR.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-56a.jpg)
+![[assets/a0f69cb48a85f1b7.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-56b.jpg)
+![[assets/bcf7594094773e18.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-57.jpg)
+![[assets/7cfdc490e6f068e1.jpg]]
 
 5. Отпустив крепеж, снимите
                     с впускного трубопровода жгут электропроводки двигателя.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-58.jpg)
+![[assets/3fcf02ac5c1ed575.jpg]]
 
 6. Снимите с впускного трубопровода
                     трубку PCV.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-59.jpg)
+![[assets/267906b3f56f8095.jpg]]
 
 7. Снимите сборку трубок подмешивания
                     воздуха к инжекторам и продувки угольного адсорбера.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-60.jpg)
+![[assets/bbbeb885f0c9bbeb.jpg]]
 
 8. Отсоедините от впускного
                     трубопровода вакуумный шланг (А) регулятора давления, затем
                     выверните крепежные болты и снимите сборку топливной магистрали.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-61.jpg)
+![[assets/cb985f3168388a0d.jpg]]
 
 9. Отсоедините от впускного
                     трубопровода вакуумный шланг.
@@ -525,7 +525,7 @@ OBD Subaru
 
  ПОРЯДОК ВЫПОЛНЕНИЯ
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-62a.jpg)
+![[assets/923c37586ad6e04e.jpg]]
 
 1. Сборка производится в порядке,
                     обратном порядку демонтажа компонентов. Не забудьте заменить
@@ -538,9 +538,9 @@ OBD Subaru
 
                     В — Инжектор
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-62b.jpg)
+![[assets/a2c89daa69f1d028.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-62c.jpg)
+![[assets/09eec52a3dc8d543.jpg]]
 
 2. Проследите, чтобы весь крепеж был затянут с требуемым усилием
               (см. Спецификации и подписи к иллюстрациям в подразделе «Разборка»).
@@ -558,9 +558,9 @@ OBD Subaru
 
               В — К топливной линии
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-64a.jpg)
+![[assets/9dfe9c829bc3a0a4.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/9-64b.jpg)
+![[assets/723b866777eeb6b6.jpg]]
 
 2. Проследите, чтобы весь крепеж был затянут с требуемым усилием
               (см. Спецификации и подписи к иллюстрациям в подразделе «Разборка»).

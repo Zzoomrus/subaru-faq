@@ -40,7 +40,7 @@ aliases: ["11.5 Противооткатная система - устройст
 
 Конструкция клапана удержания давления (PHV)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap08/pict/020.jpg)
+![[assets/9b2400edacdf9084.jpg]]
 
  1 — Корпус
 

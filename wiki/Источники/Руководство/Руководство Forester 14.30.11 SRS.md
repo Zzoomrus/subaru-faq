@@ -11,4 +11,4 @@ aliases: ["14.30.11 SRS"]
 
 SRS
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/033.jpg)
+![[assets/a1df01b422868507.jpg]]

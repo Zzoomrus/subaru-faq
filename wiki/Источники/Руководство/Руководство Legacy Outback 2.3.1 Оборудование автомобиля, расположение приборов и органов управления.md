@@ -39,7 +39,7 @@ aliases: ["2.3.1 Оборудование автомобиля, располож
 
 Схема расположения наружных рабочих элементов (2 из 2)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/006.jpg)
+![[assets/1f462b0a9dcf458c.jpg]]
 
  1 — Очиститель заднего стекла
 
@@ -59,7 +59,7 @@ aliases: ["2.3.1 Оборудование автомобиля, располож
 
 Оборудование салона, интерьер (1 из 2)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/007.jpg)
+![[assets/f67c82eaa2825dcf.jpg]]
 
  1 — Точки крепления детских
         сидений
@@ -74,7 +74,7 @@ aliases: ["2.3.1 Оборудование автомобиля, располож
 
 Оборудование салона, интерьер (2 из 2)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/008.jpg)
+![[assets/385e2b8cdc1c2632.jpg]]
 
  1 — Верхний люк
 
@@ -92,7 +92,7 @@ aliases: ["2.3.1 Оборудование автомобиля, располож
 
 Оборудование салона, центральная консоль и панель приборов
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/009.jpg)
+![[assets/204159cf13ee3003.jpg]]
 
  1 — Поддон с подстаканниками
 
@@ -104,11 +104,11 @@ aliases: ["2.3.1 Оборудование автомобиля, располож
 
         5 — Пепельницы
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/013.jpg)
+![[assets/7906d1394774e625.jpg]]
 
 5 — Поддон
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/014.jpg)
+![[assets/e08930a95b01bd66.jpg]]
 
 6 — Домкрат
 
@@ -118,7 +118,7 @@ aliases: ["2.3.1 Оборудование автомобиля, располож
 
 Оборудование багажного отделения
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/012.jpg)
+![[assets/92d6df0f7906dccf.jpg]]
 
  1 — Крепежные крюки
 
@@ -128,10 +128,10 @@ aliases: ["2.3.1 Оборудование автомобиля, располож
 
         4 — Декоративная шторка
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/010.jpg)
+![[assets/982fd2ff838ed797.jpg]]
 
 Legacy Седан
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/011.jpg)
+![[assets/716bb088469af1da.jpg]]
 
 Legacy Универсал, Outback

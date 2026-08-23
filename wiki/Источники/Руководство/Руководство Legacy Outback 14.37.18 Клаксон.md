@@ -11,4 +11,4 @@ aliases: ["14.37.18 Клаксон"]
 
 Клаксон
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0018.jpg)
+![[assets/733d2c0b62e8051c.jpg]]

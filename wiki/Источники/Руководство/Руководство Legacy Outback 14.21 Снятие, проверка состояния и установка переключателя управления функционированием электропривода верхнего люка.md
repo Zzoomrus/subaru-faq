@@ -40,11 +40,11 @@ aliases: ["14.21 Снятие, проверка состояния и устан
 
 Таблица 33
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/tables/12-t33.jpg)
+![[assets/e3eb92926cde8ab4.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/0008-29.jpg)
+![[assets/f977a39ef02c52d2.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap11/pict/0008-30.jpg)
+![[assets/f45a52f70d58ced6.jpg]]
 
 2. Неисправный переключатель замените.
 

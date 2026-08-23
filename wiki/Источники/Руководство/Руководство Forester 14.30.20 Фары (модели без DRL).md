@@ -11,4 +11,4 @@ aliases: ["14.30.20 Фары (модели без DRL)"]
 
 Фары (модели без DRL)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/017.jpg)
+![[assets/84a93c77dcc7514c.jpg]]

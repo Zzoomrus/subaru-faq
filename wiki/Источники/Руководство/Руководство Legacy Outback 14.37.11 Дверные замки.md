@@ -11,4 +11,4 @@ aliases: ["14.37.11 Дверные замки"]
 
 Дверные замки
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0011.jpg)
+![[assets/4e633fd50840e65e.jpg]]

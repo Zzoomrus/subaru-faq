@@ -13,28 +13,28 @@ aliases: ["14.37.4 Система кондиционирования возду�
 
 Система кондиционирования воздуха с ручным управлением
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0004-01.jpg)
+![[assets/9cf55aec76bb5afa.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0004-02.jpg)
+![[assets/4adf81b273feff6e.jpg]]
 
 Автоматическая система кондиционирования воздуха, 4-цилиндровые
   модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0004-03.jpg)
+![[assets/db3c7f035812d178.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0004-04.jpg)
+![[assets/6990be0d98d10479.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0004-05.jpg)
+![[assets/1c932a48dd082b6b.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0004-06.jpg)
+![[assets/98fd5f88482e4147.jpg]]
 
 Автоматическая система кондиционирования воздуха, 6-цилиндровые
   модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0004-07.jpg)
+![[assets/bbee164fc32db769.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0004-08.jpg)
+![[assets/b3b0d6f0da04a991.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0004-09.jpg)
+![[assets/5a592f534088d3fe.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0004-10.jpg)
+![[assets/8de2e48991b98608.jpg]]

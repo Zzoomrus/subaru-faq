@@ -13,20 +13,20 @@ aliases: ["14.37.42 Система динамической стабилизац
 
 4-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0042-01.jpg)
+![[assets/9e0960f7022a559a.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0042-02.jpg)
+![[assets/006ffc739facc2e8.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0042-03.jpg)
+![[assets/6fad0b23d55b44a7.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0042-04.jpg)
+![[assets/89086e671fec9c54.jpg]]
 
 6-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0042-05.jpg)
+![[assets/a17a7a805e0a285a.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0042-06.jpg)
+![[assets/c0e7e94c5f28ce76.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0042-07.jpg)
+![[assets/1f96d927a2705ff2.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0042-08.jpg)
+![[assets/6956912a7f4641dc.jpg]]

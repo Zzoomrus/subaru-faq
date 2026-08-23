@@ -11,4 +11,4 @@ aliases: ["14.30.22 Клаксон"]
 
 Клаксон
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/018.jpg)
+![[assets/4aca5b44ae0864e0.jpg]]

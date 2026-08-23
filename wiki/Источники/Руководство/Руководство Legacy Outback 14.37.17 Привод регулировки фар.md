@@ -11,4 +11,4 @@ aliases: ["14.37.17 Привод регулировки фар"]
 
 Привод регулировки фар
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0017.jpg)
+![[assets/72664c2bdfddca0f.jpg]]

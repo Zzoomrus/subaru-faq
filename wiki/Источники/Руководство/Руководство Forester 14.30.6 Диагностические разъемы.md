@@ -11,4 +11,4 @@ aliases: ["14.30.6 Диагностические разъемы"]
 
 Диагностические разъемы
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/003.jpg)
+![[assets/4acbaa2e374a09ff.jpg]]

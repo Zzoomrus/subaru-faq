@@ -51,7 +51,7 @@ aliases: ["11.3 Стояночный тормоз - конструкция и п
 
 Конструкция тросового привода стояночного тормоза
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap08/pict/014.jpg)
+![[assets/e73c6567eaeb69da.jpg]]
 
  1 — Рычаг привода стояночного тормоза
 
@@ -84,8 +84,8 @@ aliases: ["11.3 Стояночный тормоз - конструкция и п
 
 Принцип функционирования стояночного тормоза
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap08/pict/011.jpg)
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap08/pict/012.jpg)
+![[assets/4a9a691501a3b923.jpg]]
+![[assets/ed7c2273d1910bc1.jpg]]
 
  1 — Приводной трос
 

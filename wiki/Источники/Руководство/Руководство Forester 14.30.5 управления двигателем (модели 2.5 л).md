@@ -11,8 +11,8 @@ aliases: ["14.30.5 управления двигателем (модели 2.5 �
 
 Система управления двигателем (модели 2.5 л)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/009.jpg)
+![[assets/8e8ef9383f5331a2.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/010.jpg)
+![[assets/398e3d4d1a4d767d.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/011.jpg)
+![[assets/c23568e0628598bd.jpg]]

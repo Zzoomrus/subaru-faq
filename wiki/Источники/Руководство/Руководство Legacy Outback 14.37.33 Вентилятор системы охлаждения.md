@@ -13,8 +13,8 @@ aliases: ["14.37.33 Вентилятор системы охлаждения"]
 
 4-цилиндровые
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0033-01.jpg)
+![[assets/01eb9fd77527e6cb.jpg]]
 
 6-цилиндровые
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0033-02.jpg)
+![[assets/53c9fcd8c62af7c2.jpg]]

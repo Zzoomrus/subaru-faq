@@ -11,4 +11,4 @@ aliases: ["14.30.30 Радиоприемник"]
 
 Радиоприемник
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/029.jpg)
+![[assets/69b1ac8812abf684.jpg]]

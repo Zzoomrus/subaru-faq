@@ -11,4 +11,4 @@ aliases: ["14.30.3 Система заряда"]
 
 Система заряда
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/031.jpg)
+![[assets/f4c1daa83eb89da8.jpg]]

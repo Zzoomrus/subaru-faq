@@ -33,14 +33,14 @@ aliases: ["3.24 Замена фильтрующего элемента возд�
 
 ![[assets/d414c6ae6bee5d85.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subar-instr/236.jpg)
+![[assets/280fe3c0629a52cc.jpg]]
 
 4. Извлеките фильтрующий элемент и протрите внутренние
             стенки кожуха чистой ветошью.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subar-instr/235-1.jpg)
+![[assets/d169eb7632a0bfa1.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/subar-instr/236-1.jpg)
+![[assets/a6415190dd9a8bcf.jpg]]
 
 5. Визуально оцените состояние фильтрующего
             элемента, в случае сильного загрязнения произведите замену. Умеренно

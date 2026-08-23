@@ -11,4 +11,4 @@ aliases: ["14.30.12 Сигнальная система предупрежден
 
 Сигнальная система предупреждения
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/034.jpg)
+![[assets/c65d5ac54bfda8fc.jpg]]

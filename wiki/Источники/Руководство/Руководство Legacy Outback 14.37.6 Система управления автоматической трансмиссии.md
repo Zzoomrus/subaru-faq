@@ -13,24 +13,24 @@ aliases: ["14.37.6 Система управления автоматическ�
 
 4-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0006-01.jpg)
+![[assets/3e0a27d835019f48.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0006-02.jpg)
+![[assets/2d9b451e14d38d72.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0006-03.jpg)
+![[assets/1e63d24ba54ddc33.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0006-04.jpg)
+![[assets/7b101258ecbc7c09.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0006-05.jpg)
+![[assets/494f67936021a1b3.jpg]]
 
 6-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0006-06.jpg)
+![[assets/608b11979b66918c.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0006-07.jpg)
+![[assets/08c29ff26cb630f7.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0006-08.jpg)
+![[assets/96b989b520d97f09.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0006-09.jpg)
+![[assets/6a19a891590c601f.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0006-10.jpg)
+![[assets/98245506270271f4.jpg]]

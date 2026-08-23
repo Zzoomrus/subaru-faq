@@ -11,6 +11,6 @@ aliases: ["14.37.7 Аудиосистема"]
 
 Аудиосистема
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0007-01.jpg)
+![[assets/7ed6d55a2460ea3f.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0007-02.jpg)
+![[assets/9e66fd6db0df187c.jpg]]

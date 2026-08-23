@@ -59,7 +59,7 @@ aliases: ["13.30 Контрольные кузовные размеры"]
 Схема расположения опорных точек обмера задней части кузова (модели
 Седан)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/10/002.jpg)
+![[assets/9b99437cdf82740c.jpg]]
 
  38 — Вытянутое отверстие 18х36 мм под крепление
       панели приборов
@@ -95,7 +95,7 @@ aliases: ["13.30 Контрольные кузовные размеры"]
 Схема расположения опорных точек обмера нижней части кузова (модели
   Седан)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/10/003.jpg)
+![[assets/4df1da772bbe0d7d.jpg]]
 
  50 — Отверстие 15 мм в лонжероне под крепление
       радиаторной панели
@@ -120,45 +120,45 @@ aliases: ["13.30 Контрольные кузовные размеры"]
 
 Подробности расположения опорных точек обмера кузова)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/10/004-.jpg)
+![[assets/7fb534fabd435e14.jpg]]
 
 * RH правый
 
 LH левый
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/10/005-.jpg)
+![[assets/e887629a5e1063b6.jpg]]
 
 Измерение производится при помощи специальной штанги, щупы которой должны помещаться
 в центры опорных отверстий.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/10/008.jpg)
+![[assets/b182209e42594a76.jpg]]
 
 Порядок выполнения проверок, контрольные размеры
 
 Передок
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/10/010.jpg)
+![[assets/5b76944278216101.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/tables/33.jpg)
+![[assets/29ae76ca1b12733f.jpg]]
 
 Передний и боковые проемы
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/10/012.jpg)
+![[assets/b7e5e7ad31b96498.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/tables/34.jpg)
+![[assets/21c37c12ab7bc3b6.jpg]]
 
 Центральная часть кузова
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/10/011.jpg)
+![[assets/586fd7f3bc881409.jpg]]
 
 Салон
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/10/013.jpg)
+![[assets/e709df54d1280bce.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/tables/35.jpg)
+![[assets/96cdc5906ab4c937.jpg]]
 
  Багажное отделение и дверь задка
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/10/014.jpg)
+![[assets/63b056313b61a2b3.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/tables/36.jpg)
+![[assets/13bb9e32caf34aec.jpg]]

@@ -34,22 +34,22 @@ aliases: ["6.3.6 ЕСМ - проверка исправности состоян
 2. Снимите накладку порога
                     правой передней двери.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/22-6.jpg)
+![[assets/dcbc0ba5d733ab1a.jpg]]
 
 3. Отпустите фиксаторы и снимите
                     мат коврового покрытия правого ножного колодца.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/22-7.jpg)
+![[assets/3dd76ac000440f7f.jpg]]
 
 4. Снимите защитную крышку
                     ECM.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/22-8.jpg)
+![[assets/6cd89096db587e9b.jpg]]
 
 5. Отдайте гайки крепления
                     ECM к опорному кронштейну.
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pdfs/chap04/pict/22-9.jpg)
+![[assets/abe1ee9adf9199b5.jpg]]
 
 6. Высвободите из кронштейна
                     хомут жгута электропроводки, рассоедините контактный разъем

@@ -11,4 +11,4 @@ aliases: ["14.30.7 Блокировка переключения"]
 
 Блокировка переключения
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/030.jpg)
+![[assets/c9d04fe27457e4f7.jpg]]

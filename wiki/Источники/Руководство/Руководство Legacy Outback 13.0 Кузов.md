@@ -23,56 +23,56 @@ aliases: ["13.0 Кузов"]
 
 1 — Анкерная скоба
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/04.jpg)
+![[assets/fb7764611f3848c1.jpg]]
 
  Схема нанесения покрытия, защищающего
         краску от сколов
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/05.jpg)
+![[assets/a5e2bd4d22abf52d.jpg]]
 
  Герметизация двигательного отсека
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/06.jpg)
+![[assets/4c80465124d442e7.jpg]]
 
  Герметизация капота
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/07.jpg)
+![[assets/8f0d62679d33782a.jpg]]
 
  Герметизация дверей
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/08.jpg)
+![[assets/5c33edf261aebe87.jpg]]
 
  Герметизация двери задка
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/09.jpg)
+![[assets/94438cc45635c447.jpg]]
 
  Герметизация угловых стыков задних кузовных
         панелей (модели Legacy Универсал и Outback)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/10.jpg)
+![[assets/ec9f7cb92de0aa58.jpg]]
 
  Герметизация верхнего люка (модели Седан)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/11.jpg)
+![[assets/63fb0e7075a957c1.jpg]]
 
  Герметизация передних панелей пола
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/12.jpg)
+![[assets/5510d64d21822e91.jpg]]
 
  Герметизация задних панелей пола
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/13.jpg)
+![[assets/67bf5a583849a975.jpg]]
 
  Герметизация задних кузовных панелей (модели
         Седан)
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/16.jpg)
+![[assets/622230245e566561.jpg]]
 
  Схема нанесения защитного ПВХ-покрытия
 
 Схема установки антикоррозионных протекторов
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/19.jpg)
+![[assets/85d62d3933530433.jpg]]
 
  1 — Защитный экран заливной горловины топливного
       бака
@@ -83,7 +83,7 @@ aliases: ["13.0 Кузов"]
 
 Схема организации вентиляции салона
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/pdfs/chap10/05/21.jpg)
+![[assets/b9f4eea988d6cf73.jpg]]
 
  1 — Вытяжное отверстие
 

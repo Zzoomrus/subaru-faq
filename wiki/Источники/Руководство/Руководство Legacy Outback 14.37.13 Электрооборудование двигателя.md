@@ -13,62 +13,62 @@ aliases: ["14.37.13 Электрооборудование двигателя"]
 
 4-цилиндровые модели с OBD Subaru
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-01.jpg)
+![[assets/3bf4599044d664eb.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-02.jpg)
+![[assets/f597fa32f2cfd5fb.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-03.jpg)
+![[assets/dc8b2bcd9c96d24b.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-04.jpg)
+![[assets/a6bd78f126e93d2f.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-05.jpg)
+![[assets/d73f90ca7a98b9ba.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-06.jpg)
+![[assets/fbefbc8b5bccde52.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-07.jpg)
+![[assets/2df5326ede325c68.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-08.jpg)
+![[assets/a9ae5ea838d68b6d.jpg]]
 
 4-цилиндровые модели с OBD II
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-09.jpg)
+![[assets/2e60ae5a81368eb2.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-10.jpg)
+![[assets/c6aa5b7c27064666.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-11.jpg)
+![[assets/7e5d18dc804fa50f.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-12.jpg)
+![[assets/076001dc342fe8ec.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-13.jpg)
+![[assets/c90fb8465f46752a.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-14.jpg)
+![[assets/100baaf7297a9533.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-15.jpg)
+![[assets/343152be8cb43fcf.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-16.jpg)
+![[assets/e2211f5e41d966a3.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-17.jpg)
+![[assets/19c7d1840068bfce.jpg]]
 
 6-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-18.jpg)
+![[assets/7718a0c62d28fb7a.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-19.jpg)
+![[assets/426dc40d77d66cbf.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-20.jpg)
+![[assets/d06ee6220b00b060.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-21.jpg)
+![[assets/efb543edd5dbd405.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-22.jpg)
+![[assets/4e914a5569cbf71d.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-23.jpg)
+![[assets/4adfded8619daed0.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-24.jpg)
+![[assets/8342ecd146fb5a32.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-25.jpg)
+![[assets/329b9c591c35085f.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-26.jpg)
+![[assets/c66673ee6371f49f.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-27.jpg)
+![[assets/9506e262041a8d8c.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0013-28.jpg)
+![[assets/9e304bb3f61eabe8.jpg]]

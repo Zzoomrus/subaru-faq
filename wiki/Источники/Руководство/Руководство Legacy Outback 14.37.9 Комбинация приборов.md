@@ -13,24 +13,24 @@ aliases: ["14.37.9 Комбинация приборов"]
 
 4-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0009-01.jpg)
+![[assets/b7f4169c208b782e.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0009-02.jpg)
+![[assets/f85549405811c15d.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0009-03.jpg)
+![[assets/01779fcc412b7983.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0009-04.jpg)
+![[assets/f47954b6067c7153.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0009-05.jpg)
+![[assets/5fef2ce733feefde.jpg]]
 
 6-цилиндровые модели
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0009-06.jpg)
+![[assets/dcd2ae8dbbd3e2d4.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0009-07.jpg)
+![[assets/2554018e9adf736b.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0009-08.jpg)
+![[assets/a2ad22f24776e023.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0009-09.jpg)
+![[assets/0a926f4939d7b2e9.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0009-10.jpg)
+![[assets/afe9962d6777b2d9.jpg]]

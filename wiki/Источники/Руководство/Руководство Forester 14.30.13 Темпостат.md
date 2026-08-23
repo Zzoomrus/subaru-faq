@@ -11,4 +11,4 @@ aliases: ["14.30.13 Темпостат"]
 
 Темпостат
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-forester/jpg_/shem/005.jpg)
+![[assets/8ed54d87eb2ca62d.jpg]]

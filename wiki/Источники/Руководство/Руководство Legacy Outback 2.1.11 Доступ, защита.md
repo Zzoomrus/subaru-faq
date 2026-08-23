@@ -31,11 +31,11 @@ aliases: ["2.1.11 Доступ, защита"]
 
 ![[assets/74d374e92ddf1159.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/127.jpg)
+![[assets/edc73ecf0387d699.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/128.jpg)
+![[assets/8a4eb8ab659bbcaa.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/1-jpg_/pict-in/129.jpg)
+![[assets/07f7e7ec0aea9a77.jpg]]
 
 |  | Информация об изготовлении дубликатов ключей для моделей, оборудованных системой иммобилизации двигателя, приведена в Разделе Система иммобилизации двигателя. |
 | --- | --- |

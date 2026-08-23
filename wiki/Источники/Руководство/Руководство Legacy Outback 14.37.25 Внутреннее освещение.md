@@ -11,8 +11,8 @@ aliases: ["14.37.25 Внутреннее освещение"]
 
 Внутреннее освещение
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0025-01.jpg)
+![[assets/f057e1130eef4b23.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0025-02.jpg)
+![[assets/b99e1c39919a06ce.jpg]]
 
-(изображение не сохранилось: http://s7.automn.ru/subaru-legacy-outback/2-jpg_/sh/0025-03.jpg)
+![[assets/bf885a5948449ad4.jpg]]
