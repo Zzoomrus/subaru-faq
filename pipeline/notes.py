@@ -18,7 +18,7 @@ import sqlite3
 import unicodedata
 from pathlib import Path
 
-from pipeline import mirror, mirror_blog, mirror_faq
+from pipeline import mirror, mirror_automn, mirror_blog, mirror_faq
 
 HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.M)
 
@@ -67,6 +67,13 @@ GENERATOR_PATTERNS: tuple[re.Pattern, ...] = (
     _exact_line(mirror_faq.ANSWER_LOST),
     _exact_line(mirror_blog.EMPTY_COMMENT),
     _exact_line(mirror_blog.BODY_LOST),
+    # Заглушка заголовка страницы руководства automn.ru без разобранного
+    # `<h1>` — на живом корпусе не встречается (все 805 страниц несут
+    # заголовок), но литерал есть в коде, значит обязан быть здесь же
+    # (рубеж 1/2 `tests/test_notes.py`). `mirror_blog.BODY_LOST`
+    # переиспользован буквально этим же генератором для пустого тела —
+    # отдельной регистрации для него не нужно, паттерн уже выше.
+    _exact_line(mirror_automn.NO_TITLE),
     # Историческая синонимия из брифа задачи 3: реального плейсхолдера с
     # ТАКИМ текстом ни один генератор не пишет (проверено на живом
     # корпусе — 0 совпадений), но тест `test_citable_drops_empty_

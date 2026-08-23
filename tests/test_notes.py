@@ -4,7 +4,7 @@ import re
 import types
 from pathlib import Path
 
-from pipeline import mirror, mirror_blog, mirror_faq, notes
+from pipeline import mirror, mirror_automn, mirror_blog, mirror_faq, notes
 
 NOTE = """---
 tid: 42335
@@ -336,7 +336,7 @@ def test_every_generator_placeholder_literal_is_scrubbed_by_citable():
     placeholder_constant_value_is_scrubbed_by_citable` ниже.
     """
     literals = set()
-    for module in (mirror, mirror_faq, mirror_blog):
+    for module in (mirror, mirror_faq, mirror_blog, mirror_automn):
         literals |= _placeholder_literals(module)
     assert literals, "эвристика _PLACEHOLDER_SHAPE ничего не нашла — проверь регэксп"
     for literal in literals:
@@ -374,7 +374,7 @@ def test_every_generator_placeholder_constant_value_is_scrubbed_by_citable():
     обычный `str`.
     """
     constants = []
-    for module in (mirror, mirror_faq, mirror_blog):
+    for module in (mirror, mirror_faq, mirror_blog, mirror_automn):
         constants.extend((module, name, value)
                           for name, value in _module_uppercase_string_constants(module).items())
     assert constants, "не нашлось ни одной заглавной строковой константы — проверь модули"
@@ -536,7 +536,7 @@ def test_dynamic_placeholder_shaped_strings_must_be_module_constants():
     ниже).
     """
     violations = []
-    for module in (mirror, mirror_faq, mirror_blog):
+    for module in (mirror, mirror_faq, mirror_blog, mirror_automn):
         violations.extend(_placeholder_violations_in_module(module))
     assert not violations, (
         "плейсхолдер записан динамической строкой прямо в месте использования, не "
