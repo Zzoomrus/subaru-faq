@@ -70,9 +70,17 @@ def local_name(url: str) -> str:
     return digest + suffix
 
 
+#: Картинки руководства раздаются с поддоменов вида `s7.automn.ru`, а не с
+#: основного хоста. Первый прогон этого не знал, отсеял их молча и закончился
+#: с нулём отказов: 805 страниц текста взяты, ни одной схемы. Процедурная
+#: страница без схемы не читается — текст ссылается на пронумерованные детали
+#: рисунка, — так что «успех» был бы наполовину пустым архивом.
+HOST = re.compile(r"^(?:[a-z0-9-]+\.)*automn\.ru$", re.I)
+
+
 def is_ours(url: str) -> bool:
     parts = urllib.parse.urlparse(url)
-    if parts.netloc not in ("automn.ru", "www.automn.ru"):
+    if not HOST.match(parts.netloc):
         return False
     if Path(parts.path).suffix.lower() in IMAGE_SUFFIXES:
         return True
@@ -84,7 +92,9 @@ def looks_real(data: bytes, url: str) -> bool:
         return any(data.startswith(sig) for sig in IMAGE_SIGNATURES)
     if len(data) < 500:
         return False
-    text = data.decode("cp1251", errors="replace")
+    # Страницы automn.ru в UTF-8, в отличие от форума (windows-1251) — не
+    # переноси сюда привычку разбора форумных страниц: получишь кракозябры.
+    text = data.decode("utf-8", errors="replace")
     return bool(HTML_MARKER.search(text))
 
 
@@ -140,7 +150,7 @@ def main() -> int:
         path = out / "files" / local_name(url)
         if not path.suffix == ".html" or not path.exists():
             continue
-        text = path.read_bytes().decode("cp1251", errors="replace")
+        text = path.read_bytes().decode("utf-8", errors="replace")
         for raw in LINK.findall(text) + IMG.findall(text):
             nxt = urllib.parse.urljoin(url, raw.strip())
             nxt, _ = urllib.parse.urldefrag(nxt)
@@ -169,7 +179,7 @@ def main() -> int:
             fetched += 1
             # Ссылки собираем только со своих HTML-страниц.
             if name.endswith(".html"):
-                text = data.decode("cp1251", errors="replace")
+                text = data.decode("utf-8", errors="replace")
                 for raw in LINK.findall(text) + IMG.findall(text):
                     nxt = urllib.parse.urljoin(url, raw.strip())
                     nxt, _ = urllib.parse.urldefrag(nxt)
