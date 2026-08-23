@@ -320,6 +320,111 @@ def _require_safe_path_component(value: str, label: str, draft_path: Path) -> No
             "`.`/`..` запрещены" % (draft_path, label, value))
 
 
+def _draft_target(meta: dict, draft_path: Path, articles_dir: Path) -> Path:
+    """Извлекает и проверяет `заголовок`/`путь` черновика, возвращает
+    НЕразрешённый путь `<articles_dir>/<путь>/<заголовок>.md`.
+
+    Общий расчёт для `build()` (куда пишет ЭТА сборка) и для
+    `prune_orphans` (куда пишет КАЖДЫЙ черновик, включая не тот, что
+    сейчас собирается) — один код на два потребителя, а не две копии,
+    которые могут разойтись молча (тот же урок Ф2, что у
+    `check_mirror.title_collisions`)."""
+    title = meta.get("заголовок")
+    if not title:
+        raise DraftError("в черновике «%s» не задан заголовок статьи (frontmatter `заголовок:`)"
+                          % draft_path)
+    section_path = meta.get("путь")
+    if not section_path:
+        raise DraftError("в черновике «%s» не задан `путь` (папка узла в wiki/Статьи) — код "
+                          "не угадывает её из «узел», это должно быть решено явно" % draft_path)
+    _require_safe_path_component(title, "заголовок", draft_path)
+    _require_safe_path_component(section_path, "путь", draft_path)
+    return articles_dir / section_path / ("%s.md" % title)
+
+
+# Признак «это файл написал render()», проверяемый по ФОРМЕ СОДЕРЖИМОГО, не
+# имени: у вложений (`mirror.prune_assets`) есть форма имени файла генератора
+# (`attachments.ASSET_NAME_RE`, `<16 hex><ext>`) — у статьи заголовок и имя
+# файла выбирает человек словами, точно так же, как автор личной заметки,
+# вручную положенной в тот же каталог; формы имени, отличающей одно от
+# другого, не существует. `render()` (см. выше) безусловно пишет ПЕРВОЙ
+# строкой frontmatter (сразу после `---`) `type: статья` и ничего другого в
+# `wiki/Статьи` этот код не пишет — эта строка и есть тот же по роли, но не
+# по механике признак: не результат догадки по имени, а фиксированный след,
+# который оставляет сам генератор.
+_FRONTMATTER_TYPE_ARTICLE = re.compile(r"^type:\s*статья\s*$", re.M)
+
+
+def _is_generated_article(path: Path) -> bool:
+    """True, если `path` несёт frontmatter-след `render()` (см. выше).
+    Файл без этого следа не трогается никогда — что бы ни показало
+    сравнение с текущим набором черновиков."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
+    if not text.startswith("---\n"):
+        return False
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return False
+    return bool(_FRONTMATTER_TYPE_ARTICLE.search(text[4:end]))
+
+
+def prune_orphans(root: Path) -> int:
+    """Убирает из `<root>/wiki/Статьи` файлы статей, которым больше не
+    соответствует ни один черновик — переименование заголовка/пути в
+    черновике оставляет старый файл под старым именем, а никакая проверка
+    целостности (`check_mirror.check`) это не ловит: ссылки и якоря у
+    сироты в порядке, она просто больше никому не нужна. Тот же приём, что
+    `mirror.prune_assets` использует для осиротевших вложений — вызывается
+    из `build()` при каждой успешной сборке (для статей нет отдельного
+    прохода «собрать все», как `mirror.write_all` у вложений, поэтому
+    пересчёт целевого множества заново на каждый вызов — не оптимизация,
+    а единственный способ поддерживать дерево согласованным без отдельного
+    состояния на диске).
+
+    Предохранитель — как у `prune_assets`, но по своему условию: у вложений
+    он «ни одной заметки не записано», у статей — «ни одного черновика не
+    разобралось» (пустой/не существующий `articles/черновики`, либо все
+    файлы в нём непригодны для сборки). В обоих случаях каталог статей не
+    трогается вовсе — неверный `--root` не должен стирать существующие
+    статьи как «сирот», а черновик, который сейчас не собрать, не даёт
+    оснований удалить ЧУЖОЙ файл: он просто выпадает из проверки для
+    своего собственного ключа, как и при обычном `build()` этого ключа.
+    """
+    root = Path(root)
+    articles_dir = root / "wiki" / "Статьи"
+    drafts_dir = root / "articles" / "черновики"
+    if not articles_dir.exists() or not drafts_dir.exists():
+        return 0
+
+    articles_root_resolved = articles_dir.resolve()
+    keep: set[Path] = set()
+    for draft_path in sorted(drafts_dir.glob("*.md")):
+        try:
+            meta, _ = _parse_draft(draft_path)
+            out_path = _draft_target(meta, draft_path, articles_dir)
+        except DraftError:
+            continue
+        resolved = out_path.resolve()
+        if resolved == articles_root_resolved or articles_root_resolved in resolved.parents:
+            keep.add(resolved)
+
+    if not keep:
+        return 0
+
+    removed = 0
+    for path in sorted(articles_dir.rglob("*.md")):
+        if path.resolve() in keep:
+            continue
+        if not _is_generated_article(path):
+            continue
+        path.unlink()
+        removed += 1
+    return removed
+
+
 def build(key: str, root: Path) -> Path:
     """Собирает статью с ключом `key` и пишет её в
     `<root>/wiki/Статьи/<путь>/<заголовок>.md`.
@@ -370,8 +475,7 @@ def build(key: str, root: Path) -> Path:
     if not title:
         raise DraftError("в черновике «%s» не задан заголовок статьи (frontmatter `заголовок:`)"
                           % draft_path)
-    section_path = meta.get("путь")
-    if not section_path:
+    if not meta.get("путь"):
         raise DraftError("в черновике «%s» не задан `путь` (папка узла в wiki/Статьи) — код "
                           "не угадывает её из «узел», это должно быть решено явно" % draft_path)
     if not meta.get("собрано"):
@@ -382,8 +486,6 @@ def build(key: str, root: Path) -> Path:
             "пересборку в чистый каталог (Global Constraint №8), а "
             "«сегодня» ломает воспроизводимость на смене суток; решается "
             "явно, тем же способом, что и «путь»" % draft_path)
-    _require_safe_path_component(title, "заголовок", draft_path)
-    _require_safe_path_component(section_path, "путь", draft_path)
 
     # R6 ре-ревью: `out_path` строится от ПЕРЕДАННОГО `root`, не резолвленного
     # — контракт функции документирован как «пишет <root>/wiki/Статьи/<путь>/
@@ -397,8 +499,10 @@ def build(key: str, root: Path) -> Path:
     # Вычислен ДО загрузки фактов/рендера (не только до записи файла) —
     # рубежи ниже (безопасность пути, коллизия имени) не должны тратить
     # время на факты и прозу, если статья всё равно не будет записана.
+    # `_draft_target` заодно проверяет безопасность обоих компонентов
+    # (`_require_safe_path_component`) — общий с `prune_orphans` расчёт.
     articles_dir = root / "wiki" / "Статьи"
-    out_path = articles_dir / section_path / ("%s.md" % title)
+    out_path = _draft_target(meta, draft_path, articles_dir)
     # Второй, независимый от `_require_safe_path_component` рубеж (F3):
     # итоговый путь обязан фактически лежать внутри `wiki/Статьи` после
     # `resolve()` — символьные ссылки, юникод-трюки и всё, что первая
@@ -446,4 +550,13 @@ def build(key: str, root: Path) -> Path:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(text, encoding="utf-8")
+
+    # Сирота от переименования (задача 5-бис): если этот же ключ раньше
+    # собирался под другим заголовком/путём, старый файл остаётся на диске
+    # — ни одна проверка целостности (`check_mirror.check`) этого не видит
+    # (ссылки и якоря сироты в порядке, у неё просто нет читателя). Нет
+    # отдельного прохода «собрать все статьи», как `mirror.write_all` у
+    # вложений, поэтому уборка идёт ПОСЛЕ каждой успешной записи, не только
+    # после последней — см. `prune_orphans`.
+    prune_orphans(root)
     return out_path

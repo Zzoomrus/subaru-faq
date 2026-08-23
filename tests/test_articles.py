@@ -627,3 +627,74 @@ def test_источников_counts_only_used_facts_not_all_verified():
     out = articles.render("Т[^f1].", verified, {"заголовок": "Х"})
     assert "источников: 1" in out
     assert "неиспользованные_факты: [f2, f3]" in out
+
+
+# --- задача 5-бис: переименование заголовка оставляет сироту ---------------
+#
+# `check_mirror.check` (последний рубеж целостности) не видит осиротевший
+# файл вовсе: ни битых ссылок, ни битых якорей — просто лишний файл, на
+# который никто не ссылается. Чинится тем же приёмом, что и осиротевшие
+# вложения (`mirror.prune_assets`), но по другому признаку: у вложений есть
+# форма ИМЕНИ файла (`attachments.ASSET_NAME_RE`), у статьи заголовок и имя
+# файла выбирает человек — то же самое, что делает автор личной заметки,
+# положенной в тот же каталог руками. Признак поэтому не по имени, а по
+# СОДЕРЖИМОМУ: `render()` безусловно пишет `type: статья` первой строкой
+# frontmatter, и файл без этой строки не трогается никогда.
+
+
+def test_build_renaming_the_title_removes_the_old_orphan_file(tmp_path):
+    _write_inputs(tmp_path, "х", ["заголовок: Датчик детонации", "путь: Двигатель",
+                                   "собрано: 2026-08-21"])
+    old_path = articles.build("х", tmp_path)
+    assert old_path.exists()
+
+    _write_inputs(tmp_path, "х", ["заголовок: Датчик детонации Subaru", "путь: Двигатель",
+                                   "собрано: 2026-08-21"])
+    new_path = articles.build("х", tmp_path)
+
+    assert new_path != old_path
+    assert new_path.exists()
+    assert not old_path.exists(), "переименование заголовка оставило старый файл-сироту"
+
+
+def test_build_does_not_touch_a_foreign_file_placed_by_hand(tmp_path):
+    """Личная заметка, положенная человеком в тот же каталог — без
+    `type: статья` во frontmatter — не должна пострадать от уборки сирот,
+    даже если она не соответствует ни одному черновику."""
+    foreign = tmp_path / "wiki" / "Статьи" / "Двигатель" / "Личные заметки.md"
+    foreign.parent.mkdir(parents=True, exist_ok=True)
+    foreign.write_text("---\ntype: заметка\n---\n\nМои личные мысли про двигатель.\n",
+                        encoding="utf-8")
+
+    _write_inputs(tmp_path, "х", ["заголовок: Датчик детонации", "путь: Двигатель",
+                                   "собрано: 2026-08-21"])
+    articles.build("х", tmp_path)
+
+    assert foreign.exists(), "уборка сирот удалила чужой файл без нашего frontmatter-следа"
+    assert "Мои личные мысли" in foreign.read_text(encoding="utf-8")
+
+
+def test_build_rebuilding_the_same_draft_unchanged_deletes_nothing(tmp_path):
+    _write_inputs(tmp_path, "х", ["заголовок: Датчик детонации", "путь: Двигатель",
+                                   "собрано: 2026-08-21"])
+    out_path = articles.build("х", tmp_path)
+    before = sorted(p.relative_to(tmp_path) for p in (tmp_path / "wiki").rglob("*.md"))
+
+    articles.build("х", tmp_path)
+    after = sorted(p.relative_to(tmp_path) for p in (tmp_path / "wiki").rglob("*.md"))
+
+    assert out_path.exists()
+    assert before == after
+
+
+def test_prune_orphans_does_nothing_when_drafts_directory_is_missing_or_empty(tmp_path):
+    """Предохранитель, симметричный `prune_assets`: у вложений — «ни одной
+    заметки не записано», у статей — «ни одного черновика не разобралось».
+    Пустой/несуществующий каталог черновиков не должен читаться как «все
+    статьи — сироты» и стирать существующее дерево из-за неверного `root`."""
+    stray = tmp_path / "wiki" / "Статьи" / "Двигатель" / "Что-то.md"
+    stray.parent.mkdir(parents=True, exist_ok=True)
+    stray.write_text("---\ntype: статья\n---\n\n# Что-то\n", encoding="utf-8")
+
+    assert articles.prune_orphans(tmp_path) == 0
+    assert stray.exists()
