@@ -340,15 +340,12 @@ def check(article_path: Path, wiki_root: Path, mirror_root: Path, conn: sqlite3.
     except ValueError:
         pass
 
-    def _name_collisions(name: str) -> list[str]:
-        cf = name.casefold()
-        hits = {k for key in by_name for k in by_name[key] if key.casefold() == cf}
-        hits |= set(alias_index.get(cf, []))
-        hits.discard(own_key)
-        return sorted(hits)
-
+    # `title_collisions` — общая функция с `pipeline.articles.build` (первый
+    # рубеж, до записи файла), не переизобретённая здесь копия того же
+    # алгоритма; см. её докстринг про то, почему коллизия — рутинный, а не
+    # краевой случай.
     for name in [article_path.stem] + list(meta.get("aliases", [])):
-        collisions = _name_collisions(name)
+        collisions = check_mirror.title_collisions(name, by_name, alias_index, own_key=own_key)
         if collisions:
             problems.append(
                 "имя статьи «%s» совпадает с именем/алиасом заметки «%s» в зеркале — ссылка на "

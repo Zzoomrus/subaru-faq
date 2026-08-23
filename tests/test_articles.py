@@ -424,6 +424,91 @@ def test_build_second_barrier_catches_symlink_escaping_wiki_stati(tmp_path):
         articles.build("х", tmp_path)
 
 
+# --- коллизия заголовка статьи с именем/псевдонимом заметки зеркала --------
+# (первый рубеж, ДО записи файла — не только последний, в `verify.py`, после
+# того как статья уже полностью написана; задание тимлида после разбора
+# «сколько таких коллизий будет на пилоте» — рутинный, не краевой случай).
+
+
+def _write_mirror_note(tmp_path, key, aliases=()):
+    """Минимальная заметка зеркала — `wiki/Источники/<key>.md`, только то,
+    что нужно `check_mirror.build_notes_index`/`build_alias_index`: имя
+    файла (сам `key`) и, если задан, `aliases` во frontmatter."""
+    path = tmp_path / "wiki" / "Источники" / ("%s.md" % key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    front = "aliases: [%s]\n" % ", ".join('"%s"' % a for a in aliases) if aliases else ""
+    path.write_text("---\n%s---\n\n# %s\n" % (front, key), encoding="utf-8")
+
+
+def test_build_rejects_title_colliding_with_a_mirror_note_alias(tmp_path):
+    """Живой случай пилота: тема форума «Тема 16109» названа человеком
+    «Датчик детонации (ДД)» — Obsidian хранит в `aliases` уточнение в
+    скобках отдельно не отсекая, но здесь достаточно точного совпадения
+    заголовка статьи с ЦЕЛЫМ алиасом, чтобы показать механизм."""
+    _write_mirror_note(tmp_path, "Тема 16109", aliases=["Датчик детонации"])
+    _write_inputs(tmp_path, "х",
+                  ["заголовок: Датчик детонации", "путь: Двигатель", "собрано: 2026-08-21"])
+    with pytest.raises(articles.DraftError) as exc:
+        articles.build("х", tmp_path)
+    message = str(exc.value)
+    assert "Датчик детонации" in message          # заголовок статьи назван
+    assert "Тема 16109" in message                 # заметка-двойник названа
+    assert "уточни заголовок" in message.lower()   # подсказан способ решения
+    assert "subaru" not in message.lower()         # НЕ подсказан брендовый суффикс
+
+
+def test_build_rejects_title_colliding_with_a_mirror_note_filename(tmp_path):
+    """Коллизия по МАШИННОМУ имени заметки (не только по alias) — тот же
+    рубеж, что различает `resolve_note`/`by_name`."""
+    _write_mirror_note(tmp_path, "Расшифровка VIN")
+    _write_inputs(tmp_path, "х",
+                  ["заголовок: Расшифровка VIN", "путь: VIN", "собрано: 2026-08-21"])
+    with pytest.raises(articles.DraftError):
+        articles.build("х", tmp_path)
+
+
+def test_build_succeeds_with_a_unique_title_even_with_a_populated_mirror(tmp_path):
+    """Обратная проверка: заметки зеркала есть, но заголовок статьи с ними
+    не совпадает — сборка идёт как раньше, рубеж не даёт лишнего шума."""
+    _write_mirror_note(tmp_path, "Тема 16109", aliases=["Датчик детонации"])
+    _write_mirror_note(tmp_path, "Тема 14487", aliases=["Плохой запуск"])
+    _write_inputs(tmp_path, "х",
+                  ["заголовок: Диагностика датчика детонации", "путь: Двигатель",
+                   "собрано: 2026-08-21"])
+    out_path = articles.build("х", tmp_path)
+    assert out_path == tmp_path / "wiki" / "Статьи" / "Двигатель" / "Диагностика датчика детонации.md"
+
+
+def test_build_renaming_the_title_clears_the_collision(tmp_path):
+    """Переименование заголовка в черновике снимает отказ — тот же вход
+    (факты, тело), только другое имя."""
+    _write_mirror_note(tmp_path, "Тема 16109", aliases=["Датчик детонации"])
+    _write_inputs(tmp_path, "х",
+                  ["заголовок: Датчик детонации", "путь: Двигатель", "собрано: 2026-08-21"])
+    with pytest.raises(articles.DraftError):
+        articles.build("х", tmp_path)
+
+    _write_inputs(tmp_path, "х",
+                  ["заголовок: Диагностика датчика детонации", "путь: Двигатель",
+                   "собрано: 2026-08-21"])
+    out_path = articles.build("х", tmp_path)
+    assert out_path.exists()
+
+
+def test_build_rebuilding_the_same_article_does_not_collide_with_itself(tmp_path):
+    """Повторная сборка уже опубликованной статьи с тем же заголовком не
+    должна считаться «коллизией» самой с собой — собственный, уже
+    существующий на диске файл статьи исключается из совпадений тем же
+    механизмом (`own_key`), что уже есть в `verify.py`."""
+    _write_inputs(tmp_path, "х",
+                  ["заголовок: Диагностика датчика детонации", "путь: Двигатель",
+                   "собрано: 2026-08-21"])
+    first = articles.build("х", tmp_path)
+    assert first.exists()
+    second = articles.build("х", tmp_path)  # пересборка того же черновика
+    assert second == first
+
+
 # --- ревью задачи 5: F4 — маркер в коде/HTML-комментарии считался
 # «использованным», обнуляя замер непроцитированных источников -------------
 

@@ -42,7 +42,7 @@ import json
 import re
 from pathlib import Path
 
-from . import notes
+from . import check_mirror, notes
 
 # Маркер сноски в прозе черновика — то, что ставит ИИ: `[^f1]`, `[^f12]` и
 # т.п. Идентификатор — всё до `]`, без пробелов (ровно те `id`, что выдаёт
@@ -385,9 +385,6 @@ def build(key: str, root: Path) -> Path:
     _require_safe_path_component(title, "заголовок", draft_path)
     _require_safe_path_component(section_path, "путь", draft_path)
 
-    verified = json.loads(verified_path.read_text(encoding="utf-8"))["проверено"]
-    text = render(draft, verified, meta)
-
     # R6 ре-ревью: `out_path` строится от ПЕРЕДАННОГО `root`, не резолвленного
     # — контракт функции документирован как «пишет <root>/wiki/Статьи/<путь>/
     # <заголовок>.md», то есть путь ОТ `root`, а не абсолютный канонический.
@@ -396,6 +393,10 @@ def build(key: str, root: Path) -> Path:
     # иначе, например, macOS-симлинк `/var` -> `/private/var` в `root`
     # разворачивается в путь, для которого `relative_to(root)`/`root / ...`
     # у вызывающего кода перестают совпадать (сломанная оснастка ре-ревью).
+    #
+    # Вычислен ДО загрузки фактов/рендера (не только до записи файла) —
+    # рубежи ниже (безопасность пути, коллизия имени) не должны тратить
+    # время на факты и прозу, если статья всё равно не будет записана.
     articles_dir = root / "wiki" / "Статьи"
     out_path = articles_dir / section_path / ("%s.md" % title)
     # Второй, независимый от `_require_safe_path_component` рубеж (F3):
@@ -410,6 +411,38 @@ def build(key: str, root: Path) -> Path:
         raise DraftError(
             "итоговый путь статьи «%s» выходит за пределы «%s» — проверь поля "
             "«путь»/«заголовок» черновика «%s»" % (resolved, articles_root_resolved, draft_path))
+
+    # Коллизия заголовка с именем/псевдонимом заметки зеркала — ПЕРВЫЙ
+    # рубеж, до записи файла (не только последний, в `verify.py`, после
+    # того как статья уже полностью написана): короткое номинативное
+    # название узла — самый частый способ назвать тему форума, и статья
+    # про тот же узел называется так же по той же причине — совпадение не
+    # редкость, а закономерность (30% алиасов тем форума короче трёх слов
+    # и уже в форме заголовка статьи; 80 из них делят имя с ДРУГОЙ
+    # заметкой зеркала ещё до единой статьи). `title_collisions` — общая
+    # функция с проверкой `verify.py` (Global Constraint фазы №3 — два
+    # потребителя одного знания не заводят две копии, которые разойдутся
+    # молча, как разошлись `sync_to_db`/`local_path` в Ф2).
+    # `resolved` уже проверен ВЫШЕ как лежащий внутри `articles_dir`
+    # (`wiki_root / "Статьи"`), значит и внутри `wiki_root` — `relative_to`
+    # здесь не может бросить исключение неожиданно.
+    wiki_root = root / "wiki"
+    own_key = resolved.relative_to(wiki_root.resolve()).with_suffix("").as_posix()
+    mirror_notes, by_name = check_mirror.build_notes_index(wiki_root)
+    alias_index = check_mirror.build_alias_index(mirror_notes)
+    collisions = check_mirror.title_collisions(title, by_name, alias_index, own_key=own_key)
+    if collisions:
+        raise DraftError(
+            "заголовок статьи «%s» (черновик «%s») совпадает с именем/псевдонимом заметки «%s» "
+            "в зеркале — ссылка на этот адрес станет неоднозначной и может молча резолвиться не "
+            "туда. Уточни заголовок ПО СУЩЕСТВУ — чем статья отличается от источника (диагностика, "
+            "симптомы, способ ремонта — например, «Диагностика датчика детонации» вместо голого "
+            "«Датчик детонации»), а не приписывай общий суффикс вроде марки автомобиля: он ничего "
+            "не различает по смыслу и не гарантирует уникальность сам"
+            % (title, draft_path, ", ".join(collisions)))
+
+    verified = json.loads(verified_path.read_text(encoding="utf-8"))["проверено"]
+    text = render(draft, verified, meta)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(text, encoding="utf-8")
