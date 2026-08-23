@@ -1,0 +1,172 @@
+[
+  {
+    "источник": "Тема 33495#Пост 268017",
+    "цитата": "про 14 контактный разъём там ни слова, или при таком разъёме нужно искать зелёные и чёрные.",
+    "суть": "Автор предполагает, что для самодиагностики через 14-контактный разъём нужно искать зелёный и чёрный контакты, хотя в найденном источнике про такой разъём ничего не сказано."
+  },
+  {
+    "источник": "Тема 33495#Пост 268017",
+    "цитата": "Нашол только, что 4 контакт 14 пинового разъёма, вывод для запуска выдачи медленных кодов неисправностей блока управления двигателем.",
+    "суть": "4-й контакт 14-пинового диагностического разъёма — вывод для запуска выдачи медленных кодов неисправностей ЭБУ двигателя."
+  },
+  {
+    "источник": "Тема 33495#Пост 268018",
+    "цитата": "Разъём серый, как у ниссана.",
+    "суть": "Диагностический разъём на машине автора серого цвета, похож на разъём Nissan."
+  },
+  {
+    "источник": "Тема 33495#Пост 268023",
+    "цитата": "субару легази, б-4, 2003 год, японец.",
+    "суть": "Обсуждаемый автомобиль — Subaru Legacy B4 2003 года выпуска, японский внутренний рынок (JDM)."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "Альтернативный или дополнительный способ, для тех у кого нет разъемов папа/мама",
+    "суть": "Описываемый способ чтения кодов — альтернатива для тех, у кого нет перемычек-разъёмов «папа/мама» для замыкания диагностического разъёма."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "Тут пишут, что коды ошибок действительно можно увидеть на trip жк дисплее вместо суточного пробега.",
+    "суть": "Коды ошибок можно увидеть прямо на trip-дисплее приборной панели вместо суточного пробега."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "На Subaru Legacy и Outback 2005 - 2009 годов выпуска",
+    "суть": "Способ применим к Subaru Legacy и Outback 2005–2009 годов выпуска."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "И для этого не надо никуда лезть и ничего соединять!",
+    "суть": "Способ не требует физического подключения перемычек к разъёмам."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "The 2005 thru 2009 model year Legacy and Outback can display Diagnostic Trouble Codes (DTCs) directly on the dashboard. No scan tool is needed. No jumper wires are required, and it is not necessary to count blinky lights. The codes are displayed in plain text on the instrument cluster.",
+    "суть": "Legacy/Outback 2005–2009 могут показывать коды ошибок прямо текстом на приборной панели без сканера, перемычек и подсчёта миганий."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "Trouble codes from the ECM (Engine Control Module), TCM (Transmission Control Module) and ABSCM/VDCCM (ABS or VDC Control Module) are displayed.",
+    "суть": "Отображаются коды ошибок трёх блоков: ECM (двигатель), TCM (коробка передач) и ABSCM/VDCCM (ABS/VDC)."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "This procedure was distilled from the FSM. The English translation in the FSM is not very good, so I have attempted to make it easier to follow. The FSM has this procedure in the Body Section, Instrument/Driver Information, Comination Meter System chapter.",
+    "суть": "Процедура взята из заводского руководства FSM, раздел Body Section → Instrument/Driver Information → Combination Meter System."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "I believe this procedure will work for all 2005 to 2009 Legacys and Outbacks. However, I have only tested the procedure on my car, a 2007 Outback 2.5i automatic.",
+    "суть": "Автор полагает, что процедура работает на всех Legacy/Outback 2005–2009, но лично проверил только на своём Outback 2.5i 2007 года с автоматом."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "Процедура точно работает на машине Outback 2.5i 2007 года (так пишет владелец)",
+    "суть": "Подтверждено владельцем — процедура работает на Outback 2.5i 2007 года."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "И еще она точно работает на европейке Outback 2.5 АКПП 2006 модельного года",
+    "суть": "Процедура также подтверждена рабочей на европейском Outback 2.5 АКПП 2006 модельного года."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "I don't know of a way to reset the codes without a scan tool. Disconnecting the battery may or may not work.",
+    "суть": "Способа сбросить коды без сканера автор не знает; отключение аккумулятора может помочь, а может и нет."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "Exactly what you will see depends on what type of display your car has. There are two images of tables below, one for the Normal display and one for the Multi-Information Display that is found on Turbo models.",
+    "суть": "Вид отображаемых кодов зависит от типа дисплея: обычный или Multi-Information (на турбо-моделях) — для каждого своя таблица кодов."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "Starting condition: key off, headlight switch off.",
+    "суть": "Исходное состояние перед процедурой — зажигание выключено, выключатель фар выключен."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "Steps 1 through 7 must be performed within 10 seconds.",
+    "суть": "Шаги с 1 по 7 нужно выполнить за 10 секунд."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "1. Turn key to ON position. This is the normal running position, the click just before starting, when all the lights on the dash come on, but before you twist to START. Don't start the engine!",
+    "суть": "Шаг 1 — повернуть ключ в положение ON (все лампы на панели загораются), не заводя двигатель."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "2. Within 3 seconds, turn the headlight switch ON.",
+    "суть": "Шаг 2 — в течение 3 секунд включить ближний свет фар."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "3. Press the Trip/Odometer button 4 times.",
+    "суть": "Шаг 3 — нажать кнопку Trip/Odometer 4 раза."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "4. Turn the headlight switch OFF.",
+    "суть": "Шаг 4 — выключить ближний свет фар."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "5. Press the Trip/Odometer button 4 times.",
+    "суть": "Шаг 5 — снова нажать кнопку Trip/Odometer 4 раза."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "6. Turn headlight swtich ON.",
+    "суть": "Шаг 6 — снова включить ближний свет фар."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "7. Press Trip/Odometer button 4 times. At this point, the DTC display will begin.",
+    "суть": "Шаг 7 — нажать кнопку Trip/Odometer 4 раза, после чего начнётся отображение кодов ошибок."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "8. Turn headlight switch OFF. Not necessary for the procedure, but your display may be dimmed and hard to read in bright sunlight. Besides, why drain the battery?",
+    "суть": "Шаг 8 (необязательный) — выключить фары, чтобы дисплей было легче читать на солнце и не сажать аккумулятор."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "The DTCs for each module will display in order: ECM, TCM, ABSCM/VDCCM. Press the Trip/Odometer button to cycle between modules. The FSM states that the display will cycle between modules automatically every three seconds if the button is not pushed, but that did not happen in my car - I had to push the button to cycle the display.",
+    "суть": "Коды отображаются по очереди для ECM, TCM, ABSCM/VDCCM; переключение между блоками — кнопкой Trip/Odometer (заявленное в FSM автопереключение каждые 3 секунды у автора не сработало)."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "For each module, there are three display states:\n- Receiving DTC from module (blinking \"P\" or \"C\")\n- DTC detected & displayed (\"P\" or \"C\" followed by 4 digits)\n- No DTC found (\"P\" or \"C\" followed by \"----\")",
+    "суть": "Для каждого блока возможны три состояния индикации: приём данных (мигающая P/C), обнаруженный код (P/C + 4 цифры) или отсутствие кодов (P/C + «----»)."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "If there is a CAN (Controller Area Network) bus communication error, you will see only \"----\" in the display. Basically, that means that the network in your car is broken. That will need to be repaired before anything else can be done.",
+    "суть": "Если на дисплее только «----» — это признак ошибки шины CAN: сеть автомобиля неисправна, и её нужно чинить в первую очередь."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "TCM error codes will not be displayed for cars with manual transmissions. The TCM display state will remain in \"Receiving DTC\" (blinking \"P\" on display). In my case, my car is an automatic, but the blinking \"P\" remained, possibly because I have no codes set.",
+    "суть": "На машинах с механической коробкой коды TCM не отображаются (остаётся мигающая P); у автора на автомате мигающая P тоже осталась — возможно, из-за отсутствия установленных кодов."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "To cancel the DTC display, turn the key to OFF.",
+    "суть": "Чтобы выйти из режима отображения кодов, нужно вернуть ключ в положение OFF."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "If the engine is started, the DTC display will remain until the car starts to move. (I did not test this)",
+    "суть": "Если завести двигатель, отображение кодов сохранится, пока машина не тронется с места (автором не проверено)."
+  },
+  {
+    "источник": "Тема 28899#Пост 219647",
+    "цитата": "Past DTCs that have been repaired will be displayed until the engine is started 3 times. (I did not test this)",
+    "суть": "Уже устранённые коды продолжают отображаться, пока двигатель не будет запущен 3 раза (автором не проверено)."
+  },
+  {
+    "источник": "Тема 28899#Пост 408882",
+    "цитата": "Все леворукие машины спокойно сканируются китайским сканером елм327 с алиэкспресса. цена его 450р. нужен андроид-устройство.",
+    "суть": "Все леворульные (LHD) машины можно диагностировать дешёвым китайским сканером ELM327 (~450 руб.) через Android-устройство."
+  }
+]
