@@ -31,7 +31,12 @@ def _args(tmp_path, *cmd):
             # без этого `ingest`/`all`/`mirror` подхватили бы дефолтный
             # боевой манифест/каталог добора Ф2 относительно cwd теста.
             "--assets-manifest", str(tmp_path / "assets-manifest.jsonl"),
-            "--assets-root", str(tmp_path / "assets")]
+            "--assets-root", str(tmp_path / "assets"),
+            # То же самое для третьего источника (руководство automn.ru):
+            # дефолт `data/automn` — реальный боевой каталог добора в 805+
+            # страниц, без изоляции `all`/`mirror` молча подмешал бы его в
+            # каждый тест этого файла.
+            "--automn-root", str(tmp_path / "automn-none")]
 
 
 def _faq_site(tmp_path):

@@ -201,13 +201,18 @@ def test_all_sections_share_one_asset_directory(tmp_path):
     путей к архиву картинок — на практике их пришлось передать явно
     (дефолты `run.build_mirror` указывают на боевые `data/...`, а не на
     `tmp_path`, и звать генератор с боевыми путями внутри теста нельзя).
+    То же самое верно для `automn_root` (третий источник): дефолт
+    `data/automn` — реальный боевой каталог добора, и без явного пустого
+    `tmp_path` этот тест молча подмешал бы сотни боевых картинок
+    руководства в счёт "один адрес — один файл".
     """
     conn = _db_with_faq_and_blog_sharing_one_image(tmp_path)
 
     root = tmp_path / "Источники"
     run.build_mirror(conn, root,
                       archive_assets_manifest=FIX_ASSETS / "manifest-assets.jsonl",
-                      archive_assets_root=FIX_ASSETS / "assets")
+                      archive_assets_root=FIX_ASSETS / "assets",
+                      automn_root=tmp_path / "automn-none")
 
     assert (root / "assets").is_dir()
     assert not (root / "FAQ" / "assets").exists()

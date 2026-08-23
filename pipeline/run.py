@@ -133,8 +133,8 @@ import sys
 from pathlib import Path
 
 from pipeline import (archive_assets, articles, assets_state, attachments, check_mirror, coverage, db,
-                      facts, faq_dedup, fetch_assets, fetch_site, ingest, mirror, mirror_blog,
-                      mirror_faq, parse_blog, parse_faq, verify)
+                      facts, faq_dedup, fetch_assets, fetch_site, ingest, mirror, mirror_automn,
+                      mirror_blog, mirror_faq, parse_blog, parse_faq, verify)
 
 DEFAULT_PAGES = Path("data/raw/archive/pages")
 DEFAULT_MANIFEST = Path("data/raw/archive/manifest.jsonl")
@@ -149,6 +149,12 @@ DEFAULT_FAQ_MIRROR_DIRNAME = "FAQ"
 # Подкаталог зеркала блогов ВНУТРИ --mirror-dir (задача 7, тот же приём,
 # что у FAQ) — `wiki/Источники/Блоги/`.
 DEFAULT_BLOG_MIRROR_DIRNAME = "Блоги"
+# Подкаталог зеркала руководства automn.ru ВНУТРИ --mirror-dir (третий
+# источник) — `wiki/Источники/Руководство/`. Своей записи в базе нет —
+# `mirror_automn` читает HTML прямо с диска по манифесту добора
+# (`--automn-root`/…/manifest.jsonl, `.../files/`), см. докстринг модуля.
+DEFAULT_AUTOMN_MIRROR_DIRNAME = "Руководство"
+DEFAULT_AUTOMN_ROOT = Path("data/automn")
 # Подкаталог статей (Ф3, задача 5/7) ВНУТРИ --wiki — `wiki/Статьи/`, тот
 # же путь, что строит `articles.build` (`root / "wiki" / "Статьи"`, там
 # захардкожен намеренно — контракт функции). Команда `coverage` сканирует
@@ -179,7 +185,7 @@ def _parser() -> argparse.ArgumentParser:
         prog="python -m pipeline.run",
         description="Конвейер subaru-faq: сырой HTML архива -> SQLite -> зеркало Obsidian.")
     p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all", "assets", "site",
-                                        "faq", "blog", "dedup", "facts", "article", "verify"])
+                                        "faq", "blog", "automn", "dedup", "facts", "article", "verify"])
     p.add_argument("sub_action", nargs="?",
                    choices=["index", "download", "sieve", "build", "fetch", "load", "mirror"],
                    default=None,
@@ -212,6 +218,10 @@ def _parser() -> argparse.ArgumentParser:
                         "(по умолчанию %s)" % DEFAULT_SITE_ROOT)
     p.add_argument("--site-manifest", type=Path, default=DEFAULT_SITE_MANIFEST,
                    help="манифест добора сайта (по умолчанию %s)" % DEFAULT_SITE_MANIFEST)
+    p.add_argument("--automn-root", type=Path, default=DEFAULT_AUTOMN_ROOT,
+                   help="каталог добора руководства automn.ru: <root>/manifest.jsonl + "
+                        "<root>/files/ (по умолчанию %s, см. tools/fetch_automn.py)"
+                        % DEFAULT_AUTOMN_ROOT)
     # Архив картинок Ф0/Ф1 — ДРУГОЙ манифест, чем `--assets-manifest` (тот про
     # добор Ф2). Из него берутся картинки FAQ и блогов: они никогда не
     # качались отдельно, но часть адресов — свой хост, и файл уже лежал в
@@ -279,7 +289,8 @@ def mirror_assets_dir(mirror_path: Path) -> Path:
 
 def build_mirror(conn, mirror_path: Path, assets_root: Path = DEFAULT_ASSETS_ROOT,
                   archive_assets_manifest: Path = archive_assets.DEFAULT_MANIFEST,
-                  archive_assets_root: Path = archive_assets.DEFAULT_ROOT) -> dict[str, int]:
+                  archive_assets_root: Path = archive_assets.DEFAULT_ROOT,
+                  automn_root: Path = DEFAULT_AUTOMN_ROOT) -> dict[str, int]:
     """Собирает все три раздела зеркала (форум, FAQ, блоги) в дерево
     `mirror_path`, все три — в ОДИН общий каталог вложений `mirror_assets_
     dir(mirror_path)` (задача 2 Ф3, Ruling 37 Ф2: до этой правки FAQ и блоги
@@ -296,19 +307,29 @@ def build_mirror(conn, mirror_path: Path, assets_root: Path = DEFAULT_ASSETS_ROO
     три) — но берут тот же путь через `mirror_assets_dir`, а не считают его
     заново (см. её докстринг).
 
-    Возвращает число заметок по разделам (`forum`/`faq`/`blog`) — то же, что
-    печатает `main()`.
+    Возвращает число заметок по разделам (`forum`/`faq`/`blog`/`automn`) —
+    то же, что печатает `main()`. `automn` (третий источник, задача этой
+    правки) не читает `conn` вовсе — своей таблицы в базе у него нет, он
+    работает по манифесту добора `automn_root` напрямую (см. докстринг
+    `pipeline.mirror_automn`); участвует он здесь ровно затем, чтобы
+    `run all --rebuild` собирал ВСЮ вики с нуля одним прогоном (иначе
+    пересборка в чистый каталог не давала бы то же дерево, что и боевое —
+    требование побитовой воспроизводимости).
     """
     mirror_path = Path(mirror_path)
     assets_dir = mirror_assets_dir(mirror_path)
     faq_path = mirror_path / DEFAULT_FAQ_MIRROR_DIRNAME
     blog_path = mirror_path / DEFAULT_BLOG_MIRROR_DIRNAME
+    automn_path = mirror_path / DEFAULT_AUTOMN_MIRROR_DIRNAME
     n_forum = mirror.write_all(conn, mirror_path, assets_root=assets_root, assets_dir=assets_dir)
     n_faq = mirror_faq.write_all(conn, faq_path, assets_manifest=archive_assets_manifest,
                                   assets_root=archive_assets_root, assets_dir=assets_dir)
     n_blog = mirror_blog.write_all(conn, blog_path, assets_manifest=archive_assets_manifest,
                                     assets_root=archive_assets_root, assets_dir=assets_dir)
-    return {"forum": n_forum, "faq": n_faq, "blog": n_blog}
+    automn_root = Path(automn_root)
+    automn_stats = mirror_automn.write_all(automn_root / "files", automn_root / "manifest.jsonl",
+                                            automn_path, assets_dir=assets_dir)
+    return {"forum": n_forum, "faq": n_faq, "blog": n_blog, "automn": automn_stats["заметок"]}
 
 
 def _drop_db(path: Path) -> None:
@@ -455,6 +476,29 @@ def main(argv: list[str] | None = None) -> int:
                 print("ОШИБКА:", e)
                 return 2
             print("blog заметок:", n, "->", blog_mirror_path)
+        return 0
+
+    if cmd == "automn":
+        # Третий источник, без DB и без load/mirror-разделения (задача этой
+        # правки): `mirror_automn` читает HTML прямо с диска по манифесту
+        # добора `--automn-root` (см. `tools/fetch_automn.py`), своей
+        # таблицы не заводит — "load" здесь нечего делать отдельно от
+        # "mirror". Точечная команда — для перегенерации только этого
+        # раздела без полного `all` (тот же мотив, что у `faq`/`blog`).
+        automn_mirror_path = args.wiki / args.mirror_dir / DEFAULT_AUTOMN_MIRROR_DIRNAME
+        try:
+            stats = mirror_automn.write_all(
+                args.automn_root / "files", args.automn_root / "manifest.jsonl", automn_mirror_path,
+                assets_dir=mirror_assets_dir(args.wiki / args.mirror_dir))
+        except RuntimeError as e:
+            print("ОШИБКА:", e)
+            return 2
+        print("automn:", stats, "->", automn_mirror_path)
+        collisions = mirror_automn.check_collisions(args.wiki)
+        if collisions:
+            print("коллизии имён/алиасов с остальной вики (требование 2 — устрани перед публикацией статей):")
+            for name, keys in collisions.items():
+                print("  «%s» совпадает с: %s" % (name, keys))
         return 0
 
     if cmd == "dedup":
@@ -687,14 +731,20 @@ def main(argv: list[str] | None = None) -> int:
     if cmd in ("mirror", "all"):
         faq_mirror_path = mirror_path / DEFAULT_FAQ_MIRROR_DIRNAME
         blog_mirror_path = mirror_path / DEFAULT_BLOG_MIRROR_DIRNAME
-        # Три генератора зовутся через одну точку сборки (`build_mirror`) —
-        # она же считает путь ОБЩЕГО каталога вложений `<mirror_path>/assets`
-        # (задача 2 Ф3, Ruling 37) и передаёт его во все три, а не три раза
-        # подряд заново подразумевает то же самое.
+        automn_mirror_path = mirror_path / DEFAULT_AUTOMN_MIRROR_DIRNAME
+        # Четыре генератора зовутся через одну точку сборки (`build_mirror`)
+        # — она же считает путь ОБЩЕГО каталога вложений `<mirror_path>/
+        # assets` (задача 2 Ф3, Ruling 37) и передаёт его во все, а не
+        # заново подразумевает то же самое в каждом. `automn` (третий
+        # источник) не трогает `conn` вовсе — работает по своему манифесту
+        # добора (`--automn-root`), но обязан собираться тем же прогоном
+        # `all --rebuild`, иначе пересборка в чистый каталог не даёт то же
+        # дерево, что боевое (требование побитовой воспроизводимости).
         try:
             counts = build_mirror(conn, mirror_path, assets_root=args.assets_root,
                                    archive_assets_manifest=args.archive_assets_manifest,
-                                   archive_assets_root=args.archive_assets_root)
+                                   archive_assets_root=args.archive_assets_root,
+                                   automn_root=args.automn_root)
         except RuntimeError as e:
             # Предохранитель генератора (общий у mirror и mirror_faq): база
             # не описывает это зеркало. Печатаем причину без трейсбека и
@@ -704,6 +754,7 @@ def main(argv: list[str] | None = None) -> int:
         print("заметок:", counts["forum"], "->", mirror_path)
         print("faq заметок:", counts["faq"], "->", faq_mirror_path)
         print("blog заметок:", counts["blog"], "->", blog_mirror_path)
+        print("automn заметок:", counts["automn"], "->", automn_mirror_path)
 
     if cmd in ("check", "all"):
         found = check_mirror.check(args.wiki)
