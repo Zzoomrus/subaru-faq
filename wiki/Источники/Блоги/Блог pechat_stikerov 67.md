@@ -16,25 +16,25 @@ aliases: ["Российские просторы"]
 
 вот такой закат
 
-(изображение не сохранилось: http://content.foto.mail.ru/inbox/press-s/59/i-69.jpg)
+![[assets/1bfcfc10116fc1b3.jpg]]
 
 а это не совсем закат )))
 
-(изображение не сохранилось: http://content.foto.mail.ru/inbox/press-s/59/i-67.jpg)
+![[assets/c65792bae8d4e25d.jpg]]
 
 где то там горизонт
 
-(изображение не сохранилось: http://content.foto.mail.ru/inbox/press-s/59/i-66.jpg)
+![[assets/604e6cff7fbf1c3d.jpg]]
 
 кругом снег и -24 по цельсию
 
-(изображение не сохранилось: http://content.foto.mail.ru/inbox/press-s/59/i-65.jpg)
+![[assets/27329fc8091280f3.jpg]]
 
 вот такой дороги 130 км до трассы М6. Колея хрен вылезешь, прям как в бобслее.
 
-(изображение не сохранилось: http://content.foto.mail.ru/inbox/press-s/59/i-64.jpg)
+![[assets/dfbbd137e29a1c3c.jpg]]
 
-(изображение не сохранилось: http://content.foto.mail.ru/inbox/press-s/59/i-63.jpg)
+![[assets/a05a62064e8d9b6f.jpg]]
 
 ## Комментарии
 

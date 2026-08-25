@@ -32,7 +32,7 @@ aliases: ["Хочу такую!!!!"]
 
 Увы
 
-(изображение не сохранилось: http://www.cwwcardesign.com/cars/pics/subaru_cabrio.jpg)
+![[assets/b9826aca9734f196.jpg]]
 
 [сайт исходника](http://www.cwwcardesign.com/cars/subaru_legacy.html)
 

@@ -32,7 +32,7 @@ aliases: ["Ну вот она — красавица! Знакомство."]
 
 Subaru Impreza EU Wagon 1995, 1,8 - зелёный крокодил
 
-(изображение не сохранилось: http://content.foto.mail.ru/mail/diadoter/Other/i-9.jpg)
+![[assets/6041da0bb5348b08.jpg]]
 
 ## Комментарии
 

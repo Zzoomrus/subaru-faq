@@ -78,7 +78,7 @@ aliases: ["Клубные Стикеры (наклейки на стекло)"]
 
 *ejik (aka mangust) · 08.02.2010 16:24:28*
 
-(изображение не сохранилось: http://img-fotki.yandex.ru/get/3912/diadoter.3/0_1fcaf_75ed7c5b_L.jpg)
+![[assets/39cee5ccd99bdd9e.jpg]]
 
 [Зелёный крокодил =)](http://fotki.yandex.ru/users/diadoter/view/130223/)
 

@@ -30,15 +30,15 @@ Autopiter.ru - 11451 рублей
 
 Скриншоты корзин:
 
-(изображение не сохранилось: http://s8.hostingkartinok.com/uploads/images/2016/03/b1ba9248263578fe3e701632c54e8d0b.jpg)
+![[assets/c30d86df312ef627.jpg]]
 
-(изображение не сохранилось: http://s8.hostingkartinok.com/uploads/images/2016/03/1fd2fb23039256cb1d5abd634f169c4d.jpg)
+![[assets/d5f228f4b8f9c4a6.jpg]]
 
-(изображение не сохранилось: http://s8.hostingkartinok.com/uploads/images/2016/03/7728d13d2b7fc7f11e26b5f2982430ed.jpg)
+![[assets/dcec0e49de951674.jpg]]
 
-(изображение не сохранилось: http://s8.hostingkartinok.com/uploads/images/2016/03/8d2290ed41c123c62902546b3429fbf3.jpg)
+![[assets/edc4fa3038a0cfc1.jpg]]
 
-(изображение не сохранилось: http://s8.hostingkartinok.com/uploads/images/2016/03/b0dbf38d91b29ebd456af5eb7dbe3fa8.jpg)
+![[assets/c6a656ed772e4826.jpg]]
 
 ## Комментарии
 

@@ -16,4 +16,4 @@ aliases: ["2,5 SOHC, который НЕ ГРЕЕТСЯ!"]
 
 ## Ответ
 
-(изображение не сохранилось: http://www.subaru-faq.ru/work/pick/ej25-new.jpg)
+![[assets/89d18888659962f5.jpg]]

@@ -58,9 +58,9 @@ aliases: ["Пришел пипец студентке"]
 
 *Джедай · 09.02.2010 19:08:03*
 
-хуже парни, она народом управлять будет  (изображение не сохранилось: http://files.myopera.com/Creat0R/Opera_AC/Icons/VeryCool_cool.gif)
+хуже парни, она народом управлять будет  ![[assets/b221bd413cc6bfa5.gif]]
 
-а вообще-то, Натах, все будет пучком  (изображение не сохранилось: http://files.myopera.com/Creat0R/Opera_AC/Icons/thumbs-up_cool.gif)
+а вообще-то, Натах, все будет пучком  ![[assets/0311581317518888.gif]]
 
 ##### Комментарий 226
 
@@ -84,7 +84,7 @@ aliases: ["Пришел пипец студентке"]
 
 *Джедай · 10.02.2010 14:34:54*
 
-Ну поздравляю!!! (изображение не сохранилось: http://files.myopera.com/Creat0R/Opera_AC/Icons/claps.gif) (изображение не сохранилось: http://opera-ac.clan.su/smilies/holiday/Holiday_3.gif) (изображение не сохранилось: http://opera-ac.clan.su/smilies/holiday/Holiday_16.gif) (изображение не сохранилось: http://opera-ac.clan.su/smilies/holiday/Holiday_13.gif)
+Ну поздравляю!!! ![[assets/3f5a2ae599a26ed4.gif]] ![[assets/586a841e42b14d8d.gif]] ![[assets/4a30ebd199cddb2c.gif]] ![[assets/c02f0b7a2bae5416.gif]]
 
 Слышал, что на 4 сдала
 
@@ -103,7 +103,7 @@ aliases: ["Пришел пипец студентке"]
 
 Так что? Уже можно
 
-(изображение не сохранилось: http://i.smiles2k.net/holidayes_smiles/Party2.gif)
+![[assets/1ae3b54886b5c160.gif]]
 
 ##### Комментарий 244
 

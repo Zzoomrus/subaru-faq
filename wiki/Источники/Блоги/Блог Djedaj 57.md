@@ -73,4 +73,4 @@ p.s. от Andr0n
 *Джедай · 08.02.2010 12:59:51*
 *(ответ на комментарий №204)*
 
-(изображение не сохранилось: http://opera-ac.clan.su/smilies/holiday/Holiday_16.gif)
+![[assets/4a30ebd199cddb2c.gif]]

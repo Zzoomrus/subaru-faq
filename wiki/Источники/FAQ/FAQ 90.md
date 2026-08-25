@@ -16,4 +16,4 @@ DOHC
 
 ## Ответ
 
-(изображение не сохранилось: http://www.subaru-faq.ru/work/pick/ej20d.jpg)
+![[assets/e0f0855b7b7ba6c9.jpg]]

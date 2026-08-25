@@ -16,4 +16,4 @@ SOHC
 
 ## Ответ
 
-(изображение не сохранилось: http://www.subaru-faq.ru/work/pick/ej18_22.jpg)
+![[assets/99e27e66903e3981.jpg]]
