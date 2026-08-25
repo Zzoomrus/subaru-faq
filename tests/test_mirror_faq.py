@@ -95,6 +95,52 @@ def test_missing_image_gets_loss_note_not_broken_embed(tmp_path):
     assert "![[" not in md
 
 
+def test_image_missing_from_archive_falls_back_to_wayback_manifest(tmp_path):
+    """Ф4, задача 5: адрес, которого нет в архиве Ф0/Ф1 (`FAQ старый 42`,
+    `gone.jpg` — намеренно отсутствует в `manifest-assets.jsonl` фикстуры),
+    но который донабрал Wayback (`fetch_faqblog_assets`), обязан встать в
+    заметку, а не остаться пометкой утраты."""
+    conn = _seed(tmp_path)
+    out = tmp_path / "FAQ"
+
+    faqblog_root = tmp_path / "faqblog-files"
+    (faqblog_root / "host").mkdir(parents=True)
+    (faqblog_root / "host" / "recovered.jpg").write_bytes(b"recovered-from-wayback")
+    faqblog_manifest = tmp_path / "manifest-faqblog.jsonl"
+    from pipeline import assets_state
+    assets_state.record(faqblog_manifest, "http://subaru-faq.ru/upload/blog/dead/gone.jpg",
+                         "host/recovered.jpg", "ok")
+
+    mirror_faq.write_all(conn, out, assets_manifest=FIX_ASSETS / "manifest-assets.jsonl",
+                          assets_root=FIX_ASSETS / "assets",
+                          faqblog_manifest=faqblog_manifest, faqblog_root=faqblog_root)
+    md = (out / "FAQ старый 42.md").read_text(encoding="utf-8")
+    assert "![[" in md
+    assert "не сохранилось" not in md
+    copied = [p for p in (out / "assets").glob("*") if p.name != ".gitkeep"]
+    assert any(p.read_bytes() == b"recovered-from-wayback" for p in copied)
+
+
+def test_archive_hit_wins_over_wayback_fallback(tmp_path):
+    """Архив дешевле (диск, без сети) и проверяется первым — если файл уже
+    есть там, манифест Wayback не должен даже открываться на этот URL."""
+    conn = _seed(tmp_path)
+    out = tmp_path / "FAQ"
+    # Манифест Wayback существует, но не должен победить: архив уже отвечает
+    # на URL FAQ 502 (см. фикстуру `manifest-assets.jsonl`).
+    faqblog_manifest = tmp_path / "manifest-faqblog.jsonl"
+    from pipeline import assets_state
+    assets_state.record(faqblog_manifest, "http://subaru-faq.ru/upload/blog/84b/x.jpg",
+                         "should/not-be-used.jpg", "ok")
+    mirror_faq.write_all(conn, out, assets_manifest=FIX_ASSETS / "manifest-assets.jsonl",
+                          assets_root=FIX_ASSETS / "assets",
+                          faqblog_manifest=faqblog_manifest, faqblog_root=tmp_path / "nonexistent")
+    md = (out / "FAQ 502.md").read_text(encoding="utf-8")
+    copied = list((out / "assets").glob("*.jpg"))
+    assert len(copied) == 1
+    assert copied[0].read_bytes() == b"fake-jpg-bytes"   # архивный файл, не «should/not-be-used»
+
+
 def test_title_mismatch_adds_second_alias(tmp_path):
     # Задача 6, ревизия по дефекту: заголовок темы Bitrix (`title`), когда он
     # расходится с настоящим вопросом (`question`, уже очищенным парсером от

@@ -54,7 +54,7 @@ Obsidian визуально, но `check_mirror` всё равно не даст
 import re
 from pathlib import Path
 
-from pipeline import archive_assets, attachments, mirror
+from pipeline import archive_assets, assets_state, attachments, fetch_faqblog_assets, mirror
 
 # Индекс и поиск файла в архиве Ф0/Ф1 переехали в `pipeline.archive_assets`
 # (у логики стало два потребителя: зеркало и отражение в базе — `sync_local_
@@ -63,6 +63,14 @@ from pipeline import archive_assets, attachments, mirror
 # ссылается докстринг модуля, `mirror_blog` и тесты.
 DEFAULT_ASSETS_MANIFEST = archive_assets.DEFAULT_MANIFEST
 DEFAULT_ASSETS_ROOT = archive_assets.DEFAULT_ROOT
+
+# Второй источник (Ф4, задача 5): то, чего в архиве Ф0/Ф1 нет, часть могла
+# найтись в Wayback (`pipeline.fetch_faqblog_assets`) — тот же принцип "одна
+# функция на зеркало и на `local_path` в базе", распространённый на второй
+# источник. Падение назад на архив первым — архив дешевле (диск, без сети) и
+# не может дать ложноположительный результат раньше настоящего добора.
+DEFAULT_FAQBLOG_MANIFEST = fetch_faqblog_assets.DEFAULT_MANIFEST
+DEFAULT_FAQBLOG_ROOT = fetch_faqblog_assets.DEFAULT_ROOT
 
 _NOTE_NAME = re.compile(r"^FAQ (?:старый )?(\d+)\.md$")
 
@@ -81,18 +89,36 @@ def _filename(engine: str, nr: int) -> str:
     return "FAQ %d.md" % nr if engine == "bitrix" else "FAQ старый %d.md" % nr
 
 
-def _resolve_image(url: str, asset_index: set[str], assets_root: Path, dest_dir: Path) -> str | None:
-    """Копирует картинку в зеркало, если файл уже есть в архиве Ф0/Ф1, и
-    возвращает путь вставки (`assets/<hash><ext>`, см. docstring модуля).
-    `None` — файла нет ни в манифесте, ни на диске: честная утрата.
+def _resolve_image(url: str, asset_index: set[str], assets_root: Path, dest_dir: Path,
+                    faqblog_known: dict | None = None, faqblog_root: Path | None = None) -> str | None:
+    """Копирует картинку в зеркало и возвращает путь вставки (`assets/
+    <hash><ext>`, см. docstring модуля). `None` — файла нет нигде: честная
+    утрата.
 
-    Поиск — `archive_assets.find`, то есть ровно та же функция, которой
-    `archive_assets.sync_local_paths` заполняет `local_path` в базе.
+    Два источника, в этом порядке:
+
+    1. Архив Ф0/Ф1 — `archive_assets.find`, та же функция, которой
+       `archive_assets.sync_local_paths` заполняет `local_path` в базе;
+    2. Wayback (Ф4, задача 5) — манифест `fetch_faqblog_assets`, если архив
+       не нашёл файл. Архив первым, потому что дешевле (диск, без сети) и не
+       может дать ложноположительный результат раньше добора.
+
+    `faqblog_known` — уже загруженный `assets_state.load(...)` (не путь к
+    манифесту): `write_all` вызывается на каждую картинку записи, повторное
+    чтение манифеста с диска на каждый вызов было бы тем же классом
+    расточительности, которого форумное зеркало избегает для своего
+    манифеста.
     """
     rel = archive_assets.find(url, asset_index, assets_root)
-    if rel is None:
-        return None
-    return mirror.copy_asset(url, Path(assets_root) / rel, dest_dir)
+    if rel is not None:
+        return mirror.copy_asset(url, Path(assets_root) / rel, dest_dir)
+    if faqblog_known:
+        rec = faqblog_known.get(url)
+        if rec and rec.get("status") == "ok" and rec.get("path"):
+            src = Path(faqblog_root) / rec["path"]
+            if src.exists():
+                return mirror.copy_asset(url, src, dest_dir)
+    return None
 
 
 def render_entry(row: tuple, images_by_url: dict) -> str:
@@ -158,7 +184,9 @@ def render_entry(row: tuple, images_by_url: dict) -> str:
 
 
 def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFEST,
-              assets_root: Path = DEFAULT_ASSETS_ROOT, assets_dir: Path | None = None) -> int:
+              assets_root: Path = DEFAULT_ASSETS_ROOT, assets_dir: Path | None = None,
+              faqblog_manifest: Path = DEFAULT_FAQBLOG_MANIFEST,
+              faqblog_root: Path = DEFAULT_FAQBLOG_ROOT) -> int:
     """Пишет заметку на каждую запись `faq` и убирает заметки исчезнувших.
 
     Тот же предохранитель, что у `mirror.write_all`: удалений не может быть
@@ -169,11 +197,16 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
     умолчанию `<out_dir>/assets/` (старое поведение — свой каталог раздела),
     `run.build_mirror` передаёт сюда ОБЩИЙ каталог `<корень вики>/assets`
     (задача 2 Ф3, Ruling 37 — см. `mirror.write_all`).
+
+    `faqblog_manifest`/`faqblog_root` — второй источник картинок (Ф4, задача
+    5), см. `_resolve_image`: то, чего архив Ф0/Ф1 не покрыл, могло найтись в
+    Wayback.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     assets_dir = Path(assets_dir) if assets_dir is not None else out_dir / "assets"
     asset_index = _load_asset_index(assets_manifest)
+    faqblog_known = assets_state.load(faqblog_manifest)
 
     names: set[str] = set()
     used_assets: set[str] = set()
@@ -187,7 +220,8 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
         images_by_url = {}
         for (url,) in conn.execute(
                 "SELECT url FROM faq_images WHERE engine = ? AND nr = ?", (engine, nr)):
-            local = _resolve_image(url, asset_index, assets_root, assets_dir)
+            local = _resolve_image(url, asset_index, assets_root, assets_dir,
+                                    faqblog_known, faqblog_root)
             if local:
                 used_assets.add(local.rsplit("/", 1)[-1])
             images_by_url[url] = {"local_path": local}

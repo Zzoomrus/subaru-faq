@@ -54,7 +54,7 @@ import json
 import re
 from pathlib import Path
 
-from pipeline import mirror, mirror_faq
+from pipeline import assets_state, mirror, mirror_faq
 
 DEFAULT_ASSETS_MANIFEST = mirror_faq.DEFAULT_ASSETS_MANIFEST
 DEFAULT_ASSETS_ROOT = mirror_faq.DEFAULT_ASSETS_ROOT
@@ -162,7 +162,9 @@ def render_entry(row: tuple, images_by_url: dict, comments_md: str) -> str:
 
 
 def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFEST,
-              assets_root: Path = DEFAULT_ASSETS_ROOT, assets_dir: Path | None = None) -> int:
+              assets_root: Path = DEFAULT_ASSETS_ROOT, assets_dir: Path | None = None,
+              faqblog_manifest: Path = mirror_faq.DEFAULT_FAQBLOG_MANIFEST,
+              faqblog_root: Path = mirror_faq.DEFAULT_FAQBLOG_ROOT) -> int:
     """Пишет заметку на каждую запись `blog_posts` и убирает заметки
     исчезнувших. Тот же предохранитель, что у `mirror.write_all`/`mirror_
     faq.write_all` (удалений не может быть больше, чем записанных заметок).
@@ -171,11 +173,16 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
     умолчанию `<out_dir>/assets/` (старое поведение — свой каталог раздела),
     `run.build_mirror` передаёт сюда ОБЩИЙ каталог `<корень вики>/assets`
     (задача 2 Ф3, Ruling 37 — см. `mirror.write_all`).
+
+    `faqblog_manifest`/`faqblog_root` — второй источник картинок (Ф4, задача
+    5), см. `mirror_faq._resolve_image`: то, чего архив Ф0/Ф1 не покрыл,
+    могло найтись в Wayback.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     assets_dir = Path(assets_dir) if assets_dir is not None else out_dir / "assets"
     asset_index = mirror_faq._load_asset_index(assets_manifest)
+    faqblog_known = assets_state.load(faqblog_manifest)
 
     names: set[str] = set()
     used_assets: set[str] = set()
@@ -197,7 +204,8 @@ def write_all(conn, out_dir: Path, assets_manifest: Path = DEFAULT_ASSETS_MANIFE
                 "SELECT DISTINCT url, comment_id FROM blog_images WHERE blog = ? AND post_id = ?",
                 (blog, post_id)):
             if url not in resolved:
-                local = mirror_faq._resolve_image(url, asset_index, assets_root, assets_dir)
+                local = mirror_faq._resolve_image(url, asset_index, assets_root, assets_dir,
+                                                   faqblog_known, faqblog_root)
                 if local:
                     used_assets.add(local.rsplit("/", 1)[-1])
                 resolved[url] = {"local_path": local}

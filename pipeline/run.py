@@ -133,8 +133,8 @@ import sys
 from pathlib import Path
 
 from pipeline import (archive_assets, articles, assets_state, attachments, check_mirror, coverage, db,
-                      facts, faq_dedup, fetch_assets, fetch_site, ingest, mirror, mirror_automn,
-                      mirror_blog, mirror_faq, parse_blog, parse_faq, verify)
+                      facts, faq_dedup, fetch_assets, fetch_faqblog_assets, fetch_site, ingest, mirror,
+                      mirror_automn, mirror_blog, mirror_faq, parse_blog, parse_faq, verify)
 
 DEFAULT_PAGES = Path("data/raw/archive/pages")
 DEFAULT_MANIFEST = Path("data/raw/archive/manifest.jsonl")
@@ -184,8 +184,8 @@ def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m pipeline.run",
         description="Конвейер subaru-faq: сырой HTML архива -> SQLite -> зеркало Obsidian.")
-    p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all", "assets", "site",
-                                        "faq", "blog", "automn", "dedup", "facts", "article", "verify"])
+    p.add_argument("command", choices=["ingest", "coverage", "mirror", "check", "all", "assets", "faqblog",
+                                        "site", "faq", "blog", "automn", "dedup", "facts", "article", "verify"])
     p.add_argument("sub_action", nargs="?",
                    choices=["index", "download", "sieve", "build", "fetch", "load", "mirror"],
                    default=None,
@@ -235,6 +235,13 @@ def _parser() -> argparse.ArgumentParser:
                         % archive_assets.DEFAULT_MANIFEST)
     p.add_argument("--archive-assets-root", type=Path, default=archive_assets.DEFAULT_ROOT,
                    help="каталог файлов архива Ф0/Ф1 (по умолчанию %s)" % archive_assets.DEFAULT_ROOT)
+    # Добор Ф4 картинок FAQ/блогов из Wayback (задача 5 Ф4): свой манифест
+    # (другой пул URL, чем `--assets-manifest` формата), но ОБЩИЙ каталог
+    # файлов с добором форума — `--assets-root` (Ruling Ф3 задача 2: один
+    # файл, одно имя от `attachments.asset_name`, один каталог на весь вики).
+    p.add_argument("--faqblog-manifest", type=Path, default=fetch_faqblog_assets.DEFAULT_MANIFEST,
+                   help="манифест добора картинок FAQ/блогов из Wayback (по умолчанию %s)"
+                        % fetch_faqblog_assets.DEFAULT_MANIFEST)
     p.add_argument("--limit", type=int, default=None,
                    help="ограничить число URL за прогон (для проб/тестов)")
     # Терминальные статусы добора (`no_snapshot` 5007, `empty` 99) по
@@ -290,7 +297,8 @@ def mirror_assets_dir(mirror_path: Path) -> Path:
 def build_mirror(conn, mirror_path: Path, assets_root: Path = DEFAULT_ASSETS_ROOT,
                   archive_assets_manifest: Path = archive_assets.DEFAULT_MANIFEST,
                   archive_assets_root: Path = archive_assets.DEFAULT_ROOT,
-                  automn_root: Path = DEFAULT_AUTOMN_ROOT) -> dict[str, int]:
+                  automn_root: Path = DEFAULT_AUTOMN_ROOT,
+                  faqblog_manifest: Path = fetch_faqblog_assets.DEFAULT_MANIFEST) -> dict[str, int]:
     """Собирает все три раздела зеркала (форум, FAQ, блоги) в дерево
     `mirror_path`, все три — в ОДИН общий каталог вложений `mirror_assets_
     dir(mirror_path)` (задача 2 Ф3, Ruling 37 Ф2: до этой правки FAQ и блоги
@@ -323,9 +331,11 @@ def build_mirror(conn, mirror_path: Path, assets_root: Path = DEFAULT_ASSETS_ROO
     automn_path = mirror_path / DEFAULT_AUTOMN_MIRROR_DIRNAME
     n_forum = mirror.write_all(conn, mirror_path, assets_root=assets_root, assets_dir=assets_dir)
     n_faq = mirror_faq.write_all(conn, faq_path, assets_manifest=archive_assets_manifest,
-                                  assets_root=archive_assets_root, assets_dir=assets_dir)
+                                  assets_root=archive_assets_root, assets_dir=assets_dir,
+                                  faqblog_manifest=faqblog_manifest, faqblog_root=assets_root)
     n_blog = mirror_blog.write_all(conn, blog_path, assets_manifest=archive_assets_manifest,
-                                    assets_root=archive_assets_root, assets_dir=assets_dir)
+                                    assets_root=archive_assets_root, assets_dir=assets_dir,
+                                    faqblog_manifest=faqblog_manifest, faqblog_root=assets_root)
     automn_root = Path(automn_root)
     automn_stats = mirror_automn.write_all(automn_root / "files", automn_root / "manifest.jsonl",
                                             automn_path, assets_dir=assets_dir)
@@ -416,6 +426,68 @@ def main(argv: list[str] | None = None) -> int:
         print("синхронизация с базой:", sync_stats)
         return 0
 
+    if cmd == "faqblog":
+        # Ф4, задача 5: добор картинок FAQ/блогов из Wayback — те же три
+        # шага, что у `assets` выше (`pipeline.fetch_faqblog_assets`), свой
+        # манифест (`--faqblog-manifest`), общий каталог файлов
+        # (`--assets-root`, тот же, что у форума). `sieve`/`mark_empty` —
+        # ДОСЛОВНО те же функции `fetch_assets`, что и у форумного добора:
+        # они читают только манифест и диск, таблицы `attachments` не знают
+        # вовсе, поэтому позвать их с другим манифестом уже достаточно.
+        if args.sub_action not in ("index", "download", "sieve"):
+            print("укажи действие: faqblog index | faqblog download | faqblog sieve")
+            return 2
+        conn = db.connect(args.db)
+        db.init_schema(conn)
+        if args.sub_action == "sieve":
+            report = fetch_assets.sieve_report(conn, args.faqblog_manifest, args.assets_root)
+            by_reason: dict[str, int] = {}
+            for item in report["placeholders"]:
+                by_reason[item["reason"]] = by_reason.get(item["reason"], 0) + 1
+            print("заглушки: %d" % len(report["placeholders"]))
+            for reason, count in sorted(by_reason.items(), key=lambda kv: -kv[1]):
+                print("  по основанию «%s»: %d" % (reason, count))
+            for item in report["placeholders"][:20]:
+                print("  %s  %d байт %s — %s"
+                      % (item["url"], item["bytes"], item["size"], item["reason"]))
+            if len(report["placeholders"]) > 20:
+                print("  … ещё %d" % (len(report["placeholders"]) - 20))
+            print("НЕРЕШЁННЫЕ группы байт-идентичных файлов у >= 3 адресов: %d "
+                  "(САМИ НЕ МЕТЯТСЯ никогда — открой образец глазами и, если это "
+                  "заглушка, впиши её sha256 в attachments.DECIDED_PLACEHOLDER_SHA256)"
+                  % len(report["identical_groups"]))
+            for g in report["identical_groups"]:
+                print("  %d байт, %s, адресов %d, образец %s"
+                      % (g["bytes"], g["size"], g["urls"], g["sample"]))
+            if not args.apply:
+                print("это только отчёт; чтобы пометить заглушки `empty` в манифесте — "
+                      "повтори с --apply, затем перегенерируй зеркало (`run mirror`)")
+                return 0
+            n = fetch_assets.mark_empty(args.faqblog_manifest,
+                                        [i["url"] for i in report["placeholders"]])
+            print("помечено `empty` в манифесте:", n)
+            print("синхронизация с базой:",
+                  fetch_faqblog_assets.sync_to_db(conn, args.faqblog_manifest, args.assets_root))
+            return 0
+        retry = tuple(x.strip() for x in args.retry.split(",") if x.strip())
+        try:
+            if args.sub_action == "index":
+                stats = fetch_faqblog_assets.index_pending(
+                    conn, args.faqblog_manifest, limit=args.limit, retry=retry,
+                    archive_manifest=args.archive_assets_manifest, archive_root=args.archive_assets_root)
+                print("индексация:", stats)
+            else:
+                stats = fetch_faqblog_assets.download(
+                    conn, args.faqblog_manifest, args.assets_root, limit=args.limit, retry=retry,
+                    archive_manifest=args.archive_assets_manifest, archive_root=args.archive_assets_root)
+                print("скачивание:", stats)
+        except ValueError as e:
+            print("ОШИБКА:", e)
+            return 2
+        sync_stats = fetch_faqblog_assets.sync_to_db(conn, args.faqblog_manifest, args.assets_root)
+        print("синхронизация с базой:", sync_stats)
+        return 0
+
     if cmd == "faq":
         if args.sub_action not in (None, "load", "mirror"):
             print("укажи действие: faq load | faq mirror (без действия — оба)")
@@ -431,6 +503,11 @@ def main(argv: list[str] | None = None) -> int:
             print("faq загрузка:", stats)
             print("картинки в базе:", archive_assets.sync_local_paths(
                 conn, args.archive_assets_manifest, args.archive_assets_root))
+            # Добор Ф4 (задача 5): то, чего архив Ф0/Ф1 не покрыл, донабирает
+            # Wayback — свой манифест, тот же порядок (после архива, см.
+            # докстринг `fetch_faqblog_assets`).
+            print("картинки из Wayback:", fetch_faqblog_assets.sync_to_db(
+                conn, args.faqblog_manifest, args.assets_root))
         if args.sub_action in (None, "mirror"):
             # Общий каталог вложений (задача 2 Ф3, Ruling 37) — тот же путь,
             # что строит `build_mirror` для команды `all`, взятый ОДНОЙ
@@ -442,7 +519,9 @@ def main(argv: list[str] | None = None) -> int:
                 n = mirror_faq.write_all(conn, faq_mirror_path,
                                           assets_manifest=args.archive_assets_manifest,
                                           assets_root=args.archive_assets_root,
-                                          assets_dir=mirror_assets_dir(args.wiki / args.mirror_dir))
+                                          assets_dir=mirror_assets_dir(args.wiki / args.mirror_dir),
+                                          faqblog_manifest=args.faqblog_manifest,
+                                          faqblog_root=args.assets_root)
             except RuntimeError as e:
                 print("ОШИБКА:", e)
                 return 2
@@ -464,6 +543,8 @@ def main(argv: list[str] | None = None) -> int:
             print("blog загрузка:", stats)
             print("картинки в базе:", archive_assets.sync_local_paths(
                 conn, args.archive_assets_manifest, args.archive_assets_root))
+            print("картинки из Wayback:", fetch_faqblog_assets.sync_to_db(
+                conn, args.faqblog_manifest, args.assets_root))
         if args.sub_action in (None, "mirror"):
             # Общий каталог вложений через `mirror_assets_dir` — см. тот же
             # комментарий у `faq` выше.
@@ -471,7 +552,9 @@ def main(argv: list[str] | None = None) -> int:
                 n = mirror_blog.write_all(conn, blog_mirror_path,
                                            assets_manifest=args.archive_assets_manifest,
                                            assets_root=args.archive_assets_root,
-                                           assets_dir=mirror_assets_dir(args.wiki / args.mirror_dir))
+                                           assets_dir=mirror_assets_dir(args.wiki / args.mirror_dir),
+                                           faqblog_manifest=args.faqblog_manifest,
+                                           faqblog_root=args.assets_root)
             except RuntimeError as e:
                 print("ОШИБКА:", e)
                 return 2
@@ -693,6 +776,11 @@ def main(argv: list[str] | None = None) -> int:
         # строки картинок, и без него `--rebuild` возвращал бы NULL.
         print("картинки в базе:", archive_assets.sync_local_paths(
             conn, args.archive_assets_manifest, args.archive_assets_root))
+        # Ф4, задача 5: то, чего архив Ф0/Ф1 не покрыл, донабирает Wayback —
+        # свой манифест, тот же принцип "снёс/собрал — получил то же" (см.
+        # докстринг `fetch_faqblog_assets`), звать ПОСЛЕ архивного шага.
+        print("картинки из Wayback (faq/блоги):", fetch_faqblog_assets.sync_to_db(
+            conn, args.faqblog_manifest, args.assets_root))
 
     if cmd in ("coverage", "all"):
         rows = coverage.report(conn)
@@ -744,7 +832,8 @@ def main(argv: list[str] | None = None) -> int:
             counts = build_mirror(conn, mirror_path, assets_root=args.assets_root,
                                    archive_assets_manifest=args.archive_assets_manifest,
                                    archive_assets_root=args.archive_assets_root,
-                                   automn_root=args.automn_root)
+                                   automn_root=args.automn_root,
+                                   faqblog_manifest=args.faqblog_manifest)
         except RuntimeError as e:
             # Предохранитель генератора (общий у mirror и mirror_faq): база
             # не описывает это зеркало. Печатаем причину без трейсбека и
