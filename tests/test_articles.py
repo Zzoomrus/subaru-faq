@@ -401,6 +401,23 @@ def test_build_rejects_slash_in_заголовок(tmp_path):
         articles.build("х", tmp_path)
 
 
+def test_build_accepts_nested_путь_for_model_axis(tmp_path):
+    """Спека §7: модельная ось — `Статьи/Модели/Leone/…`; вложенный `путь`
+    из безопасных компонентов обязан собираться, а не падать как обход."""
+    _write_inputs(tmp_path, "х",
+                  ["заголовок: Х", "путь: Модели/Leone", "собрано: 2026-08-21"])
+    out = articles.build("х", tmp_path)
+    assert out == tmp_path / "wiki" / "Статьи" / "Модели" / "Leone" / "Х.md"
+    assert out.exists()
+
+
+def test_build_rejects_empty_component_in_nested_путь(tmp_path):
+    _write_inputs(tmp_path, "х",
+                  ["заголовок: Х", "путь: Модели//Leone", "собрано: 2026-08-21"])
+    with pytest.raises(articles.DraftError):
+        articles.build("х", tmp_path)
+
+
 def test_build_rejects_dotdot_путь_without_slash(tmp_path):
     _write_inputs(tmp_path, "х", ["заголовок: Х", "путь: ..", "собрано: 2026-08-21"])
     with pytest.raises(articles.DraftError):

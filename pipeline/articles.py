@@ -320,6 +320,23 @@ def _require_safe_path_component(value: str, label: str, draft_path: Path) -> No
             "`.`/`..` запрещены" % (draft_path, label, value))
 
 
+def _require_safe_section_path(value: str, draft_path: Path) -> None:
+    """`путь` — папка статьи ВНУТРИ `wiki/Статьи`, и по спеке (§7) она бывает
+    вложенной: модельная ось — `Модели/Leone`, `Модели/GC8`. Поэтому слэш
+    здесь разрешён как разделитель компонентов, но КАЖДЫЙ компонент
+    проверяется тем же правилом, что и одиночное имя: пустой компонент
+    (ведущий `/` = абсолютный путь, `a//b`), `.`/`..` (обход каталога) и
+    обратный слэш — `DraftError`. Второй рубеж (`resolve()` внутри
+    `wiki/Статьи` в `build`) остаётся как был."""
+    parts = value.split("/")
+    if "\\" in value or any(not part or part in (".", "..") for part in parts):
+        raise DraftError(
+            "в черновике «%s» значение поля «путь» (%r) не годится в качестве "
+            "папки статьи — допустимы только вложенные имена через `/` "
+            "(например `Модели/Leone`); пустые компоненты, `.`/`..` и `\\` "
+            "запрещены" % (draft_path, value))
+
+
 def _draft_target(meta: dict, draft_path: Path, articles_dir: Path) -> Path:
     """Извлекает и проверяет `заголовок`/`путь` черновика, возвращает
     НЕразрешённый путь `<articles_dir>/<путь>/<заголовок>.md`.
@@ -338,8 +355,8 @@ def _draft_target(meta: dict, draft_path: Path, articles_dir: Path) -> Path:
         raise DraftError("в черновике «%s» не задан `путь` (папка узла в wiki/Статьи) — код "
                           "не угадывает её из «узел», это должно быть решено явно" % draft_path)
     _require_safe_path_component(title, "заголовок", draft_path)
-    _require_safe_path_component(section_path, "путь", draft_path)
-    return articles_dir / section_path / ("%s.md" % title)
+    _require_safe_section_path(section_path, draft_path)
+    return articles_dir.joinpath(*section_path.split("/")) / ("%s.md" % title)
 
 
 # Признак «это файл написал render()», проверяемый по ФОРМЕ СОДЕРЖИМОГО, не
