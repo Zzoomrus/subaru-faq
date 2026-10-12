@@ -722,3 +722,13 @@ def test_frontmatter_model_as_single_string_is_not_split_into_letters():
     out = articles.render("Текст[^f1].", [_fact("f1")],
                            {"заголовок": "Х", "узел": "эксплуатация", "модель": "xt-svx"})
     assert "модель: [xt-svx]" in out
+
+
+def test_title_longer_than_240_utf8_bytes_is_rejected(tmp_path):
+    """Linux ограничивает имя файла 255 байтами; кириллический заголовок в 150
+    символов — уже за пределом, деплой на GitHub Pages падал."""
+    import pytest
+    long_title = "Очень длинный заголовок статьи про Subaru " * 4  # ~300 байт
+    with pytest.raises(articles.DraftError, match="байт"):
+        articles._require_safe_path_component(long_title, "заголовок", tmp_path / "x.md")
+    articles._require_safe_path_component("Короткий заголовок", "заголовок", tmp_path / "x.md")

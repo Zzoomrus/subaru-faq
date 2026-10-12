@@ -162,10 +162,30 @@ def _manual_from_url(url: str) -> str:
 NO_TITLE = "(без названия)"
 
 
+#: Linux (ext4 на GitHub Actions/Pages) ограничивает имя файла 255 БАЙТАМИ;
+#: кириллический заголовок руководства в 150 символов — уже за пределом, и
+#: checkout падал на `unable to create file`. macOS принимает такие имена молча.
+MAX_FILENAME_BYTES = 240
+
+
+def fit_filename(name: str, limit: int = MAX_FILENAME_BYTES) -> str:
+    """Укоротить имя заметки (без `.md`) до `limit` байт UTF-8 по границе
+    слова, пометив обрез многоточием. Полный заголовок остаётся в `aliases`."""
+    if len(name.encode("utf-8")) <= limit:
+        return name
+    out = ""
+    for w in name.split(" "):
+        cand = (out + " " + w).strip()
+        if len((cand + "…").encode("utf-8")) > limit:
+            break
+        out = cand
+    return (out or name.encode("utf-8")[: limit - 3].decode("utf-8", "ignore")) + "…"
+
+
 def filename_for(manual: str, title: str) -> str:
     label = MANUAL_LABELS.get(manual, manual or "?")
     safe_title = normalize_name_component(title) or NO_TITLE
-    return "Руководство %s %s.md" % (label, safe_title)
+    return fit_filename("Руководство %s %s" % (label, safe_title)) + ".md"
 
 
 def _is_chrome_image_url(url: str) -> bool:

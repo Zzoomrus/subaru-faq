@@ -313,6 +313,7 @@ def _parse_draft(path: Path) -> tuple[dict, str]:
 # («Ремонт EJ20/EJ25» — обычное дело для статьи про Subaru) падал
 # `FileNotFoundError`, а не внятным `DraftError`.
 _UNSAFE_PATH_CHARS = re.compile(r"[\\/]")
+MAX_NAME_BYTES = 240
 
 
 def _require_safe_path_component(value: str, label: str, draft_path: Path) -> None:
@@ -323,6 +324,15 @@ def _require_safe_path_component(value: str, label: str, draft_path: Path) -> No
             "в черновике «%s» значение поля «%s» (%r) не годится в качестве "
             "имени файла/папки — разделители путей (`/`, `\\`) и значения "
             "`.`/`..` запрещены" % (draft_path, label, value))
+    # Linux (ext4, GitHub Actions, GitHub Pages) ограничивает имя файла 255
+    # БАЙТАМИ, а не символами: кириллица — 2 байта, тире «—» — 3. macOS молча
+    # принимает длинные заголовки, а деплой падал на `unable to create file`.
+    # Запас на `.md` и служебные суффиксы — лимит 240 байт на сам заголовок.
+    if len(value.encode("utf-8")) > MAX_NAME_BYTES:
+        raise DraftError(
+            "в черновике «%s» значение поля «%s» длиннее %d байт в UTF-8 (%d) — "
+            "на Linux такое имя файла не создаётся, укоротите заголовок"
+            % (draft_path, label, MAX_NAME_BYTES, len(value.encode("utf-8"))))
 
 
 def _require_safe_section_path(value: str, draft_path: Path) -> None:

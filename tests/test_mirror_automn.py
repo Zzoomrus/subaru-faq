@@ -361,3 +361,14 @@ def test_check_collisions_flags_existing_wiki_name(tmp_path):
         "---\naliases: [\"11.13 Процедура\"]\n---\n\n# 11.13 Процедура\n\n## Текст\n", encoding="utf-8")
     found = mirror_automn.check_collisions(wiki)
     assert "11.13 Процедура" in found
+
+
+def test_filename_for_fits_linux_255_byte_limit():
+    """Имя файла руководства не длиннее 240 байт UTF-8 (лимит ext4 — 255),
+    обрез по слову с многоточием; короткие имена не трогаются."""
+    from pipeline.mirror_automn import filename_for, fit_filename
+    long_title = "Обогрев заднего стекла и зеркал заднего вида - общая информация, " * 4
+    name = filename_for("legacy", long_title)
+    assert name.endswith("….md")
+    assert len(name.encode("utf-8")) <= 243
+    assert fit_filename("Короткое имя") == "Короткое имя"
