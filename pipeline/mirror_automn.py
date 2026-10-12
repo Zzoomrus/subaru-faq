@@ -165,7 +165,7 @@ NO_TITLE = "(без названия)"
 #: Linux (ext4 на GitHub Actions/Pages) ограничивает имя файла 255 БАЙТАМИ;
 #: кириллический заголовок руководства в 150 символов — уже за пределом, и
 #: checkout падал на `unable to create file`. macOS принимает такие имена молча.
-MAX_FILENAME_BYTES = 240
+MAX_FILENAME_BYTES = 200
 
 
 def fit_filename(name: str, limit: int = MAX_FILENAME_BYTES) -> str:

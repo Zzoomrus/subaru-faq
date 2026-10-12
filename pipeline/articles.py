@@ -313,7 +313,7 @@ def _parse_draft(path: Path) -> tuple[dict, str]:
 # («Ремонт EJ20/EJ25» — обычное дело для статьи про Subaru) падал
 # `FileNotFoundError`, а не внятным `DraftError`.
 _UNSAFE_PATH_CHARS = re.compile(r"[\\/]")
-MAX_NAME_BYTES = 240
+MAX_NAME_BYTES = 200
 
 
 def _require_safe_path_component(value: str, label: str, draft_path: Path) -> None:
