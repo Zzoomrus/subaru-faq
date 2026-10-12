@@ -163,12 +163,12 @@ plugins:
     position: right
     priority: 50
 - source: '@quartz-community/article-title'
-  enabled: true
+  enabled: false
   layout:
     position: beforeBody
     priority: 10
 - source: '@quartz-community/content-meta'
-  enabled: true
+  enabled: false
   layout:
     position: beforeBody
     priority: 20

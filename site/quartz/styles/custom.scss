@@ -1,3 +1,17 @@
 @use "./variables.scss" as *;
 
 // put your custom CSS here!
+
+// subaru-faq: подпись блока сносок остаётся английской («Footnotes») — в статьях
+// уже есть свой заголовок «Сноски», поэтому служебную подпись прячем.
+.footnotes > #footnote-label,
+.footnotes > h2.sr-only {
+  display: none;
+}
+
+// Зеркало форума: посты идут подряд, чуть больше воздуха между заголовками постов.
+h5[id^="пост-"] {
+  margin-top: 1.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--lightgray);
+}
