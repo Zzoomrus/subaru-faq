@@ -1,0 +1,26 @@
+{
+  "name": "unlist-sources",
+  "version": "1.0.0",
+  "description": "Помечает зеркало форума (Источники/) как unlisted: страницы не попадают в поиск, граф, обозреватель и sitemap, но открываются по ссылкам из сносок.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "quartz": {
+    "name": "unlist-sources",
+    "displayName": "Unlist Sources",
+    "description": "Marks everything under Источники/ as unlisted.",
+    "version": "1.0.0",
+    "category": "transformer",
+    "defaultOrder": 45,
+    "defaultEnabled": true,
+    "defaultOptions": { "prefixes": ["Источники/"] }
+  }
+}

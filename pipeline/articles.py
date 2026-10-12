@@ -229,7 +229,12 @@ def render(draft: str, verified: list[dict], meta: dict) -> str:
     if meta.get("узел"):
         frontmatter.append("узел: %s" % meta["узел"])
     if meta.get("модель"):
-        frontmatter.append("модель: [%s]" % ", ".join(meta["модель"]))
+        # В черновике модель может быть одной строкой (`модель: xt-svx`), а не
+        # списком — иначе join рассыпал бы её по буквам в `[x, t, -, s, v, x]`.
+        models = meta["модель"]
+        if isinstance(models, str):
+            models = [models]
+        frontmatter.append("модель: [%s]" % ", ".join(models))
     # F6 ревью: считает РАЗЛИЧНЫЕ источники, а не факты — несколько фактов
     # из одного поста/ответа не делают статью подкреплённой большим числом
     # источников, а старое `len(verified)` завышало охват в разы (5 при трёх

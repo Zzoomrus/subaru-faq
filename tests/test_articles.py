@@ -715,3 +715,10 @@ def test_prune_orphans_does_nothing_when_drafts_directory_is_missing_or_empty(tm
 
     assert articles.prune_orphans(tmp_path) == 0
     assert stray.exists()
+
+
+def test_frontmatter_model_as_single_string_is_not_split_into_letters():
+    """Регрессия: `модель: xt-svx` строкой в черновике давала `[x, t, -, s, v, x]`."""
+    out = articles.render("Текст[^f1].", [_fact("f1")],
+                           {"заголовок": "Х", "узел": "эксплуатация", "модель": "xt-svx"})
+    assert "модель: [xt-svx]" in out
